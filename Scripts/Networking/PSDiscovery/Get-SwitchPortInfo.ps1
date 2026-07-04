@@ -9,6 +9,11 @@
     .\Get-SwitchPortInfo.ps1
 #>
 
+param (
+    [Parameter(Mandatory = $false)]
+    [string]$Customer = "Default"
+)
+
 # 1. Locate and import the Logging module dynamically
 $ModuleImported = $false
 
@@ -73,9 +78,71 @@ if (-not $ModuleImported) {
     }
 }
 
+# Helper function to prompt and select/create a customer name
+function Get-CustomerName {
+    param (
+        [string]$OutputDir
+    )
+
+    # Scan for existing CSVs: SwitchInventory_*.csv or SwitchInventory.csv
+    $ExistingCustomers = @()
+    if (Test-Path $OutputDir) {
+        $Files = Get-ChildItem -Path $OutputDir -Filter "SwitchInventory*.csv" -ErrorAction SilentlyContinue
+        foreach ($File in $Files) {
+            if ($File.Name -eq "SwitchInventory.csv") {
+                $ExistingCustomers += "Default"
+            }
+            elseif ($File.Name -match "^SwitchInventory_(.+)\.csv$") {
+                $ExistingCustomers += $Matches[1]
+            }
+        }
+    }
+    # Unique and sorted customer names
+    $ExistingCustomers = $ExistingCustomers | Select-Object -Unique | Sort-Object
+
+    Clear-Host
+    Write-Host "==========================================================" -ForegroundColor Cyan
+    Write-Host "             Select Customer/Company                     " -ForegroundColor Cyan
+    Write-Host "==========================================================" -ForegroundColor Cyan
+    
+    if ($ExistingCustomers.Count -gt 0) {
+        Write-Host "Found the following existing customer inventories:" -ForegroundColor Yellow
+        for ($i = 0; $i -lt $ExistingCustomers.Count; $i++) {
+            Write-Host " [$($i + 1)] $($ExistingCustomers[$i])"
+        }
+        Write-Host " [$($ExistingCustomers.Count + 1)] (Create a new company/customer)"
+        Write-Host ""
+        $Choice = Read-Host "Choose an option"
+        
+        $ParsedInt = 0
+        if ([int]::TryParse($Choice, [ref]$ParsedInt)) {
+            $Index = $ParsedInt - 1
+            if ($Index -ge 0 -and $Index -lt $ExistingCustomers.Count) {
+                return $ExistingCustomers[$Index]
+            }
+            elseif ($Index -eq $ExistingCustomers.Count) {
+                $NewName = Read-Host "Enter new Customer/Company name"
+                if (-not [string]::IsNullOrWhiteSpace($NewName)) {
+                    # Sanitize name to avoid invalid file characters
+                    return ($NewName -replace '[\\/:*?"<>|]', '')
+                }
+            }
+        }
+    }
+    else {
+        # No existing customers
+        $NewName = Read-Host "Enter Customer/Company name"
+        if (-not [string]::IsNullOrWhiteSpace($NewName)) {
+            return ($NewName -replace '[\\/:*?"<>|]', '')
+        }
+    }
+    return $null
+}
+
 # Define the log and inventory output directory
 $OutputDir = "C:\Log\PSDiscovery"
-$CsvPath = Join-Path $OutputDir "SwitchInventory.csv"
+$CustomerName = $Customer
+$CsvPath = if ($CustomerName -eq "Default") { Join-Path $OutputDir "SwitchInventory.csv" } else { Join-Path $OutputDir "SwitchInventory_$CustomerName.csv" }
 
 # 2. Initialize logging (creates C:\Log\PSDiscovery if it doesn't exist)
 $ScriptName = $MyInvocation.MyCommand.Name
@@ -116,19 +183,23 @@ try {
         Write-Host "==========================================================" -ForegroundColor Cyan
         Write-Host "             PSDiscovery Switch Utility                  " -ForegroundColor Cyan
         Write-Host "==========================================================" -ForegroundColor Cyan
+        Write-Host " Current Customer/Company: $CustomerName" -ForegroundColor Yellow
+        Write-Host " Current CSV Destination:  $CsvPath" -ForegroundColor DarkGray
+        Write-Host "==========================================================" -ForegroundColor Cyan
         Write-Host " 1. Capture/Update Switch Port Info (CDP/LLDP)" -ForegroundColor White
         Write-Host " 2. View Switch Inventory CSV File" -ForegroundColor White
-        Write-Host " 3. View Switch Discovery Logs" -ForegroundColor White
-        Write-Host " 4. Exit" -ForegroundColor White
+        Write-Host " 3. Change Current Customer/Company" -ForegroundColor White
+        Write-Host " 4. View Switch Discovery Logs" -ForegroundColor White
+        Write-Host " 5. Exit" -ForegroundColor White
         Write-Host "==========================================================" -ForegroundColor Cyan
         Write-Host ""
         
-        $Selection = Read-Host "Enter your choice [1-4]"
+        $Selection = Read-Host "Enter your choice [1-5]"
         Write-Host ""
         
         switch ($Selection) {
             "1" {
-                Write-ScriptLog -Message "Starting packet capture..." -LogFile $LogFile -Level INFO
+                Write-ScriptLog -Message "Starting packet capture for customer: $CustomerName..." -LogFile $LogFile -Level INFO
                 Write-ScriptLog -Message "Listening for CDP/LLDP packets on network interfaces (this may take up to 60 seconds)..." -LogFile $LogFile -Level INFO
 
                 try {
@@ -162,6 +233,7 @@ try {
                             $Record = [PSCustomObject]@{
                                 Timestamp    = (Get-Date -Format "dd/MM/yy HH:mm:ss")
                                 ComputerName = $env:COMPUTERNAME
+                                CustomerName = $CustomerName
                                 ProtocolType = $Type
                                 SwitchDevice = $Device
                                 SwitchPort   = $Port
@@ -191,15 +263,29 @@ try {
             }
             "2" {
                 if (Test-Path $CsvPath) {
-                    Write-Host "--- Switch Inventory CSV (Path: $CsvPath) ---" -ForegroundColor Yellow
+                    Write-Host "--- Switch Inventory CSV (Customer: $CustomerName | Path: $CsvPath) ---" -ForegroundColor Yellow
                     Import-Csv -Path $CsvPath | Format-Table -AutoSize
                 }
                 else {
-                    Write-Host "No Switch Inventory CSV found at $CsvPath." -ForegroundColor Red
-                    Write-Host "Please run the discovery first (Option 1)." -ForegroundColor Red
+                    Write-Host "No Switch Inventory CSV found for Customer '$CustomerName' at $CsvPath." -ForegroundColor Red
+                    Write-Host "Please run the discovery first (Option 1) or change the customer." -ForegroundColor Red
                 }
             }
             "3" {
+                $NewCust = Get-CustomerName -OutputDir $OutputDir
+                if ($NewCust) {
+                    $CustomerName = $NewCust
+                    # Update CSV Path dynamically
+                    if ($CustomerName -eq "Default") {
+                        $CsvPath = Join-Path $OutputDir "SwitchInventory.csv"
+                    }
+                    else {
+                        $CsvPath = Join-Path $OutputDir "SwitchInventory_$CustomerName.csv"
+                    }
+                    Write-ScriptLog -Message "Switched current customer to: $CustomerName" -LogFile $LogFile -Level SUCCESS
+                }
+            }
+            "4" {
                 if (Test-Path $LogFile) {
                     Write-Host "--- Recent Log Entries (Path: $LogFile) ---" -ForegroundColor Yellow
                     Get-Content -Path $LogFile -Tail 20
@@ -208,13 +294,13 @@ try {
                     Write-Host "Log file not found at $LogFile." -ForegroundColor Red
                 }
             }
-            "4" {
+            "5" {
                 $ExitMenu = $true
                 Write-ScriptLog -Message "User exited the interactive menu." -LogFile $LogFile -Level INFO
                 Write-Host "Thank you for using PSDiscovery Switch Utility!" -ForegroundColor Green
             }
             Default {
-                Write-Host "Invalid selection. Please enter a number between 1 and 4." -ForegroundColor Red
+                Write-Host "Invalid selection. Please enter a number between 1 and 5." -ForegroundColor Red
             }
         }
         
