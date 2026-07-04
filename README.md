@@ -8,7 +8,7 @@ Welcome to your central repository for all PowerShell scripts. This repository i
 *   [Templates/ScriptTemplate.ps1](file:///c:/Users/james/OneDrive/Documents/GitHub/PowerShell/Templates/ScriptTemplate.ps1) - A starter template for writing new scripts with built-in logging and error handling.
 *   [PSScriptAnalyzerSettings.psd1](file:///c:/Users/james/OneDrive/Documents/GitHub/PowerShell/PSScriptAnalyzerSettings.psd1) - Best-practice static analysis rules for script formatting and quality.
 *   `Scripts/` - Folder where you can add your custom, standalone scripts.
-    *   [Scripts/Get-SwitchPortInfo.ps1](file:///c:/Users/james/OneDrive/Documents/GitHub/PowerShell/Scripts/Get-SwitchPortInfo.ps1) - Automates capturing and parsing CDP/LLDP switch port packets with logging.
+    *   [Scripts/Networking/PSDiscovery/Get-SwitchPortInfo.ps1](file:///c:/Users/james/OneDrive/Documents/GitHub/PowerShell/Scripts/Networking/PSDiscovery/Get-SwitchPortInfo.ps1) - Automates capturing and parsing CDP/LLDP switch port packets with logging.
 
 
 ---

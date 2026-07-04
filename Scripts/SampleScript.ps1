@@ -14,7 +14,8 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $CandidatePaths = @(
     (Join-Path $ScriptDir "..\Modules\Logging\Logging.psm1"),  # Script in Scripts/ or Templates/
     (Join-Path $ScriptDir "Modules\Logging\Logging.psm1"),     # Script in Repo root
-    (Join-Path $ScriptDir "..\..\Modules\Logging\Logging.psm1") # Script in a nested subdirectory
+    (Join-Path $ScriptDir "..\..\Modules\Logging\Logging.psm1"), # Script in a 2-level nested subdirectory
+    (Join-Path $ScriptDir "..\..\..\Modules\Logging\Logging.psm1") # Script in a 3-level nested subdirectory
 )
 
 $ModuleImported = $false
