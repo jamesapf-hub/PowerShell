@@ -1,0 +1,24 @@
+# PowerShell repository gitignore
+
+# System & temporary logs
+*.log
+*.clixml
+*.pfx
+
+# VS Code directory and history
+.vscode/
+.history/
+*.code-workspace
+
+# Windows system files
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Temporary / Build directories
+bin/
+obj/
+out/
+dist/
+temp/
+tmp/
