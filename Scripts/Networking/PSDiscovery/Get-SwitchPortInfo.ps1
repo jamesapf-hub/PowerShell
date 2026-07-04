@@ -139,6 +139,30 @@ function Get-CustomerName {
     return $null
 }
 
+# Helper function to initialize CSV file with headers if it doesn't exist
+function Initialize-CustomerCsv {
+    param (
+        [string]$Path,
+        [string]$CustomerName,
+        [string]$LogFile
+    )
+
+    if (-not (Test-Path $Path)) {
+        try {
+            $ParentDir = Split-Path $Path -Parent
+            if (-not (Test-Path $ParentDir)) {
+                $null = New-Item -Path $ParentDir -ItemType Directory -Force -ErrorAction Stop
+            }
+            $Headers = '"Timestamp","ComputerName","CustomerName","ProtocolType","SwitchDevice","SwitchPort","VLAN","SwitchIP","SwitchModel"'
+            $Headers | Out-File -FilePath $Path -Encoding utf8 -Force -ErrorAction Stop
+            Write-ScriptLog -Message "Created new empty CSV inventory for '$CustomerName' at $Path" -LogFile $LogFile -Level SUCCESS
+        }
+        catch {
+            Write-ScriptLog -Message "Failed to initialize new CSV at $Path. Error: $_" -LogFile $LogFile -Level ERROR
+        }
+    }
+}
+
 # Define the log and inventory output directory
 $OutputDir = "C:\Log\PSDiscovery"
 $CustomerName = $Customer
@@ -148,6 +172,9 @@ $CsvPath = if ($CustomerName -eq "Default") { Join-Path $OutputDir "SwitchInvent
 $ScriptName = $MyInvocation.MyCommand.Name
 $ScriptPath = $MyInvocation.MyCommand.Path
 $LogFile = Initialize-ScriptLogging -ScriptPath $ScriptPath -LogDirectory $OutputDir
+
+# Ensure current customer CSV exists
+Initialize-CustomerCsv -Path $CsvPath -CustomerName $CustomerName -LogFile $LogFile
 
 try {
     Write-ScriptLog -Message "Starting Get-SwitchPortInfo execution." -LogFile $LogFile -Level INFO
@@ -283,6 +310,9 @@ try {
                         $CsvPath = Join-Path $OutputDir "SwitchInventory_$CustomerName.csv"
                     }
                     Write-ScriptLog -Message "Switched current customer to: $CustomerName" -LogFile $LogFile -Level SUCCESS
+                    
+                    # Ensure CSV exists
+                    Initialize-CustomerCsv -Path $CsvPath -CustomerName $CustomerName -LogFile $LogFile
                 }
             }
             "4" {
