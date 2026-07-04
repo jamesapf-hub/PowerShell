@@ -86,6 +86,7 @@ try {
     Write-ScriptLog -Message "Starting Get-SwitchPortInfo execution." -LogFile $LogFile -Level INFO
 
     # 3. Check and install PSDiscoveryProtocol dependency
+    Write-ScriptLog -Message "Checking for PSDiscoveryProtocol module dependency..." -LogFile $LogFile -Level INFO
     if (-not (Get-Module -ListAvailable -Name PSDiscoveryProtocol)) {
         Write-ScriptLog -Message "PSDiscoveryProtocol module is not installed. Attempting installation for CurrentUser..." -LogFile $LogFile -Level WARNING
         try {
@@ -97,14 +98,21 @@ try {
             throw $_
         }
     }
+    else {
+        Write-ScriptLog -Message "PSDiscoveryProtocol module already installed." -LogFile $LogFile -Level SUCCESS
+    }
 
     # Explicitly import the module to ensure all cmdlets are available
     Import-Module -Name PSDiscoveryProtocol -Force -ErrorAction Stop
 
     # 4. Interactive Menu Loop
     $ExitMenu = $false
+    $FirstRun = $true
     while (-not $ExitMenu) {
-        Clear-Host
+        if (-not $FirstRun) {
+            Clear-Host
+        }
+        $FirstRun = $false
         Write-Host "==========================================================" -ForegroundColor Cyan
         Write-Host "             PSDiscovery Switch Utility                  " -ForegroundColor Cyan
         Write-Host "==========================================================" -ForegroundColor Cyan
