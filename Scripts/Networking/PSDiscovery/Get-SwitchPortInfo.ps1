@@ -112,7 +112,7 @@ function Get-CustomerName {
         }
         Write-Host " [$($ExistingCustomers.Count + 1)] (Create a new company/customer)"
         Write-Host ""
-        $Choice = Read-Host "Choose an option"
+        $Choice = Read-Host "Choose an option (or type a new name directly)"
         
         $ParsedInt = 0
         if ([int]::TryParse($Choice, [ref]$ParsedInt)) {
@@ -126,6 +126,12 @@ function Get-CustomerName {
                     # Sanitize name to avoid invalid file characters
                     return ($NewName -replace '[\\/:*?"<>|]', '')
                 }
+            }
+        }
+        else {
+            if (-not [string]::IsNullOrWhiteSpace($Choice)) {
+                # User typed a name directly rather than choosing a menu number
+                return ($Choice -replace '[\\/:*?"<>|]', '')
             }
         }
     }
