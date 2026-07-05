@@ -69,7 +69,7 @@ if (-not $isAdmin) {
     if ($PSCommandPath) {
         $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
     } else {
-        $arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"iex (irm 'https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/Start-UltimateCleanUp.ps1')`""
+        $arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; iex (irm 'https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/Start-UltimateCleanUp.ps1')`""
     }
     if ($NoGui) { $arguments += " -NoGui" }
     if ($RunAll) { $arguments += " -RunAll" }
@@ -99,7 +99,7 @@ if (-not $NoGui -and [System.Threading.Thread]::CurrentThread.GetApartmentState(
     if ($PSCommandPath) {
         $arguments = "-NoProfile -ExecutionPolicy Bypass -Sta -File `"$PSCommandPath`""
     } else {
-        $arguments = "-NoProfile -ExecutionPolicy Bypass -Sta -Command `"iex (irm 'https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/Start-UltimateCleanUp.ps1')`""
+        $arguments = "-NoProfile -ExecutionPolicy Bypass -Sta -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; iex (irm 'https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/Start-UltimateCleanUp.ps1')`""
     }
     if ($Gui) { $arguments += " -Gui" }
     
@@ -506,7 +506,7 @@ function Load-Scripts {
         Style="{StaticResource ScriptCardStyle}">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
+            <Definition Width="Auto"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
