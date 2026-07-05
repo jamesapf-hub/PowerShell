@@ -1,10 +1,8 @@
 # How-To Guide: Intune Printer Packaging & Deployment
 
-This guide explains how to package TCP/IP printers using the interactive desktop tool and deploy them as Win32 applications inside Microsoft Intune.
-
 ---
 
-## 1. Overview of the Printer Packager Tool
+## Overview
 
 The **Intune Printer Packager** is a PowerShell WPF-based graphical interface that prepares, structures, and compiles printer installers and driver binaries into a Microsoft-approved `.intunewin` package.
 
@@ -18,9 +16,20 @@ The **Intune Printer Packager** is a PowerShell WPF-based graphical interface th
 
 ---
 
-## 2. Packaging a Printer Step-by-Step
+## Prerequisites
 
-### Step 2.0: Extracting Drivers from Executables (if needed)
+* **OS Support**: Windows 10 / 11 or Windows Server.
+* **PowerShell**: Windows PowerShell 5.1 or PowerShell Core 7+.
+* **Permissions**: Local administrator rights (required to register print drivers and queues).
+* **Execution Policy**: Bypass mode permitted to execute local scripts.
+
+---
+
+## Walkthrough & Usage Guide
+
+### 1. Packaging a Printer Step-by-Step
+
+#### Step 1.0: Extracting Drivers from Executables (if needed)
 
 Many printer drivers are downloaded from the manufacturer's site as self-extracting `.exe` installers instead of raw driver folders. Since the packager tool requires direct access to the `.inf` configuration files, you should not package the `.exe` directly. Instead:
 
@@ -29,39 +38,39 @@ Many printer drivers are downloaded from the manufacturer's site as self-extract
 3. Select **7-Zip** > **Extract to "FolderName"**.
 4. In the packager tool, point the **Printer Driver Folder** to this extracted directory (or its subdirectory containing the `.inf`, `.cat`, and `.sys` files).
 
-### Step 2.1: Launch the Application
+#### Step 1.1: Launch the Application
 
 Double-click the **Start-Gui.bat** file in your workspace directory. This automatically launches the dark-themed WPF desktop interface:
 
 ![PowerShell Printer Packager Desktop GUI Interface](assets/printer_packager_real_gui.png)
 
-### Step 2.2: Enter Printer Parameters
+#### Step 1.2: Enter Printer Parameters
 
 * **Printer Name**: The name shown in the Windows printer list (e.g. `Prep | Upstairs | Epson WF-C579R`).
 * **Driver Name**: The exact name matching your printer model (e.g. `EPSON WF-C579R Series PCL6`). See the **Validation** section below if you are unsure of the exact name.
 * **Printer IP Address**: The static IPv4 address of the printer (e.g. `192.168.60.246`).
 
-### Step 2.3: Select Directories
+#### Step 1.3: Select Directories
 
 * **Printer Driver Folder (Source)**: Click **Browse...** and select the folder on your filesystem containing your printer drivers (this directory must contain the `.inf` driver file).
 * **Output Folder**: Click **Browse...** to select where the outputs should be compiled (defaults to your script folder).
 
-### Step 2.4: Build the Package
+#### Step 1.4: Build the Package
 
 Click **Build IntuneWin Package**. The tool will validate your inputs, set up a temporary staging workspace, verify the files, call Microsoft's prep tool, and generate the final outputs.
 
 ---
 
-## 3. Built-In Verification Features
+### 2. Built-In Verification Features
 
 To prevent common post-deployment issues (such as the print spooler failing to find the driver store model), the tool runs two pre-verifications before packaging:
 
-### 3.1 IP Address Validation
+#### 2.1 IP Address Validation
 
 The tool checks the **Printer IP Address** input using native `.NET` `[System.Net.IPAddress]::TryParse` logic.
 * If you enter a mathematically invalid address (such as `192.168.60.300` or a typo like `256.0.0.1`), the tool halts and warns you immediately.
 
-### 3.2 Driver Name Mismatch Dialog
+#### 2.2 Driver Name Mismatch Dialog
 
 If the entered **Driver Name** does not match any printer model strings defined inside the `.inf` files in your driver directory:
 
@@ -69,7 +78,7 @@ If the entered **Driver Name** does not match any printer model strings defined 
 2. It lists all the valid printer model name candidates it parsed from the driver `.inf` files.
 3. You can select the correct driver name from the list and click **Use Selected** to automatically update the form and resume the build process.
 
-### 3.3 How to Manually Find the Driver Name in an INF File
+#### 2.3 How to Manually Find the Driver Name in an INF File
 
 If you ever want to check the exact driver name manually inside the driver package:
 
@@ -86,22 +95,22 @@ If you ever want to check the exact driver name manually inside the driver packa
 
 ---
 
-## 4. Testing Intune Win32 Packages in Windows Sandbox
+### 3. Testing Intune Win32 Packages in Windows Sandbox
 
 To ensure your printer packages install cleanly without modifying your local workstation configuration, it is highly recommended to test them in a clean, isolated virtual machine environment using **Windows Sandbox**.
 
-### 4.1 Enable Windows Sandbox
+#### 3.1 Enable Windows Sandbox
 
 * Open the Start Menu, type `Turn Windows features on or off`, and press Enter.
 * Scroll down, locate **Windows Sandbox**, check the box, and click **OK**.
 * **⚠️ WARNING**: A system restart is required after enabling Windows Sandbox before it can be used.
 
-### 4.2 Install the "Run in Sandbox" Right-Click Utility
+#### 3.2 Install the "Run in Sandbox" Right-Click Utility
 
 To speed up testing, we recommend installing the "Run in Sandbox" right-click utility (documented at [PowerShell is Fun](https://powershellisfun.com/2023/04/03/using-run-in-sandbox-for-testing-scripts-and-intune-packages/)).
 * This tool adds a context menu option directly to `.intunewin` package files, allowing you to launch them inside a clean Sandbox with a single click.
 
-### 4.3 Running the Sandbox Test
+#### 3.3 Running the Sandbox Test
 
 * Right-click your generated `.intunewin` file (e.g., `ShowroomUpstairsSharpMX4061.intunewin`) and select **Run in Sandbox**.
 * Windows Sandbox will open a clean desktop, copy your package, and display a blue and white console window prompt.
@@ -113,7 +122,7 @@ To speed up testing, we recommend installing the "Run in Sandbox" right-click ut
 
 ---
 
-## 5. Microsoft Intune Deployment Setup
+### 4. Microsoft Intune Deployment Setup
 
 Once packaging completes successfully and you have verified the installer locally, you can deploy the printer globally via Microsoft Intune.
 
@@ -122,14 +131,14 @@ A new folder named after the printer (e.g. `Showroom - Upstairs - Sharp MX-4061`
 * `YourPrinterName_Detection.ps1` (The custom detection script, e.g. `Showroom - Upstairs - Sharp MX-4061_Detection.ps1`)
 * `YourPrinterName_Instructions.txt` (Copy-pasteable Intune configuration details, e.g. `Showroom - Upstairs - Sharp MX-4061_Instructions.txt`)
 
-### Step 5.1: Add Win32 App in Intune
+#### Step 4.1: Add Win32 App in Intune
 
 1. Log in to the **Microsoft Intune admin center**.
 2. Go to **Apps** > **All apps** > **Add**.
 3. Select **Windows app (Win32)** and click **Select**.
 4. Upload the compiled `.intunewin` file (e.g., `PrepUpstairsEpsonWFC579R.intunewin`).
 
-### Step 5.2: Recommended Intune Description & Log Reference
+#### Step 4.2: Recommended Intune Description & Log Reference
 
 When creating the Win32 Application in the Microsoft Intune admin center, copy and paste the customized configuration description directly from the GUI console log or the generated instructions text file (`_Instructions.txt`) into the **Description** field of the app metadata.
 
@@ -154,7 +163,7 @@ C:\Seriun\Printer\Showroom - Downstairs - Kyocera M5526cdw\Uninstall-Printer.log
 ======================================================================
 ```
 
-### Step 5.3: Program Configuration
+#### Step 4.3: Program Configuration
 
 In the **Program** configuration step, copy and paste the commands directly from the console log or the instructions text file:
 
@@ -170,7 +179,7 @@ In the **Program** configuration step, copy and paste the commands directly from
   ```
 * **Install Behavior**: **System** (Required to stage drivers into the local Driver Store).
 
-### Step 5.4: App Detection Rules
+#### Step 4.4: App Detection Rules
 
 In the **Detection rules** step:
 
@@ -179,7 +188,7 @@ In the **Detection rules** step:
 3. Set **Run script as 32-bit process on 64-bit clients** to **No**.
 4. Leave other values as default and click **Next**.
 
-### Step 5.5: App Assignments
+#### Step 4.5: App Assignments
 
 In the **Assignments** step, you specify who should receive the printer deployment:
 
@@ -193,7 +202,7 @@ In the **Assignments** step, you specify who should receive the printer deployme
 
 ---
 
-## 6. Critical Network Reminder
+#### 5. Critical Network Reminder
 
 > [!CAUTION]
 > **DHCP IP Reservation Required**
@@ -201,13 +210,13 @@ In the **Assignments** step, you specify who should receive the printer deployme
 
 ---
 
-## 7. macOS Printer Packaging & Deployment Guide
+#### 6. macOS Printer Packaging & Deployment Guide
 
 For macOS endpoints, the package tool automatically outputs a shell script named `[PrinterName]_macOS_Install.sh` with Unix Line Endings (`LF`) directly in the compiled output folder.
 
 Deploying a printer on macOS is completed in two main phases:
 
-### Phase A: Deploy the Manufacturer Driver (PKG or DMG)
+##### Phase A: Deploy the Manufacturer Driver (PKG or DMG)
 
 The printer queue installation script relies on the manufacturer's PPD files being registered on the Mac.
 
@@ -225,7 +234,7 @@ The printer queue installation script relies on the manufacturer's PPD files bei
    * Under Requirements, select the **Minimum Operating System** (e.g. macOS Monterey 12.0).
    * Assign the app as **Required** to your target macOS devices group.
 
-### Phase B: Deploy the Custom Printer Installation Script
+##### Phase B: Deploy the Custom Printer Installation Script
 
 The generated shell script (`_macOS_Install.sh`) creates the print queue, points it to the printer's IP address, and automatically matches the driver's PPD file on the local disk.
 
@@ -240,3 +249,11 @@ The generated shell script (`_macOS_Install.sh`) creates the print queue, points
    * **Max retries if script fails**: **3**.
 3. **Assignments**:
    * Assign as **Required** to the same macOS devices group that received the driver PKG.
+
+---
+
+## Command
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\Start-PackagerGui.ps1
+```
