@@ -66,7 +66,11 @@ $isAdmin = $currentUser.IsInRole([Security.Principal.WindowsBuiltInRole]::Admini
 
 if (-not $isAdmin) {
     # Request UAC Elevation
-    $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+    if ($PSCommandPath) {
+        $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+    } else {
+        $arguments = "-NoProfile -ExecutionPolicy Bypass -Command `"iex (irm 'https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/Start-UltimateCleanUp.ps1')`""
+    }
     if ($NoGui) { $arguments += " -NoGui" }
     if ($RunAll) { $arguments += " -RunAll" }
     if ($ListTasks) { $arguments += " -ListTasks" }
@@ -210,17 +214,24 @@ if ($NoGui) {
 # Enforce STA ApartmentState for WPF UI rendering
 if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
     Write-Verbose "Thread is not STA. Relaunching GUI in a new STA thread..."
-    $code = {
-        param($scriptPath)
-        & $scriptPath
-    }
     $runspace = [RunspaceFactory]::CreateRunspace()
     $runspace.ApartmentState = "STA"
     $runspace.ThreadOptions = "ReuseThread"
     $runspace.Open()
     $ps = [PowerShell]::Create()
     $ps.Runspace = $runspace
-    $ps.AddScript($code).AddArgument($PSCommandPath).Invoke()
+    
+    if ($PSCommandPath) {
+        $code = {
+            param($scriptPath)
+            & $scriptPath
+        }
+        $ps.AddScript($code).AddArgument($PSCommandPath).Invoke()
+    } else {
+        $code = [scriptblock]::Create((irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/Start-UltimateCleanUp.ps1"))
+        $ps.AddCommand("Invoke-Command").AddParameter("ScriptBlock", $code).Invoke()
+    }
+    
     $runspace.Close()
     return
 }
