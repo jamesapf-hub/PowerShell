@@ -38,7 +38,7 @@ if (-not (Test-Path $ScriptsFolder)) {
     New-Item -ItemType Directory -Path $ScriptsFolder | Out-Null
 }
 
-# Default behavior: If no parameters are specified, default to ListTasks (CLI mode)
+# Default behavior: If no parameters are specified, default to GUI mode
 $noParamsSpecified = -not ($PSBoundParameters.ContainsKey('NoGui') -or 
                            $PSBoundParameters.ContainsKey('RunAll') -or 
                            $PSBoundParameters.ContainsKey('RunTasks') -or 
@@ -46,8 +46,8 @@ $noParamsSpecified = -not ($PSBoundParameters.ContainsKey('NoGui') -or
                            $PSBoundParameters.ContainsKey('Gui'))
 
 if ($noParamsSpecified) {
-    $ListTasks = $true
-    $NoGui = $true
+    $Gui = $true
+    $NoGui = $false
 }
 
 # If any command-line execution parameter is passed, default to NoGui
@@ -80,16 +80,32 @@ if (-not $isAdmin) {
     }
     
     try {
+        $currentDir = (Get-Location).Path
         if ($NoGui) {
             # In NoGui/CLI mode, we want to run in the current console and wait for exit
-            Start-Process -FilePath "powershell.exe" -ArgumentList $arguments -Verb RunAs -Wait
+            Start-Process -FilePath "powershell.exe" -ArgumentList $arguments -Verb RunAs -WorkingDirectory $currentDir -Wait
         } else {
-            Start-Process -FilePath "powershell.exe" -ArgumentList $arguments -Verb RunAs
+            Start-Process -FilePath "powershell.exe" -ArgumentList $arguments -Verb RunAs -WorkingDirectory $currentDir
         }
     } catch {
         Write-Error "This utility requires Administrator privileges."
     }
     exit
+}
+
+# Enforce STA ApartmentState for WPF UI rendering (only if GUI mode is active)
+if (-not $NoGui -and [System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
+    Write-Verbose "Thread is not STA. Relaunching GUI in a new STA process..."
+    if ($PSCommandPath) {
+        $arguments = "-NoProfile -ExecutionPolicy Bypass -Sta -File `"$PSCommandPath`""
+    } else {
+        $arguments = "-NoProfile -ExecutionPolicy Bypass -Sta -Command `"iex (irm 'https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/Start-UltimateCleanUp.ps1')`""
+    }
+    if ($Gui) { $arguments += " -Gui" }
+    
+    $currentDir = (Get-Location).Path
+    Start-Process -FilePath "powershell.exe" -ArgumentList $arguments -WorkingDirectory $currentDir -Wait
+    return
 }
 
 # Reusable function to discover scripts and extract synopsis metadata
@@ -210,31 +226,6 @@ if ($NoGui) {
 # ==========================================
 # INTERACTIVE GUI MODE (WPF)
 # ==========================================
-
-# Enforce STA ApartmentState for WPF UI rendering
-if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
-    Write-Verbose "Thread is not STA. Relaunching GUI in a new STA thread..."
-    $runspace = [RunspaceFactory]::CreateRunspace()
-    $runspace.ApartmentState = "STA"
-    $runspace.ThreadOptions = "ReuseThread"
-    $runspace.Open()
-    $ps = [PowerShell]::Create()
-    $ps.Runspace = $runspace
-    
-    if ($PSCommandPath) {
-        $code = {
-            param($scriptPath)
-            & $scriptPath
-        }
-        $ps.AddScript($code).AddArgument($PSCommandPath).Invoke()
-    } else {
-        $code = [scriptblock]::Create((irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/Start-UltimateCleanUp.ps1"))
-        $ps.AddCommand("Invoke-Command").AddParameter("ScriptBlock", $code).Invoke()
-    }
-    
-    $runspace.Close()
-    return
-}
 
 # Import GUI assemblies
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
