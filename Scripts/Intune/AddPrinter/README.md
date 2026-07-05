@@ -33,7 +33,7 @@ Many printer drivers are downloaded from the manufacturer's site as self-extract
 
 Double-click the **Start-Gui.bat** file in your workspace directory. This automatically launches the dark-themed WPF desktop interface:
 
-![PowerShell Printer Packager Desktop GUI Interface](C:/Users/JamesPratt/.gemini/antigravity/brain/49a314a3-51e1-4682-843c-6f3cb885f449/printer_packager_real_gui.png)
+![PowerShell Printer Packager Desktop GUI Interface](assets/printer_packager_real_gui.png)
 
 ### Step 2.2: Enter Printer Parameters
 
@@ -158,7 +158,7 @@ C:\Seriun\Printer\Showroom - Downstairs - Kyocera M5526cdw\Uninstall-Printer.log
 
 In the **Program** configuration step, copy and paste the commands directly from the console log or the instructions text file:
 
-![Microsoft Intune Program Step Configuration Screen](C:/Users/JamesPratt/.gemini/antigravity/brain/49a314a3-51e1-4682-843c-6f3cb885f449/intune_win32_setup_mockup_1781169253512.png)
+![Microsoft Intune Program Step Configuration Screen](assets/intune_win32_setup_mockup_1781169253512.png)
 
 * **Install Command**:
   ```powershell
