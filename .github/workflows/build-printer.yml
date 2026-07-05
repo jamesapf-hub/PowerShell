@@ -1,0 +1,219 @@
+name: Build Intune Printer App
+
+on:
+  workflow_dispatch:
+    inputs:
+      printer_name:
+        description: 'Display name of the printer'
+        required: true
+        type: string
+      driver_name:
+        description: 'Exact driver model name matching the INF file'
+        required: true
+        type: string
+      printer_ip:
+        description: 'Static IP address of the printer'
+        required: true
+        type: string
+      driver_zip_url:
+        description: 'Direct download URL for the driver ZIP file'
+        required: true
+        type: string
+      driver_zip_key:
+        description: 'R2 Object Key of the driver ZIP file (for cleanup)'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Microsoft Win32 Content Prep Tool
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/raw/master/IntuneWinAppUtil.exe" -OutFile "IntuneWinAppUtil.exe"
+
+      - name: Download and Extract Driver ZIP
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Path ".\DriverStaging" -Force | Out-Null
+          Write-Host "Downloading drivers from: ${{ github.event.inputs.driver_zip_url }}"
+          Invoke-WebRequest -Uri "${{ github.event.inputs.driver_zip_url }}" -OutFile "drivers.zip"
+          Expand-Archive -Path "drivers.zip" -DestinationPath ".\DriverStaging" -Force
+
+      - name: Delete Driver ZIP from Cloudflare R2
+        shell: cmd
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          aws s3 rm s3://${{ secrets.R2_BUCKET_NAME }}/${{ github.event.inputs.driver_zip_key }} --endpoint-url ${{ secrets.R2_ENDPOINT }}
+
+      - name: Prepare Staging Folders
+        shell: powershell
+        run: |
+          $tempFolder = ".\Staging"
+          New-Item -ItemType Directory -Path $tempFolder -Force | Out-Null
+          New-Item -ItemType Directory -Path "$tempFolder\Driver" -Force | Out-Null
+          
+          # Stage scripts and configs dynamically
+          $installTemplateText = @'
+          <#
+          .SYNOPSIS
+              Deploys TCP/IP printers and their drivers globally for all users under the SYSTEM context.
+          .NOTES
+              Run under the SYSTEM context (Intune Win32 App Install Behavior: System).
+              Version: 1.3
+          #>
+          $Printers = Import-Csv '.\printers.csv'
+          $FirstPrinterName = $Printers[0].Name
+          $SanitizedName = $FirstPrinterName -replace '[\\/:*?"<>|]', '-'
+          $LogFolder = "c:\Seriun\Printer\$SanitizedName"
+          if (-not (Test-Path $LogFolder)) { New-Item -ItemType Directory -Path $LogFolder -Force | Out-Null }
+          Start-Transcript -Path "$LogFolder\Install-Printer.log" -Append
+          $PcaService = Get-Service -Name "PcaSvc" -ErrorAction SilentlyContinue
+          $PcaServiceStarted = $false
+          if ($PcaService -and $PcaService.Status -eq 'Running') {
+              Stop-Service -Name "PcaSvc" -Force -ErrorAction SilentlyContinue | Out-Null
+              $PcaServiceStarted = $true
+          }
+          try {
+              $PnpUtilPath = "pnputil.exe"
+              if (Test-Path "$env:windir\sysnative\pnputil.exe") { $PnpUtilPath = "$env:windir\sysnative\pnputil.exe" }
+              $allInfs = Get-ChildItem -Path . -Filter "*.inf" -Recurse -ErrorAction SilentlyContinue
+              foreach ($inf in $allInfs) { & $PnpUtilPath /add-driver $inf.FullName /install 2>&1 | Write-Host }
+              foreach ($driver in $Printers.DriverName | Select-Object -Unique) {
+                  if (-not (Get-PrinterDriver -Name $driver -ErrorAction SilentlyContinue)) {
+                      Add-PrinterDriver -Name $driver -ErrorAction SilentlyContinue
+                  }
+              }
+              foreach ($printer in $Printers) {
+                  $PortName = $printer.Name
+                  if (-not (Get-PrinterPort -Name $PortName -ErrorAction SilentlyContinue)) {
+                      Add-PrinterPort -Name $PortName -PrinterHostAddress $printer.PortName -PortNumber '9100' -ErrorAction SilentlyContinue
+                  }
+                  if (-not (Get-Printer -Name $printer.Name -ErrorAction SilentlyContinue)) {
+                      Add-Printer -Name $printer.Name -DriverName $printer.DriverName -PortName $PortName -Comment $printer.Comment -Location $printer.Location -ErrorAction SilentlyContinue
+                      Set-PrintConfiguration -PrinterName $printer.Name -Color 0 -DuplexingMode 'TwoSidedLongEdge' -ErrorAction SilentlyContinue
+                  }
+              }
+          } finally {
+              if ($PcaServiceStarted) { Start-Service -Name "PcaSvc" -ErrorAction SilentlyContinue | Out-Null }
+          }
+          Stop-Transcript
+          '@
+          
+          $installTemplateText | Set-Content -Path (Join-Path $tempFolder "Install-Printer.ps1") -Encoding utf8 -Force
+          
+          # Stage driver files
+          Copy-Item -Path ".\DriverStaging\*" -Destination "$tempFolder\Driver" -Recurse -Force
+
+      - name: Compile printers.csv
+        shell: powershell
+        run: |
+          $printerName = "${{ github.event.inputs.printer_name }}"
+          $driverName = "${{ github.event.inputs.driver_name }}"
+          $printerIP = "${{ github.event.inputs.printer_ip }}"
+          
+          $escapedName = $printerName -replace '"', '""'
+          $escapedDriver = $driverName -replace '"', '""'
+          $escapedIP = $printerIP -replace '"', '""'
+          
+          $csvContent = @"
+          Name,DriverName,PortName,Comment,Location
+          `"$escapedName`",`"$escapedDriver`",`"$escapedIP`",`"Customer Service`",`"Customer Service`"
+          "@
+          $csvContent | Set-Content -Path ".\Staging\printers.csv" -Encoding utf8 -Force
+
+      - name: Customize Detection Script
+        shell: powershell
+        run: |
+          $printerName = "${{ github.event.inputs.printer_name }}"
+          $detectionTemplateText = @'
+          $printers = @('__PRINTER_NAME__')
+          $numberofprintersfound = 0
+          foreach ($printer in $printers) {
+              $regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Print\Printers\$printer"
+              if (Test-Path $regPath) {
+                  $numberofprintersfound++
+                  continue
+              }
+              for ($i = 0; $i -lt 3; $i++) {
+                  try {
+                      if (Get-Printer -Name $printer -ErrorAction Stop) {
+                          $numberofprintersfound++
+                          break
+                      }
+                  } catch { Start-Sleep -Seconds 2 }
+              }
+          }
+          if ($numberofprintersfound -eq $printers.count) { exit 0 } else { exit 1 }
+          '@
+          $detectionScript = $detectionTemplateText -replace '__PRINTER_NAME__', ($printerName -replace "'", "''")
+          $detectionScript | Set-Content -Path ".\Staging\Detection.ps1" -Encoding utf8 -Force
+
+      - name: Build IntuneWin Package
+        shell: cmd
+        run: |
+          mkdir Output
+          IntuneWinAppUtil.exe -c "Staging" -s "Install-Printer.ps1" -o "Output" -q
+
+      - name: Rename Package and Move Outputs
+        shell: powershell
+        run: |
+          $printerName = "${{ github.event.inputs.printer_name }}"
+          $driverName = "${{ github.event.inputs.driver_name }}"
+          $printerIP = "${{ github.event.inputs.printer_ip }}"
+          $sanitized = $printerName -replace '[\\/:*?"<>|]', '-'
+          $sanitized = $sanitized -replace '\s+', ' '
+          $sanitized = $sanitized.Trim()
+          $cleanFileName = $sanitized -replace '[^a-zA-Z0-9]', ''
+          $macQueueName = $sanitized -replace '[^a-zA-Z0-9-]', '_'
+          $macQueueName = $macQueueName -replace '_+', '_'
+          $macQueueName = $macQueueName.Trim('_')
+          
+          Rename-Item -Path "Output\Install-Printer.intunewin" -NewName "$cleanFileName.intunewin"
+          Copy-Item -Path ".\Staging\Detection.ps1" -Destination "Output\$($sanitized)_Detection.ps1" -Force
+
+          # Generate macOS installation script
+          $macScriptFile = "Output\$($sanitized)_macOS_Install.sh"
+          $macOsTemplateText = @'
+          #!/bin/bash
+          QUEUE_NAME="__QUEUE_NAME__"
+          DISPLAY_NAME="__DISPLAY_NAME__"
+          PRINTER_IP="__PRINTER_IP__"
+          DRIVER_NAME="__DRIVER_NAME__"
+          LOCATION="Customer Service"
+          echo "Installing $DISPLAY_NAME..."
+          CLEAN_TERM=$(echo "$DRIVER_NAME" | sed -e 's/ PCL[0-9]*//g' -e 's/ KX//g' -e 's/ PS//g' -e 's/ PPD//g' -e 's/ KPDL//g')
+          PPD_PATH=""
+          SEARCH_PATHS=("/Library/Printers/PPDs/Contents/Resources" "/Library/Printers/PPDs/Contents/Resources/en.lproj")
+          for path in "${SEARCH_PATHS[@]}"; do
+            if [ -d "$path" ]; then
+              MATCH=$(find "$path" -type f -iname "*${CLEAN_TERM}*" -print -quit 2>/dev/null)
+              if [ -n "$MATCH" ]; then PPD_PATH="$MATCH"; break; fi
+            fi
+          done
+          if [ -z "$PPD_PATH" ]; then PPD_PATH="/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/PrintCore.framework/Versions/A/Resources/Generic.ppd"; fi
+          if lpstat -p "$QUEUE_NAME" &>/dev/null; then lpadmin -x "$QUEUE_NAME"; fi
+          lpadmin -p "$QUEUE_NAME" -D "$DISPLAY_NAME" -L "$LOCATION" -E -v "lpd://$PRINTER_IP" -P "$PPD_PATH" -o printer-is-shared=false
+          lpadmin -p "$QUEUE_NAME" -o Duplex=DuplexNoTumble 2>/dev/null
+          lpadmin -p "$QUEUE_NAME" -o ColorModel=Gray 2>/dev/null
+          if lpstat -p "$QUEUE_NAME" &>/dev/null; then exit 0; else exit 1; fi
+          '@
+          $macScriptContent = $macOsTemplateText -replace '__QUEUE_NAME__', $macQueueName
+          $macScriptContent = $macScriptContent -replace '__DISPLAY_NAME__', ($printerName -replace "'", "''")
+          $macScriptContent = $macScriptContent -replace '__PRINTER_IP__', $printerIP
+          $macScriptContent = $macScriptContent -replace '__DRIVER_NAME__', $driverName
+          [System.IO.File]::WriteAllText($macScriptFile, ($macScriptContent -replace "`r`n", "`n"))
+
+      - name: Upload Finished Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: printer-package-${{ github.run_id }}
+          path: Output/
+          retention-days: 1
