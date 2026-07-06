@@ -8,10 +8,12 @@ The `Console.ps1` script launches a modern, dark-themed (Kinetic Command) admini
 
 ### Key Features
 * **ActiveSync Status Inspection:** Retrieves all mobile devices associated with a mailbox, showing Device Model, OS, Client Type, Access State, and Quarantine reason.
-* **Activity Logging:** Writes detailed execution logs directly to `$env:SystemDrive\Logs\UserLicenceCheck\LicensedUsers_RunLog_DDMMYY.log`.
 * **Cost Savings Analysis:** Dynamically calculates accumulated wasted license spend and projects recurring monthly savings for inactive accounts.
 * **Interactive Visualization:** Displays interactive charts showing license distributions and user inactivity timelines, along with a live telemetry execution log.
 * **Advanced Exclusion Filter:** Prompts to filter/exclude Seriun or JP verification accounts during report export.
+
+> [!NOTE]
+> **Log File Location:** `C:\Logs\UserLicenceCheck\LicensedUsers_RunLog_DDMMYY.log` (or `%SystemDrive%\Logs\UserLicenceCheck\LicensedUsers_RunLog_DDMMYY.log`)
 
 ---
 
