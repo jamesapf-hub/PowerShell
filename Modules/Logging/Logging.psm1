@@ -49,7 +49,7 @@ function Initialize-ScriptLogging {
             if ([string]::IsNullOrEmpty($SystemDrive)) {
                 $SystemDrive = "C:"
             }
-            $LogDirectory = Join-Path $SystemDrive "Log"
+            $LogDirectory = Join-Path $SystemDrive "Logs"
             $LogDirectory = Join-Path $LogDirectory $ProjectName
         }
 
