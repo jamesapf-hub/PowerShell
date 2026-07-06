@@ -1,20 +1,15 @@
 # Kiosk Per-User Shell Customization
 
-
 ## Overview
-
 The `Configure-KioskPerUserShell.ps1` script configures registry settings to launch a custom user shell (e.g. Wyze Easy Setup Shell) for a specific local kiosk user.
 
-
 > [!NOTE]
-> **Log File Location:** C:\Logs\Configure-KioskPerUserShell\Wyse_Shell_Lock.txt (or $env:SystemDrive\Logs\Configure-KioskPerUserShell\Wyse_Shell_Lock.txt)
+> **Log File Location:** `C:\Logs\Configure-KioskPerUserShell\Wyse_Shell_Lock.txt` (or `$env:SystemDrive\Logs\Configure-KioskPerUserShell\Wyse_Shell_Lock.txt`)
 
 ## Prerequisites
-
-* **OS Support:** Windows 10 / 11 / Windows Server
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required (modifies Winlogon registry keys).
-
+OS Support: Windows 10 / 11 / Windows Server
+PowerShell: Windows PowerShell 5.1 or PowerShell Core 7+
+Permissions: Local Administrator rights required (modifies Winlogon registry keys).
 
 ## Walkthrough & Usage Guide
 
