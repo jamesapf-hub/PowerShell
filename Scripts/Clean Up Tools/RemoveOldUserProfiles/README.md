@@ -1,10 +1,10 @@
 # Orphaned AD Domain User Profile Cleaner Guide
 
----
-
 ## Overview
-
 This script scans the local Windows registry for user profiles, filters out system, local, and active profiles, and identifies orphaned or deleted Active Directory domain user profiles. It deletes them through WMI to ensure clean removal from the system.
+
+> [!NOTE]
+> **Log File Location:** `C:\Logs\RemoveOldUserProfiles\RemoveOldUserProfiles_DDMMYY.log` (or `$env:SystemDrive\Logs\RemoveOldUserProfiles\RemoveOldUserProfiles_DDMMYY.log`)
 
 ### Key Features
 * **Registry Profile Scanning:** Reads profile subkeys under `HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList`.
@@ -13,15 +13,10 @@ This script scans the local Windows registry for user profiles, filters out syst
 * **Clean WMI Deletion:** Uses WMI (`Win32_UserProfile`) to safely delete profiles, clearing registry subkeys and folder paths.
 * **Exclusion Support:** Excludes active accounts and supports custom exclusions via the `-ExcludeUsers` parameter.
 
----
-
 ## Prerequisites
-
-* **OS Support:** Windows 10 / 11 / Windows Server
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required (elevation check included)
-
----
+OS Support: Windows 10 / 11 / Windows Server
+PowerShell: Windows PowerShell 5.1 or PowerShell Core 7+
+Permissions: Local Administrator rights required (elevation check included)
 
 ## Walkthrough & Usage Guide
 
@@ -35,8 +30,6 @@ This script scans the local Windows registry for user profiles, filters out syst
 
 ### 2. Logging & Outputs
 * Outputs scanning statistics, user profile tables, and WMI deletion status codes.
-
----
 
 ## Command
 
