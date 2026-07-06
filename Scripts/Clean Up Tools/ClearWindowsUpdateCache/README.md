@@ -1,27 +1,22 @@
 # Windows Update Cache Cleanup Guide
 
-
 ## Overview
-
 This PowerShell script stops Windows Update services (`wuauserv` and `bits`), purges the `C:\Windows\SoftwareDistribution\Download` cache directory, and restarts the services. It runs in a dry-run (WhatIf) mode first to show potential cleanup statistics, allowing administrators to confirm execution before applying changes.
-
-> [!NOTE]
-> **Log File Location:** C:\Logs\ClearWindowsUpdateCache\SD_Clear_DDMMYY.log (or $env:SystemDrive\Logs\ClearWindowsUpdateCache\SD_Clear_DDMMYY.log)
 
 ### Key Features
 * **Dry-Run Mode (WhatIf):** Scans and displays the count and size of cached update files before performing any actions.
 * **Service Management:** Handles stopping and restarting of dependent Windows Update services safely.
 * **Robust Fallback:** If native file deletion fails, it automatically falls back to a robocopy mirror sync to purge locked directories.
-* **Unified Logging:** Appends timestamped execution logs directly to `C:\Seriun\log`.
+* **Unified Logging:** Appends timestamped execution logs directly to `$env:SystemDrive\Logs\ClearWindowsUpdateCache`.
 
+> [!NOTE]
+> **Log File Location:** C:\Logs\ClearWindowsUpdateCache\SD_Clear_DDMMYY.log (or $env:SystemDrive\Logs\ClearWindowsUpdateCache\SD_Clear_DDMMYY.log)
 
 ## Prerequisites
-
-* **OS Support:** Windows 10 / 11 / Windows Server
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required (Administrator elevation check included)
-* **Execution Policy:** RemoteSigned or Bypass
-
+OS Support: Windows 10 / 11 / Windows Server
+PowerShell: Windows PowerShell 5.1 or PowerShell Core 7+
+Permissions: Local Administrator rights required (Administrator elevation check included)
+Execution Policy: RemoteSigned or Bypass
 
 ## Walkthrough & Usage Guide
 
@@ -34,8 +29,7 @@ This PowerShell script stops Windows Update services (`wuauserv` and `bits`), pu
 
 ### 2. Logging & Outputs
 * Standard outputs and service status logs are written to the console in real-time.
-* A persistent execution log is saved under `C:\Seriun\log\SD_Clear_DDMMYY.log` using the UK date format (DDMMYY).
-
+* A persistent execution log is saved under `$env:SystemDrive\Logs\ClearWindowsUpdateCache\SD_Clear_DDMMYY.log` using the UK date format (DDMMYY).
 
 ## Command
 
