@@ -1,27 +1,26 @@
-# Network switches discovery and port scanner module
+# Switch Information Extractor (`Get-SwitchInfo`)
 
----
-
-## Overview
-
-Queries local and remote network switches using SSH and SNMP discovery protocols. Translates active MAC tables, maps virtual LANs (VLANs), and audits port configuration maps dynamically.
 
 > [!NOTE]
-> **Switch Audit Log Location:** `C:\Logs\PSDiscovery\get-switchinfo.log` (or `$env:SystemDrive\Logs\PSDiscovery\get-switchinfo.log`)
+> **Switch Audit Log Location:** C:\Logs\PSDiscovery\get-switchinfo.log (or $env:SystemDrive\Logs\PSDiscovery\get-switchinfo.log)
 
----
+This utility retrieves VLAN assignments, audits port configurations, and checks active switch status profiles.
 
 ## Prerequisites
+* **OS Support:** Windows / macOS / Linux
+* **PowerShell:** PowerShell Core `v7.0` or higher
+* **Permissions:** Standard User context (no local Windows administrator rights are required). Switch read access credentials/community strings are required.
+* **Network Ports:** Local network access to switch port interfaces (e.g. SNMP Port 161 or SSH Port 22) must be open.
 
-* **OS Support:** Windows 10 / 11 / Windows Server
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Authentication:** Access credentials for the network switches (SSH username/password or SNMP read-only community strings).
+## Walkthrough & Usage
+1. Connect switch management console IP inside target script parameters.
+2. Click **Copy Run Command** on the right side panel.
+3. Open an Elevated PowerShell terminal shell window.
+4. Execute the command to launch configuration extraction telemetry.
+5. Review the resulting status tables and audit parameters output file written to:
+   `C:\Seriun\log\get-switchinfo.log`
 
----
 
-## Walkthrough & Usage Guide
-
-1. Open PowerShell and run the main network switch discovery script:
-   ```powershell
-   .\get-switchinfo.ps1 -SwitchIp "192.168.1.1" -Community "public"
-   ```
+## Folder Contents
+- **`get-switchinfo.ps1`**: Main executable script file.
+- **`README.md`**: Walkthrough information documentation page.

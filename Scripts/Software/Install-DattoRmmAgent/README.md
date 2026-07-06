@@ -1,15 +1,13 @@
 # Install Datto RMM Agent
 
----
 
 ## Overview
 
 Downloads and silently installs the Datto RMM Agent using site credentials. This script is sanitized to use variables for site details.
 
-> [!NOTE]
-> **Log File Location:** `C:\Logs\Install-DattoRmmAgent\DattoAgentInstall.txt` (or `$env:SystemDrive\Logs\Install-DattoRmmAgent\DattoAgentInstall.txt`)
 
----
+> [!NOTE]
+> **Log File Location:** C:\Logs\Install-DattoRmmAgent\DattoAgentInstall.txt (or $env:SystemDrive\Logs\Install-DattoRmmAgent\DattoAgentInstall.txt)
 
 ## Prerequisites
 
@@ -18,7 +16,6 @@ Downloads and silently installs the Datto RMM Agent using site credentials. This
 * **Permissions:** Local Administrator rights required.
 * **Configuration:** Edit the script variables `$Platform` and `$SiteID` to match your Datto client site setup before execution.
 
----
 
 ## Walkthrough & Usage Guide
 

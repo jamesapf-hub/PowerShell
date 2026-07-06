@@ -1,15 +1,13 @@
 # Set System Language and Keyboard Locales (UK English)
 
----
 
 ## Overview
 
 Configures regional settings, user locale, system locale, and keyboard layouts to United Kingdom English (en-GB).
 
-> [!NOTE]
-> **Log File Location:** `C:\Logs\Set-SystemLanguageUK\LanguageSetup.txt` (or `$env:SystemDrive\Logs\Set-SystemLanguageUK\LanguageSetup.txt`)
 
----
+> [!NOTE]
+> **Log File Location:** C:\Logs\Set-SystemLanguageUK\LanguageSetup.txt (or $env:SystemDrive\Logs\Set-SystemLanguageUK\LanguageSetup.txt)
 
 ## Prerequisites
 
@@ -17,7 +15,6 @@ Configures regional settings, user locale, system locale, and keyboard layouts t
 * **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
 * **Permissions:** Local Administrator rights required.
 
----
 
 ## Walkthrough & Usage Guide
 
