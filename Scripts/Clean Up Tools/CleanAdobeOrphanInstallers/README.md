@@ -1,12 +1,7 @@
 # Adobe Orphan Installer Patch Cleaner Guide
 
-
 ## Overview
-
 This script scans the `C:\Windows\Installer` directory for orphaned Adobe installer patch files (`.msp`), calculates potential disk space savings, and deletes them. It runs in a dry-run (WhatIf) mode first by default to allow review before deletion.
-
-> [!NOTE]
-> **Log File Location:** C:\Logs\CleanAdobeOrphanInstallers\CleanAdobeOrphanInstallers_DDMMYY.log (or $env:SystemDrive\Logs\CleanAdobeOrphanInstallers\CleanAdobeOrphanInstallers_DDMMYY.log)
 
 ### Key Features
 * **Installer Metadata Scanning:** Queries the Windows Installer COM API to extract author and subject properties of each `.msp` patch.
@@ -14,14 +9,14 @@ This script scans the `C:\Windows\Installer` directory for orphaned Adobe instal
 * **Service Lock Handling:** Temporarily stops the Windows Installer (`msiserver`) service to ensure files are unlocked.
 * **Permission Ownership Acquisition:** Automatically takes file ownership (`takeown`) and grants permissions (`icacls`) to the administrators group to bypass file locks.
 
+> [!NOTE]
+> **Log File Location:** `C:\Logs\CleanAdobeOrphanInstallers\CleanAdobeOrphanInstallers_DDMMYY.log` (or `$env:SystemDrive\Logs\CleanAdobeOrphanInstallers\CleanAdobeOrphanInstallers_DDMMYY.log`)
 
 ## Prerequisites
-
-* **OS Support:** Windows 10 / 11 / Windows Server
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required (elevation check included)
-* **Dependencies:** Requires the Windows Installer (`msiserver`) service.
-
+OS Support: Windows 10 / 11 / Windows Server
+PowerShell: Windows PowerShell 5.1 or PowerShell Core 7+
+Permissions: Local Administrator rights required (elevation check included)
+Dependencies: Requires the Windows Installer (`msiserver`) service.
 
 ## Walkthrough & Usage Guide
 
@@ -35,7 +30,6 @@ This script scans the `C:\Windows\Installer` directory for orphaned Adobe instal
 
 ### 2. Logging & Outputs
 * Details on patch names, sizes, ownership commands, and total space recovered are displayed on the console.
-
 
 ## Command
 
