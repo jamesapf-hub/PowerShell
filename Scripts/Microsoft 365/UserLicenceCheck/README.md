@@ -18,7 +18,7 @@ The `Console.ps1` script launches a modern, dark-themed (Kinetic Command) admini
 
 * **OS Support:** Windows 10 / 11 (due to WPF graphical requirements)
 * **PowerShell:** PowerShell 7.2 or later (Windows PowerShell 5.1 is not supported)
-* **Permissions:** Global Reader, Global Administrator, Security Reader, or Reports Reader Entra ID roles. Graph scopes required: `User.Read.All`, `AuditLog.Read.All`, `Directory.Read.All`, `Organization.Read.All`, and `LicenseAssignment.Read.All`.
+* **Permissions:** Entra ID reader/admin role context (Global Reader, Global Administrator, Security Reader, or Reports Reader). **No local Windows administrative rights are required to run the script or GUI dashboard.**
 * **Dependencies:** `Microsoft.Graph` module (will auto-install if missing), `ImportExcel` module (for Excel reports; checks and prompts for permission to install on-demand).
 
 ---
