@@ -1,9 +1,6 @@
 # Device Quarantine Release Guide
 
----
-
 ## Overview
-
 The `DeviceQuarantineReleaseApp.ps1` script launches a native Windows WPF desktop assistant designed for Exchange Online administration. It provides a simple, graphical interface to search tenant mailboxes, retrieve ActiveSync mobile device metadata, inspect their current quarantine status, and instantly release selected devices to the Allowed list.
 
 ### Key Features
@@ -12,16 +9,11 @@ The `DeviceQuarantineReleaseApp.ps1` script launches a native Windows WPF deskto
 * **Auto-Module Provisioning:** Verifies system modules at launch and auto-installs the `ExchangeOnlineManagement` package if not found.
 * **Live Activity Telemetry:** Includes a scrolling logs viewport at the bottom to track cmdlet execution states and session status.
 
----
-
 ## Prerequisites
-
-* **OS Support:** Windows 10 / 11 (requires WPF rendering libraries)
-* **PowerShell:** PowerShell 5.1 or PowerShell 7+
-* **Permissions:** Helpdesk Administrator, Exchange Recipient Administrator, or Exchange Administrator role in Exchange Online.
-* **Dependencies:** `ExchangeOnlineManagement` module (script will automatically prompt/install if missing).
-
----
+OS Support: Windows 10 / 11 (requires WPF rendering libraries)
+PowerShell: PowerShell 5.1 or PowerShell 7+
+Permissions: Helpdesk Administrator, Exchange Recipient Administrator, or Exchange Administrator role in Exchange Online.
+Dependencies: `ExchangeOnlineManagement` module (script will automatically prompt/install if missing).
 
 ## Walkthrough & Usage Guide
 
@@ -43,11 +35,3 @@ powershell.exe -ExecutionPolicy Bypass -File .\DeviceQuarantineReleaseApp.ps1
 
 ### 2. Logging & Outputs
 * **GUI Live Feed:** Underlying operations (including remote connection, directory fetching, CAS mailbox updates, and disconnect handshakes) write telemetry entries directly to the console area at the bottom.
-
----
-
-## Command
-
-```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\DeviceQuarantineReleaseApp.ps1
-```
