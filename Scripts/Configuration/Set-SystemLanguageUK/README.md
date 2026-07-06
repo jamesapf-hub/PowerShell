@@ -7,13 +7,13 @@ Configures regional settings, user locale, system locale, and keyboard layouts t
 
 
 > [!NOTE]
-> **Log File Location:** C:\Logs\Set-SystemLanguageUK\LanguageSetup.txt (or $env:SystemDrive\Logs\Set-SystemLanguageUK\LanguageSetup.txt)
+> **Log File Location:** `C:\Logs\Set-SystemLanguageUK\LanguageSetup.txt` (or `$env:SystemDrive\Logs\Set-SystemLanguageUK\LanguageSetup.txt`)
 
 ## Prerequisites
 
-* **OS Support:** Windows 10 / 11 / Windows Server
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required.
+**OS Support:** Windows 10 / 11 / Windows Server
+**PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
+**Permissions:** Local Administrator rights required.
 
 
 ## Walkthrough & Usage Guide

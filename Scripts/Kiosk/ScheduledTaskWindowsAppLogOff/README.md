@@ -7,13 +7,13 @@ Sets up a watchdog scheduled task to monitor UWP app processes. If the primary k
 
 
 > [!NOTE]
-> **Log File Location:** C:\Logs\ScheduledTaskWindowsAppLogOff\KioskWatchdog.log (or $env:SystemDrive\Logs\ScheduledTaskWindowsAppLogOff\KioskWatchdog.log)
+> **Log File Location:** `C:\Logs\ScheduledTaskWindowsAppLogOff\KioskWatchdog.log` (or `$env:SystemDrive\Logs\ScheduledTaskWindowsAppLogOff\KioskWatchdog.log`)
 
 ## Prerequisites
 
-* **OS Support:** Windows 10 / 11
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required.
+**OS Support:** Windows 10 / 11
+**PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
+**Permissions:** Local Administrator rights required.
 
 
 ## Walkthrough & Usage Guide

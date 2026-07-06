@@ -7,13 +7,13 @@ Performs offline provisioning of the Microsoft Windows App for Windows 10 IoT LT
 
 
 > [!NOTE]
-> **Log File Location:** C:\Logs\Install-WindowsAppLTSC\ltsc_app_update.log (or $env:SystemDrive\Logs\Install-WindowsAppLTSC\ltsc_app_update.log)
+> **Log File Location:** `C:\Logs\Install-WindowsAppLTSC\ltsc_app_update.log` (or `$env:SystemDrive\Logs\Install-WindowsAppLTSC\ltsc_app_update.log`)
 
 ## Prerequisites
 
-* **OS Support:** Windows 10 / 11 / Windows Server / LTSC IoT
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required.
+**OS Support:** Windows 10 / 11 / Windows Server / LTSC IoT
+**PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
+**Permissions:** Local Administrator rights required.
 
 
 ## Walkthrough & Usage Guide

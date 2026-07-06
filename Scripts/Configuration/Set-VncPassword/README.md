@@ -7,13 +7,13 @@ Configures and resets TightVNC / UltraVNC server administrative passwords in the
 
 
 > [!NOTE]
-> **Log File Location:** C:\Logs\Set-VncPassword\VncPasswordReset.txt (or $env:SystemDrive\Logs\Set-VncPassword\VncPasswordReset.txt)
+> **Log File Location:** `C:\Logs\Set-VncPassword\VncPasswordReset.txt` (or `$env:SystemDrive\Logs\Set-VncPassword\VncPasswordReset.txt`)
 
 ## Prerequisites
 
-* **OS Support:** Windows 10 / 11 / Windows Server
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required.
+**OS Support:** Windows 10 / 11 / Windows Server
+**PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
+**Permissions:** Local Administrator rights required.
 
 
 ## Walkthrough & Usage Guide
