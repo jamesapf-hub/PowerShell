@@ -16,6 +16,14 @@ This is the self-contained package for the **Ultimate PC CleanUp Utility**. It i
 
 ---
 
+## Prerequisites
+
+* **OS Support:** Windows 10 / 11 / Windows Server
+* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
+* **Permissions:** Local Administrator rights required (the batch launcher handles UAC elevation prompts automatically).
+
+---
+
 ## How to Download & Run
 
 ### 1. Download the Package
