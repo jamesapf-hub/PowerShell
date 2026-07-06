@@ -6,6 +6,9 @@
 
 This script deploys native Microsoft Kiosk and Windows App group policies. It also purges local cached credentials on user logon to prevent mid-session Azure Virtual Desktop (AVD) pop-up overlaps.
 
+> [!NOTE]
+> **Log File Location:** `C:\Logs\Deploy-KioskPoliciesAndCacheReset\Kiosk_NativePolicy_Setup.txt` (or `$env:SystemDrive\Logs\Deploy-KioskPoliciesAndCacheReset\Kiosk_NativePolicy_Setup.txt`)
+
 ---
 
 ## Prerequisites

@@ -8,8 +8,8 @@
 # ==============================================================================
 
 # 1. Path & Metric Targets
-$LogFolder     = "C:\Seriun\log"
-$ScriptFolder  = "C:\Seriun\Scripts"
+$LogFolder     = "$env:SystemDrive\Logs\Deploy-KioskPoliciesAndCacheReset"
+$ScriptFolder  = "$env:SystemDrive\Logs\Deploy-KioskPoliciesAndCacheReset\Scripts"
 $SetupLogFile  = "$LogFolder\Kiosk_NativePolicy_Setup.txt"
 $AppPath       = "HKLM:\SOFTWARE\Microsoft\WindowsApp"
 $Win365Path    = "HKLM:\SOFTWARE\Microsoft\Windows365"

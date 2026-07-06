@@ -1,5 +1,5 @@
 # Define paths
-$LogFolder = "C:\Seriun\log"
+$LogFolder = "$env:SystemDrive\Logs\Remove-UnifiedWriteFilter"
 $LogFile   = "$LogFolder\UWFdisable.txt"
 $TargetDir = "C:\Program Files\DACC"
 $AppExe    = "daccnotifier.exe"

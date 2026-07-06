@@ -6,6 +6,9 @@
 
 Configures regional settings, user locale, system locale, and keyboard layouts to United Kingdom English (en-GB).
 
+> [!NOTE]
+> **Log File Location:** `C:\Logs\Set-SystemLanguageUK\LanguageSetup.txt` (or `$env:SystemDrive\Logs\Set-SystemLanguageUK\LanguageSetup.txt`)
+
 ---
 
 ## Prerequisites

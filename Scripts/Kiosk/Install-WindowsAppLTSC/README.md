@@ -6,6 +6,9 @@
 
 Performs offline provisioning of the Microsoft Windows App for Windows 10 IoT LTSC environments. It pulls the latest verified MSIX/MSIXBUNDLE payload from the Microsoft CDN repository and registers it machine-wide.
 
+> [!NOTE]
+> **Log File Location:** `C:\Logs\Install-WindowsAppLTSC\ltsc_app_update.log` (or `$env:SystemDrive\Logs\Install-WindowsAppLTSC\ltsc_app_update.log`)
+
 ---
 
 ## Prerequisites

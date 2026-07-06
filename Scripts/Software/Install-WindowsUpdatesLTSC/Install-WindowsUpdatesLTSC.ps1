@@ -2,11 +2,11 @@
 .SYNOPSIS
     Windows Update execution script for LTSC devices using native Windows Update Agent COM objects.
     Ensures zero external module dependencies (does not require PSWindowsUpdate).
-    Logs to C:\Seriun\log using UK date format (DDMMYY).
+    Logs to $env:SystemDrive\Logs\Install-WindowsUpdatesLTSC using UK date format (DDMMYY).
 #>
 
 # Define log directory and file name using UK date format (DDMMYY)
-$LogDir = "C:\Seriun\log"
+$LogDir = "$env:SystemDrive\Logs\Install-WindowsUpdatesLTSC"
 $CurrentDate = Get-Date -Format "ddMMyy"
 $LogFile = Join-Path $LogDir "WindowsUpdate_$CurrentDate.log"
 

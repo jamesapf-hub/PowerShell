@@ -6,6 +6,9 @@
 
 Configures a high-performance power plan scheme. It disables sleep mode, standby, monitor sleep timers, and USB selective suspend to prevent terminal locks.
 
+> [!NOTE]
+> **Log File Location:** `C:\Logs\Set-PowerPlan\PowerPlanConfig.txt` (or `$env:SystemDrive\Logs\Set-PowerPlan\PowerPlanConfig.txt`)
+
 ---
 
 ## Prerequisites

@@ -6,6 +6,9 @@
 
 This script disables and configures the Windows Unified Write Filter (UWF) configuration, ensuring permanent changes persist across system restarts.
 
+> [!NOTE]
+> **Log File Location:** `C:\Logs\Remove-UnifiedWriteFilter\UWFdisable.txt` (or `$env:SystemDrive\Logs\Remove-UnifiedWriteFilter\UWFdisable.txt`)
+
 ---
 
 ## Prerequisites
