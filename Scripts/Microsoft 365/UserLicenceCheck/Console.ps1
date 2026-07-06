@@ -1484,7 +1484,7 @@ function Invoke-AuditReport {
             }
             
             # Check SKU cache or fetch online
-            $LogDir = "C:\Seriun\log"
+            $LogDir = "$env:SystemDrive\Logs\UserLicenceCheck"
             $CacheFile = Join-Path $LogDir "M365_SKU_Cache.csv"
             $CacheLoaded = $false
             

@@ -14,8 +14,8 @@
 # Define current date for logs and filenames
 $CurrentDate = (Get-Date).ToString("ddMMyy")
 
-# 1. Setup Log Directory (fixed location C:\Seriun\log)
-$LogDirectory = "C:\Seriun\log"
+# 1. Setup Log Directory
+$LogDirectory = "$env:SystemDrive\Logs\UserLicenceCheck"
 if (-not (Test-Path $LogDirectory)) {
     New-Item -ItemType Directory -Path $LogDirectory -Force | Out-Null
 }
