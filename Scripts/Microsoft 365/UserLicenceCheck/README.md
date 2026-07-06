@@ -1,4 +1,4 @@
-# M365 Admin Console Guide
+# User License Check Guide
 
 ---
 
