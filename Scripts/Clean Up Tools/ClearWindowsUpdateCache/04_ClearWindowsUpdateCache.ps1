@@ -7,7 +7,7 @@ Natively runs in WhatIf (dry-run) mode first, then prompts to execute for real.
 Supports -WhatIf and prompts for confirmation unless -Force is specified.
 .NOTES
     Date Format: UK (DDMMYY)
-    Log Path   : C:\Seriun\log\SD_Clear_DDMMYY.log
+    Log Path   : $env:SystemDrive\Logs\ClearWindowsUpdateCache\SD_Clear_DDMMYY.log
 #>
 
 [CmdletBinding(SupportsShouldProcess=$true)]
@@ -17,7 +17,7 @@ param(
 
 # 1. Environment & Logging Setup
 $UKDate = (Get-Date).ToString("ddMMyy")
-$LogDirectory = "C:\Seriun\log"
+$LogDirectory = "$env:SystemDrive\Logs\ClearWindowsUpdateCache"
 $LogPath = Join-Path -Path $LogDirectory -ChildPath "SD_Clear_$UKDate.log"
 
 # Ensure the log folder exists
