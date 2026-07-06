@@ -1,9 +1,6 @@
 # Windows Upgrade Folder Cleanup Guide
 
----
-
 ## Overview
-
 This script checks for the presence of leftover Windows upgrade cache folders (`C:\$WINDOWS.~WS` and `C:\ESD`), takes ownership and grants permissions recursively, and deletes them to recover disk space.
 
 ### Key Features
@@ -11,15 +8,13 @@ This script checks for the presence of leftover Windows upgrade cache folders (`
 * **Automatic Ownership:** Natively runs `takeown` and `icacls` commands to grant full access to administrators before deletion.
 * **Dry-Run Mode (WhatIf):** Runs a WhatIf dry-run first to check folders before applying changes.
 
----
+> [!NOTE]
+> **Log File Location:** `C:\Logs\TidyUpWindows11\TidyUpWindows11_DDMMYY.log` (or `$env:SystemDrive\Logs\TidyUpWindows11\TidyUpWindows11_DDMMYY.log`)
 
 ## Prerequisites
-
-* **OS Support:** Windows 10 / 11
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required (elevation check included)
-
----
+OS Support: Windows 10 / 11
+PowerShell: Windows PowerShell 5.1 or PowerShell Core 7+
+Permissions: Local Administrator rights required (elevation check included)
 
 ## Walkthrough & Usage Guide
 
@@ -32,8 +27,6 @@ This script checks for the presence of leftover Windows upgrade cache folders (`
 
 ### 2. Logging & Outputs
 * Status logs for folder detection, ownership acquisition, and deletion are printed directly to the console.
-
----
 
 ## Command
 

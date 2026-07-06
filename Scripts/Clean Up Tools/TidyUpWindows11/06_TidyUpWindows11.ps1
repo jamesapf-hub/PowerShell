@@ -1,10 +1,11 @@
 <#
 .SYNOPSIS
-Cleans leftover Windows upgrade folders (C:\$WINDOWS.~WS and C:\ESD).
+    Cleans leftover Windows upgrade folders (C:\$WINDOWS.~WS and C:\ESD).
 .DESCRIPTION
-This script checks for the presence of C:\$WINDOWS.~WS and C:\ESD folders, takes ownership if needed, and removes them to recover disk space.
-Natively runs in WhatIf (dry-run) mode first, then prompts to execute for real.
-Supports -WhatIf and prompts for confirmation unless -Force is specified.
+    This script checks for the presence of C:\$WINDOWS.~WS and C:\ESD folders, takes ownership if needed, and removes them to recover disk space.
+    Saves a persistent log to the Logs directory and runs in WhatIf (dry-run) mode first.
+.PARAMETER Force
+    Runs the cleanup silently without confirmation prompts.
 #>
 
 [CmdletBinding(SupportsShouldProcess=$true)]
@@ -12,9 +13,39 @@ param(
     [switch]$Force
 )
 
+# Define Log Path in UK Date Format (DDMMYY)
+$UKDate = (Get-Date).ToString("ddMMyy")
+$LogDirectory = "$env:SystemDrive\Logs\TidyUpWindows11"
+$LogPath = Join-Path -Path $LogDirectory -ChildPath "TidyUpWindows11_$UKDate.log"
+
+# Ensure the log folder exists
+if (-not (Test-Path -Path $LogDirectory)) {
+    New-Item -Path $LogDirectory -ItemType Directory -Force | Out-Null
+}
+
+function Write-Log {
+    param (
+        [string]$Message,
+        [string]$Level = "INFO",
+        [ConsoleColor]$ForegroundColor = "White"
+    )
+    $Timestamp = (Get-Date).ToString("dd/MM/yy HH:mm:ss")
+    $LogLine = "[$Timestamp] [$Level] $Message"
+    Add-Content -Path $LogPath -Value $LogLine -ErrorAction SilentlyContinue
+    
+    $Color = switch ($Level) {
+        "SUCCESS" { "Green" }
+        "WARNING" { "Yellow" }
+        "ERROR"   { "Red" }
+        default   { $ForegroundColor }
+    }
+    Write-Host $LogLine -ForegroundColor $Color
+}
+
 # 1. Gain 'System' level access permissions
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "Please run as Administrator!" -ForegroundColor Red; return
+    Write-Log "Please run as Administrator!" "ERROR"
+    return
 }
 
 function Remove-Folder {
@@ -24,30 +55,34 @@ function Remove-Folder {
 
     if ($testPath) {
         if ($PSCmdlet.ShouldProcess($path, "Take ownership, grant permissions, and recursively delete folder")) {
-            Write-Host "- Taking ownership of '$path'..." -ForegroundColor Cyan
-            try {
-                takeown /f $path /r /d y | Out-Null
-                icacls $path /grant "$($env:USERNAME):(F)" /t | Out-Null
-                Write-Host "- Successfully taken ownership!" -ForegroundColor Green
+            Write-Log "Taking ownership of '$path'..." "INFO" "Cyan"
+            if ($WhatIfPreference) {
+                Write-Host "What if: takeown /f $path /r /d y" -ForegroundColor Gray
+                Write-Host "What if: icacls $path /grant \"\$($env:USERNAME):(F)\" /t" -ForegroundColor Gray
+                Write-Host "What if: Remove-Item -Path $path -Recurse -Force" -ForegroundColor Gray
+            } else {
+                try {
+                    takeown /f $path /r /d y | Out-Null
+                    icacls $path /grant "$($env:USERNAME):(F)" /t | Out-Null
+                    Write-Log "Successfully taken ownership of '$path'!" "SUCCESS"
+                }
+                catch {
+                    Write-Log "ERROR: Can't take ownership of '$path'. Detail: $_" "ERROR"
+                    return
+                }
+                try {
+                    Write-Log "Attempting to delete '$path'..." "INFO" "Cyan"
+                    Remove-Item -Path $path -Recurse -Force -ErrorAction Stop
+                    Write-Log "Successfully removed '$path'" "SUCCESS"
+                }
+                catch {
+                    Write-Log "ERROR: Couldn't delete '$path' folder! Detail: $_" "ERROR"
+                }
             }
-            catch {
-                Write-Host "- ERROR: Can't take ownership of '$path'" -ForegroundColor Red
-                Write-Host "- Detail: $_" -ForegroundColor Red
-                return
-            }
-            try {
-                Write-Host "- Attempting to delete '$path'..." -ForegroundColor Cyan
-                Remove-Item -Path $path -Recurse -Force -ErrorAction Stop
-                Write-Host "- Successfully removed '$path'" -ForegroundColor Green
-            }
-            catch {
-                Write-Host "- ERROR: Couldn't delete '$path' folder!" -ForegroundColor Red
-                Write-Host "- Detail: $_" -ForegroundColor Red
-            }             
         }
     }
     else {
-        Write-Host "- $path not found" -ForegroundColor Gray
+        Write-Log "$path not found" "INFO" "Gray"
     }
 }
 
@@ -60,18 +95,20 @@ function Run-Cleanup {
 if ($Force) {
     $WhatIfPreference = $false
     Run-Cleanup
+    Write-Log "Cleanup complete." "SUCCESS"
 } else {
-    Write-Host "=== STARTING WHATIF DRY-RUN ===" -ForegroundColor Yellow
+    Write-Log "=== STARTING WHATIF DRY-RUN ===" "WARNING"
     $WhatIfPreference = $true
     Run-Cleanup
     
     Write-Host ""
     $confirmation = Read-Host "WhatIf dry-run completed. Do you want to run this for real now? (Y/N)"
     if ($confirmation -eq 'Y' -or $confirmation -eq 'Yes') {
-        Write-Host "`n=== RUNNING REAL CLEANUP ===" -ForegroundColor Green
+        Write-Log "=== RUNNING REAL CLEANUP ===" "SUCCESS"
         $WhatIfPreference = $false
         Run-Cleanup
+        Write-Log "Cleanup complete." "SUCCESS"
     } else {
-        Write-Host "`nCancelled. No changes were made." -ForegroundColor Gray
+        Write-Log "Cancelled. No changes were made." "INFO" "Gray"
     }
 }
