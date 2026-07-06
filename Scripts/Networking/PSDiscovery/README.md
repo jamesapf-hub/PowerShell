@@ -3,9 +3,10 @@
 This utility retrieves VLAN assignments, audits port configurations, and checks active switch status profiles.
 
 ## Prerequisites
-* PowerShell Core `v7.0` or higher
-* Administrator execution permission parameters
-* Open local port interfaces configured
+* **OS Support:** Windows / macOS / Linux
+* **PowerShell:** PowerShell Core `v7.0` or higher
+* **Permissions:** Standard User context (no local Windows administrator rights are required). Switch read access credentials/community strings are required.
+* **Network Ports:** Local network access to switch port interfaces (e.g. SNMP Port 161 or SSH Port 22) must be open.
 
 ## Walkthrough & Usage
 1. Connect switch management console IP inside target script parameters.
