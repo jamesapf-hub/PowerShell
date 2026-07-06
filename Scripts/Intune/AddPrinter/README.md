@@ -21,7 +21,7 @@ The **Intune Printer Packager** is a PowerShell WPF-based graphical interface th
 
 OS Support: Windows 10 / 11 or Windows Server.
 PowerShell: Windows PowerShell 5.1 or PowerShell Core 7+.
-Permissions: Local administrator rights (required to register print drivers and queues).
+Permissions: Standard User context (Administrator rights not required).
 Execution Policy: Bypass mode permitted to execute local scripts.
 
 
