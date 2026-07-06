@@ -3,15 +3,15 @@
 ## Overview
 This script scans the local Windows registry for user profiles, filters out system, local, and active profiles, and identifies orphaned or deleted Active Directory domain user profiles. It deletes them through WMI to ensure clean removal from the system.
 
-> [!NOTE]
-> **Log File Location:** `C:\Logs\RemoveOldUserProfiles\RemoveOldUserProfiles_DDMMYY.log` (or `$env:SystemDrive\Logs\RemoveOldUserProfiles\RemoveOldUserProfiles_DDMMYY.log`)
-
 ### Key Features
 * **Registry Profile Scanning:** Reads profile subkeys under `HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList`.
 * **Domain Account Filtering:** Resolves SIDs to NTAccounts to filter out local and built-in profiles.
 * **Folder Size Auditing:** Recursively measures profile folder sizes on disk.
 * **Clean WMI Deletion:** Uses WMI (`Win32_UserProfile`) to safely delete profiles, clearing registry subkeys and folder paths.
 * **Exclusion Support:** Excludes active accounts and supports custom exclusions via the `-ExcludeUsers` parameter.
+
+> [!NOTE]
+> **Log File Location:** `C:\Logs\RemoveOldUserProfiles\RemoveOldUserProfiles_DDMMYY.log` (or `$env:SystemDrive\Logs\RemoveOldUserProfiles\RemoveOldUserProfiles_DDMMYY.log`)
 
 ## Prerequisites
 OS Support: Windows 10 / 11 / Windows Server
