@@ -66,7 +66,7 @@ if ($env:USERNAME -eq "SYSTEM") {
         
         # 3. Inject the HKLM Run Key to trigger the script on actual User Logon
         $RunArgs = "powershell.exe -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$PermanentPath`""
-        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "SeriunKioskLogonSetup" -Value $RunArgs -Force | Out-Null
+        Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "KioskLogonSetup" -Value $RunArgs -Force | Out-Null
         Write-SetupLog "WMS DEPLOY: Registered HKLM Logon Run Key successfully."
         
         Write-Host "WMS DEPLOY SUCCESS: Payload staged for user logon." -ForegroundColor Green
