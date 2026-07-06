@@ -4,7 +4,7 @@ Param(
 )
 
 # Define log paths and targets
-$LogFolder = "C:\Seriun\log"
+$LogFolder = "$env:SystemDrive\Logs\Configure-KioskPerUserShell"
 $LogFile   = "$LogFolder\Wyse_Shell_Lock.txt"
 $RegPath   = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
 

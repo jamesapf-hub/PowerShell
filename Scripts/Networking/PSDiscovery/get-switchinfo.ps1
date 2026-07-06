@@ -1,6 +1,6 @@
 # Get-SwitchInfo.ps1
 # Retrieves detailed VLAN and port profiles from connected switches
-# standard output targets: C:\Seriun\log\get-switchinfo.log
+# standard output targets: $env:SystemDrive\Logs\PSDiscovery\get-switchinfo.log
 
 param(
     [string]$IPAddress = "192.168.1.1",
@@ -24,8 +24,8 @@ if ($DetailedAudit) {
     Write-Host "Port gi1/0/4 - VLAN 20 (Disconnected) - Audited warning: VLAN inactive!" -ForegroundColor Red
 }
 
-$LogPath = "C:\Seriun\log\get-switchinfo.log"
+$LogPath = "$env:SystemDrive\Logs\PSDiscovery\get-switchinfo.log"
 New-Item -ItemType File -Path $LogPath -Force | Out-Null
 "Switch Audit completed successfully for $IPAddress" | Out-File -FilePath $LogPath
 
-Write-Host "[+] Audit completed! Output logs written to C:\Seriun\log\get-switchinfo.log" -ForegroundColor Green
+Write-Host "[+] Audit completed! Output logs written to $env:SystemDrive\Logs\PSDiscovery\get-switchinfo.log" -ForegroundColor Green

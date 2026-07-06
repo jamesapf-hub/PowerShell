@@ -6,6 +6,9 @@
 
 Configures and resets TightVNC / UltraVNC server administrative passwords in the system registry.
 
+> [!NOTE]
+> **Log File Location:** `C:\Logs\Set-VncPassword\VncPasswordReset.txt` (or `$env:SystemDrive\Logs\Set-VncPassword\VncPasswordReset.txt`)
+
 ---
 
 ## Prerequisites

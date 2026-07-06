@@ -554,6 +554,7 @@ $btnBuild.Add_Click({
 
         # Staging embedded script templates
         Update-Log "Generating installer scripts..."
+        
         $installTemplateText = @'
 <#
 .SYNOPSIS
@@ -578,7 +579,7 @@ $FirstPrinterName = $Printers[0].Name
 $SanitizedName = $FirstPrinterName -replace '[\\/:*?"<>|]', '-'
 
 # Create log folder if it doesn't exist
-$LogFolder = "c:\Seriun\Printer\$SanitizedName"
+$LogFolder = "$env:SystemDrive\Logs\AddPrinter\$SanitizedName"
 if (-not (Test-Path $LogFolder)) {
     New-Item -ItemType Directory -Path $LogFolder -Force | Out-Null
 }
@@ -785,7 +786,7 @@ $FirstPrinterName = $Printers[0].Name
 $SanitizedName = $FirstPrinterName -replace '[\\/:*?"<>|]', '-'
 
 # Create log folder if it doesn't exist
-$LogFolder = "c:\Seriun\Printer\$SanitizedName"
+$LogFolder = "$env:SystemDrive\Logs\AddPrinter\$SanitizedName"
 if (-not (Test-Path $LogFolder)) {
     New-Item -ItemType Directory -Path $LogFolder -Force | Out-Null
 }
@@ -1139,13 +1140,13 @@ Driver Name:    $driverName
 IP Address:     $printerIP
 ----------------------------------------------------------------------
 WORKSTATION LOG DIRECTORY:
-C:\Seriun\Printer\$sanitized\
+$env:SystemDrive\Logs\AddPrinter\$sanitized\
 
 INSTALLATION LOG:
-C:\Seriun\Printer\$sanitized\Install-Printer.log
+$env:SystemDrive\Logs\AddPrinter\$sanitized\Install-Printer.log
 
 UNINSTALLATION LOG:
-C:\Seriun\Printer\$sanitized\Uninstall-Printer.log
+$env:SystemDrive\Logs\AddPrinter\$sanitized\Uninstall-Printer.log
 ======================================================================
 
 4. NETWORK REQUIREMENTS:
@@ -1218,13 +1219,13 @@ Driver Name:    $driverName
 IP Address:     $printerIP
 ----------------------------------------------------------------------
 WORKSTATION LOG DIRECTORY:
-C:\Seriun\Printer\$sanitized\
+$env:SystemDrive\Logs\AddPrinter\$sanitized\
 
 INSTALLATION LOG:
-C:\Seriun\Printer\$sanitized\Install-Printer.log
+$env:SystemDrive\Logs\AddPrinter\$sanitized\Install-Printer.log
 
 UNINSTALLATION LOG:
-C:\Seriun\Printer\$sanitized\Uninstall-Printer.log
+$env:SystemDrive\Logs\AddPrinter\$sanitized\Uninstall-Printer.log
 ======================================================================
 
 [DHCP RESERVATION REMINDER]

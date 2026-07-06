@@ -6,10 +6,10 @@
 .NOTES
     Author:  JP & Antigravity
     Version: 1.4
-    Log:     C:\Seriun\log\ltsc_app_update.log
+    Log:     $env:SystemDrive\Logs\Install-WindowsAppLTSC\ltsc_app_update.log
 #>
 
-$LogPath = "C:\Seriun\log"
+$LogPath = "$env:SystemDrive\Logs\Install-WindowsAppLTSC"
 $LogFile = "$LogPath\ltsc_app_update.log"
 if (-not (Test-Path $LogPath)) { 
     New-Item -ItemType Directory -Path $LogPath -Force | Out-Null 
@@ -35,7 +35,7 @@ try {
     Log-Message "WARNING: Failed to force TLS 1.2. API request may fail. Reason: $_"
 }
 
-$WorkingDir = "C:\Seriun\WindowsAppUpdate"
+$WorkingDir = "$env:SystemDrive\Logs\Install-WindowsAppLTSC\Software"
 if (-not (Test-Path $WorkingDir)) { 
     New-Item -ItemType Directory -Path $WorkingDir -Force | Out-Null 
 }

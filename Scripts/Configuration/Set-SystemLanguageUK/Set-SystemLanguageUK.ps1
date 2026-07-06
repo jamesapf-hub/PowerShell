@@ -1,5 +1,5 @@
 # Standard UK format timestamped logger
-$LogFolder = "C:\Seriun\log"
+$LogFolder = "$env:SystemDrive\Logs\Set-SystemLanguageUK"
 $LogFile   = "$LogFolder\LanguageSetup.txt"
 
 if (-not (Test-Path $LogFolder)) {

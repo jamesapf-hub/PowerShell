@@ -6,6 +6,9 @@
 
 Triggers Windows Update check and installation using the native Windows Update Agent COM objects. Operates without any external module dependencies.
 
+> [!NOTE]
+> **Log File Location:** `C:\Logs\Install-WindowsUpdatesLTSC\WindowsUpdate_DDMMYY.log` (or `$env:SystemDrive\Logs\Install-WindowsUpdatesLTSC\WindowsUpdate_DDMMYY.log`)
+
 ---
 
 ## Prerequisites

@@ -3,7 +3,7 @@ Param(
 )
 
 # Standard UK format timestamped logger
-$LogFolder = "C:\Seriun\log"
+$LogFolder = "$env:SystemDrive\Logs\Set-VncPassword"
 $LogFile   = "$LogFolder\VncPasswordReset.txt"
 
 if (-not (Test-Path $LogFolder)) {

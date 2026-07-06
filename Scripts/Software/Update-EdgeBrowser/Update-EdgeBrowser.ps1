@@ -5,7 +5,7 @@ $edgeInstallerUrl = "https://go.microsoft.com/fwlink/?LinkID=2093437"
 $installerPath = "$env:TEMP\MicrosoftEdgeEnterpriseX64.msi"
 
 # Standard UK format timestamped logger
-$LogFolder = "C:\Seriun\log"
+$LogFolder = "$env:SystemDrive\Logs\Update-EdgeBrowser"
 $LogFile   = "$LogFolder\EdgeUpdate.txt"
 
 if (-not (Test-Path $LogFolder)) {

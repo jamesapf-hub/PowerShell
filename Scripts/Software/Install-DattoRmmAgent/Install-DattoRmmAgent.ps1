@@ -2,7 +2,7 @@ $Platform="YOUR_DATTO_PLATFORM"
 $SiteID="YOUR_DATTO_SITE_ID" 
 
 # Standard UK format timestamped logger
-$LogFolder = "C:\Seriun\log"
+$LogFolder = "$env:SystemDrive\Logs\Install-DattoRmmAgent"
 $LogFile   = "$LogFolder\DattoAgentInstall.txt"
 
 if (-not (Test-Path $LogFolder)) {

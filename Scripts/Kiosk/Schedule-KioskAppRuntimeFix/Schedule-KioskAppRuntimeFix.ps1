@@ -1,5 +1,5 @@
 # Define log paths and targets
-$LogFolder = "C:\Seriun\log"
+$LogFolder = "$env:SystemDrive\Logs\Schedule-KioskAppRuntimeFix"
 $LogFile   = "$LogFolder\Kiosk_Runtime_Fix.txt"
 $TaskName  = "Kiosk-ShellAppRuntime-Fix"
 $RegPath   = "HKLM\Software\Microsoft\Windows\CurrentVersion\Authentication\LogonUI"

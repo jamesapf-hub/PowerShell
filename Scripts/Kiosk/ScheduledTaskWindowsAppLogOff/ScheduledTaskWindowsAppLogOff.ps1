@@ -1,11 +1,11 @@
 # -------------------------------------------------------------------------
 # Author: JP
 # Date: 06/07/26
-# Log Location: C:\Seriun\log\KioskWatchdog.log
+# Log Location: $env:SystemDrive\Logs\ScheduledTaskWindowsAppLogOff\KioskWatchdog.log
 # Description: Enhanced monitoring to capture both UWP execution names.
 # -------------------------------------------------------------------------
 
-$LogFolder = "C:\Seriun\log"
+$LogFolder = "$env:SystemDrive\Logs\ScheduledTaskWindowsAppLogOff"
 $LogPath = "$LogFolder\KioskWatchdog.log"
 
 if (-not (Test-Path $LogFolder)) { New-Item -ItemType Directory -Path $LogFolder -Force | Out-Null }
