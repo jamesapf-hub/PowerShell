@@ -1,5 +1,5 @@
 Param(
-    [string]$Password = "B1g8lu3!"
+    [string]$Password = "Pass123!"
 )
 
 # Standard UK format timestamped logger
