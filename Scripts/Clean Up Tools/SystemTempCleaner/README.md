@@ -1,9 +1,6 @@
 # System Temp Files & Recycle Bin Cleaner Guide
 
----
-
 ## Overview
-
 This PowerShell script cleans Windows system temporary files, user temp files, Windows Prefetch cache, and empties the Recycle Bin. It operates in a dry-run (WhatIf) mode first by default to allow safe review before any files are modified.
 
 ### Key Features
@@ -13,16 +10,14 @@ This PowerShell script cleans Windows system temporary files, user temp files, W
 * **Recycle Bin Empty:** Programmatically empties the system Recycle Bin.
 * **Interactive Prompts:** Supports dry-runs and safe confirmation prompts before execution.
 
----
+> [!NOTE]
+> **Log File Location:** `C:\Logs\SystemTempCleaner\SystemTempCleaner_DDMMYY.log` (or `$env:SystemDrive\Logs\SystemTempCleaner\SystemTempCleaner_DDMMYY.log`)
 
 ## Prerequisites
-
-* **OS Support:** Windows 10 / 11 / Windows Server
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required (elevation check included)
-* **Execution Policy:** RemoteSigned or Bypass
-
----
+OS Support: Windows 10 / 11 / Windows Server
+PowerShell: Windows PowerShell 5.1 or PowerShell Core 7+
+Permissions: Local Administrator rights required (elevation check included)
+Execution Policy: RemoteSigned or Bypass
 
 ## Walkthrough & Usage Guide
 
@@ -35,8 +30,6 @@ This PowerShell script cleans Windows system temporary files, user temp files, W
 
 ### 2. Logging & Outputs
 * Status logs for directories scanned and deleted are printed directly to the console.
-
----
 
 ## Command
 
