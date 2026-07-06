@@ -6,7 +6,7 @@
 The **Intune Printer Packager** is a PowerShell WPF-based graphical interface that prepares, structures, and compiles printer installers and driver binaries into a Microsoft-approved `.intunewin` package.
 
 > [!NOTE]
-> **Log File Location:** C:\Logs\AddPrinter\<PrinterName>\Install-Printer.log (or $env:SystemDrive\Logs\AddPrinter\<PrinterName>\Install-Printer.log)
+> **Log File Location:** `C:\Logs\AddPrinter\<PrinterName>\Install-Printer.log` (or `$env:SystemDrive\Logs\AddPrinter\<PrinterName>\Install-Printer.log`)
 
 ### Key Features
 
@@ -19,10 +19,10 @@ The **Intune Printer Packager** is a PowerShell WPF-based graphical interface th
 
 ## Prerequisites
 
-* **OS Support**: Windows 10 / 11 or Windows Server.
-* **PowerShell**: Windows PowerShell 5.1 or PowerShell Core 7+.
-* **Permissions**: Local administrator rights (required to register print drivers and queues).
-* **Execution Policy**: Bypass mode permitted to execute local scripts.
+OS Support: Windows 10 / 11 or Windows Server.
+PowerShell: Windows PowerShell 5.1 or PowerShell Core 7+.
+Permissions: Local administrator rights (required to register print drivers and queues).
+Execution Policy: Bypass mode permitted to execute local scripts.
 
 
 ## Walkthrough & Usage Guide

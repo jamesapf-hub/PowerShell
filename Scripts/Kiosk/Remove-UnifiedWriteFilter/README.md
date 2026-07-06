@@ -7,13 +7,13 @@ This script disables and configures the Windows Unified Write Filter (UWF) confi
 
 
 > [!NOTE]
-> **Log File Location:** C:\Logs\Remove-UnifiedWriteFilter\UWFdisable.txt (or $env:SystemDrive\Logs\Remove-UnifiedWriteFilter\UWFdisable.txt)
+> **Log File Location:** `C:\Logs\Remove-UnifiedWriteFilter\UWFdisable.txt` (or `$env:SystemDrive\Logs\Remove-UnifiedWriteFilter\UWFdisable.txt`)
 
 ## Prerequisites
 
-* **OS Support:** Windows 10 IoT LTSC / Windows Embedded
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required.
+**OS Support:** Windows 10 IoT LTSC / Windows Embedded
+**PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
+**Permissions:** Local Administrator rights required.
 
 
 ## Walkthrough & Usage Guide

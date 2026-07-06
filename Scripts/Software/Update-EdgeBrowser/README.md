@@ -7,13 +7,13 @@ Downloads the latest Microsoft Edge Enterprise x64 MSI package directly from Mic
 
 
 > [!NOTE]
-> **Log File Location:** C:\Logs\Update-EdgeBrowser\EdgeUpdate.txt (or $env:SystemDrive\Logs\Update-EdgeBrowser\EdgeUpdate.txt)
+> **Log File Location:** `C:\Logs\Update-EdgeBrowser\EdgeUpdate.txt` (or `$env:SystemDrive\Logs\Update-EdgeBrowser\EdgeUpdate.txt`)
 
 ## Prerequisites
 
-* **OS Support:** Windows 10 / 11 / Windows Server
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required.
+**OS Support:** Windows 10 / 11 / Windows Server
+**PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
+**Permissions:** Local Administrator rights required.
 
 
 ## Walkthrough & Usage Guide
