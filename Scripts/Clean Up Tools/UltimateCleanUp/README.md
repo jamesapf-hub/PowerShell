@@ -12,7 +12,7 @@ This is the self-contained package for the **Ultimate PC CleanUp Utility**. It i
 6. **Windows Upgrade Folder Cleanup:** Takes ownership and deletes leftover Windows upgrade cache folders (`C:\$WINDOWS.~WS` and `C:\ESD`).
 
 > [!NOTE]
-> **Windows Update Cache Log Location:** \`C:\Logs\UltimateCleanUp\SD_Clear_DDMMYY.log\` (or \`$env:SystemDrive\Logs\UltimateCleanUp\SD_Clear_DDMMYY.log\`)
+> **Windows Update Cache Log Location:** `C:\Logs\UltimateCleanUp\SD_Clear_DDMMYY.log` (or `$env:SystemDrive\Logs\UltimateCleanUp\SD_Clear_DDMMYY.log`)
 
 ## Prerequisites
 OS Support: Windows 10 / 11 / Windows Server
