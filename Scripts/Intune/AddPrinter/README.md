@@ -5,8 +5,6 @@
 
 The **Intune Printer Packager** is a PowerShell WPF-based graphical interface that prepares, structures, and compiles printer installers and driver binaries into a Microsoft-approved `.intunewin` package.
 
-> [!NOTE]
-> **Log File Location:** `C:\Logs\AddPrinter\<PrinterName>\Install-Printer.log` (or `$env:SystemDrive\Logs\AddPrinter\<PrinterName>\Install-Printer.log`)
 
 ### Key Features
 
@@ -16,6 +14,8 @@ The **Intune Printer Packager** is a PowerShell WPF-based graphical interface th
 * **Zero Setup Overhead**: Automatically downloads the official `IntuneWinAppUtil.exe` binary directly from Microsoft's GitHub repository if it is not present in the script directory.
 * **Silent PCA Bypass**: Automatically stops and restores the Program Compatibility Assistant service (`PcaSvc`) during installation to prevent legacy driver co-installer prompts (such as Kyocera compatibility warning dialogs) from hanging the silent Intune deployment.
 
+
+> **Log File Location:** `C:\Logs\AddPrinter\<PrinterName>\Install-Printer.log` (or `$env:SystemDrive\Logs\AddPrinter\<PrinterName>\Install-Printer.log`)
 
 ## Prerequisites
 
@@ -150,13 +150,13 @@ Driver Name:    Kyocera ECOSYS M5526cdw KX
 IP Address:     192.168.1.240
 ----------------------------------------------------------------------
 WORKSTATION LOG DIRECTORY:
-C:\Seriun\Printer\Showroom - Downstairs - Kyocera M5526cdw\
+C:\Logs\AddPrinter\Showroom - Downstairs - Kyocera M5526cdw\
 
 INSTALLATION LOG:
-C:\Seriun\Printer\Showroom - Downstairs - Kyocera M5526cdw\Install-Printer.log
+C:\Logs\AddPrinter\Showroom - Downstairs - Kyocera M5526cdw\Install-Printer.log
 
 UNINSTALLATION LOG:
-C:\Seriun\Printer\Showroom - Downstairs - Kyocera M5526cdw\Uninstall-Printer.log
+C:\Logs\AddPrinter\Showroom - Downstairs - Kyocera M5526cdw\Uninstall-Printer.log
 ======================================================================
 ```
 
