@@ -1,12 +1,7 @@
 # Ultimate PC CleanUp Utility
 
-
 ## Overview
-
 This is the self-contained package for the **Ultimate PC CleanUp Utility**. It includes the central dark-themed WPF dashboard/CLI runner (`Start-UltimateCleanUp.ps1`), the double-click launcher (`Run-UltimateCleanUp.bat`), and all 6 sub-cleanup scripts flatly packaged inside the `Scripts/` directory.
-
-> [!NOTE]
-> **Windows Update Cache Log Location:** C:\Logs\UltimateCleanUp\SD_Clear_DDMMYY.log (or $env:SystemDrive\Logs\UltimateCleanUp\SD_Clear_DDMMYY.log)
 
 ### Discovered Tasks Included:
 1. **System Temp Files & Recycle Bin Cleaner:** Purges system-level temporary files, Prefetch cache, and empties the Recycle Bin.
@@ -16,13 +11,13 @@ This is the self-contained package for the **Ultimate PC CleanUp Utility**. It i
 5. **Orphaned AD Domain User Profile Cleaner:** Identifies and cleanly deletes Active Directory profiles of users who no longer exist.
 6. **Windows Upgrade Folder Cleanup:** Takes ownership and deletes leftover Windows upgrade cache folders (`C:\$WINDOWS.~WS` and `C:\ESD`).
 
+> [!NOTE]
+> **Windows Update Cache Log Location:** C:\Logs\UltimateCleanUp\SD_Clear_DDMMYY.log (or $env:SystemDrive\Logs\UltimateCleanUp\SD_Clear_DDMMYY.log)
 
 ## Prerequisites
-
-* **OS Support:** Windows 10 / 11 / Windows Server
-* **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
-* **Permissions:** Local Administrator rights required (the batch launcher handles UAC elevation prompts automatically).
-
+OS Support: Windows 10 / 11 / Windows Server
+PowerShell: Windows PowerShell 5.1 or PowerShell Core 7+
+Permissions: Local Administrator rights required (the batch launcher handles UAC elevation prompts automatically).
 
 ## How to Download & Run
 
@@ -47,7 +42,6 @@ Open PowerShell as Administrator inside this folder and run:
   ```powershell
   .\Start-UltimateCleanUp.ps1 -RunTasks "SystemTempCleaner, ClearWindowsUpdateCache"
   ```
-
 
 ## Folder Structure
 

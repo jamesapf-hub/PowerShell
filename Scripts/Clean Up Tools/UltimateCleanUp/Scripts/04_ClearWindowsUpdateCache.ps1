@@ -25,7 +25,7 @@ if (-not (Test-Path -Path $LogDirectory)) {
     New-Item -Path $LogDirectory -ItemType Directory -Force | Out-Null
 }
 
-function Write-SeriunLog {
+function Write-Log {
     param (
         [string]$Message,
         [string]$Level = "INFO"
@@ -69,14 +69,14 @@ if ($filesCount -eq 0) {
 }
 
 function Run-Cleanup {
-    Write-SeriunLog "Starting SoftwareDistribution Cleanup..."
+    Write-Log "Starting SoftwareDistribution Cleanup..."
     
     # Stop services
     $Services = @("wuauserv", "bits")
     foreach ($Service in $Services) {
         $ServiceStatus = Get-Service -Name $Service -ErrorAction SilentlyContinue
         if ($ServiceStatus -and $ServiceStatus.Status -eq 'Running') {
-            Write-SeriunLog "Stopping service: $Service"
+            Write-Log "Stopping service: $Service"
             # Stop-Service natively respects WhatIf
             Stop-Service -Name $Service -Force
             Start-Sleep -Seconds 1
@@ -86,14 +86,14 @@ function Run-Cleanup {
     # Clear folder
     if (Test-Path -LiteralPath $LiteralTarget) {
         try {
-            Write-SeriunLog "Purging items from: $TargetFolder"
+            Write-Log "Purging items from: $TargetFolder"
             Get-ChildItem -LiteralPath $LiteralTarget -Force | ForEach-Object {
                 Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction Stop
             }
-            Write-SeriunLog "Download folder successfully cleared." "SUCCESS"
+            Write-Log "Download folder successfully cleared." "SUCCESS"
         }
         catch {
-            Write-SeriunLog "Failed to clear natively: $($_.Exception.Message). Fallback to Robocopy sync..." "WARNING"
+            Write-Log "Failed to clear natively: $($_.Exception.Message). Fallback to Robocopy sync..." "WARNING"
             if ($WhatIfPreference) {
                 Write-Host "What if: Performing Robocopy purge on target $TargetFolder"
             } else {
@@ -102,14 +102,14 @@ function Run-Cleanup {
                 New-Item -Path $TempEmpty -ItemType Directory -Force | Out-Null
                 & robocopy $TempEmpty $TargetFolder /MIR /R:0 /W:0 /NJH /NJS /NDL /NC /NS | Out-Null
                 Remove-Item -Path $TempEmpty -Force -ErrorAction SilentlyContinue
-                Write-SeriunLog "Robocopy fallback purge completed." "SUCCESS"
+                Write-Log "Robocopy fallback purge completed." "SUCCESS"
             }
         }
     }
     
     # Start services
     foreach ($Service in $Services) {
-        Write-SeriunLog "Restarting service: $Service"
+        Write-Log "Restarting service: $Service"
         Start-Service -Name $Service
     }
 }
