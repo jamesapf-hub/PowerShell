@@ -1,15 +1,13 @@
 # Install Windows Updates (LTSC)
 
----
 
 ## Overview
 
 Triggers Windows Update check and installation using the native Windows Update Agent COM objects. Operates without any external module dependencies.
 
-> [!NOTE]
-> **Log File Location:** `C:\Logs\Install-WindowsUpdatesLTSC\WindowsUpdate_DDMMYY.log` (or `$env:SystemDrive\Logs\Install-WindowsUpdatesLTSC\WindowsUpdate_DDMMYY.log`)
 
----
+> [!NOTE]
+> **Log File Location:** C:\Logs\Install-WindowsUpdatesLTSC\WindowsUpdate_DDMMYY.log (or $env:SystemDrive\Logs\Install-WindowsUpdatesLTSC\WindowsUpdate_DDMMYY.log)
 
 ## Prerequisites
 
@@ -17,7 +15,6 @@ Triggers Windows Update check and installation using the native Windows Update A
 * **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
 * **Permissions:** Local Administrator rights required.
 
----
 
 ## Walkthrough & Usage Guide
 

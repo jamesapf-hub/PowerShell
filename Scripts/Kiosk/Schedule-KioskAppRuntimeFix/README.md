@@ -1,15 +1,13 @@
 # Schedule Kiosk App Runtime Fix
 
----
 
 ## Overview
 
 Creates a scheduled task to run Kiosk Shell App runtime fixes on user authentication to prevent logon UI hanging states.
 
-> [!NOTE]
-> **Log File Location:** `C:\Logs\Schedule-KioskAppRuntimeFix\Kiosk_Runtime_Fix.txt` (or `$env:SystemDrive\Logs\Schedule-KioskAppRuntimeFix\Kiosk_Runtime_Fix.txt`)
 
----
+> [!NOTE]
+> **Log File Location:** C:\Logs\Schedule-KioskAppRuntimeFix\Kiosk_Runtime_Fix.txt (or $env:SystemDrive\Logs\Schedule-KioskAppRuntimeFix\Kiosk_Runtime_Fix.txt)
 
 ## Prerequisites
 
@@ -17,7 +15,6 @@ Creates a scheduled task to run Kiosk Shell App runtime fixes on user authentica
 * **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
 * **Permissions:** Local Administrator rights required.
 
----
 
 ## Walkthrough & Usage Guide
 

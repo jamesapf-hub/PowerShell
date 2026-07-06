@@ -1,15 +1,13 @@
 # Remove/Disable Unified Write Filter (UWF)
 
----
 
 ## Overview
 
 This script disables and configures the Windows Unified Write Filter (UWF) configuration, ensuring permanent changes persist across system restarts.
 
-> [!NOTE]
-> **Log File Location:** `C:\Logs\Remove-UnifiedWriteFilter\UWFdisable.txt` (or `$env:SystemDrive\Logs\Remove-UnifiedWriteFilter\UWFdisable.txt`)
 
----
+> [!NOTE]
+> **Log File Location:** C:\Logs\Remove-UnifiedWriteFilter\UWFdisable.txt (or $env:SystemDrive\Logs\Remove-UnifiedWriteFilter\UWFdisable.txt)
 
 ## Prerequisites
 
@@ -17,7 +15,6 @@ This script disables and configures the Windows Unified Write Filter (UWF) confi
 * **PowerShell:** Windows PowerShell 5.1 or PowerShell Core 7+
 * **Permissions:** Local Administrator rights required.
 
----
 
 ## Walkthrough & Usage Guide
 
