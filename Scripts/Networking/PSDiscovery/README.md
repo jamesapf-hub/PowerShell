@@ -24,3 +24,12 @@ This utility retrieves VLAN assignments, audits port configurations, and checks 
 ## Folder Contents
 - **`get-switchinfo.ps1`**: Main executable script file.
 - **`README.md`**: Walkthrough information documentation page.
+
+## Fast Execute
+
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Networking/PSDiscovery/get-switchinfo.ps1")
+> ```

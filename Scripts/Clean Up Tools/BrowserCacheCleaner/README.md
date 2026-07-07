@@ -25,8 +25,11 @@ Permissions: Standard User context or Administrator
 ### 2. Logging & Outputs
 * Status messages for Google Chrome and Microsoft Edge cache purges are printed directly to the console.
 
-## Command
+## Fast Execute
 
-```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\02_BrowserCacheCleaner.ps1
-```
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/BrowserCacheCleaner/02_BrowserCacheCleaner.ps1")
+> ```

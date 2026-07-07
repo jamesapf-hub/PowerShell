@@ -28,8 +28,11 @@ Permissions: Local Administrator rights required (elevation check included)
 ### 2. Logging & Outputs
 * Status logs for folder detection, ownership acquisition, and deletion are printed directly to the console.
 
-## Command
+## Fast Execute
 
-```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\06_TidyUpWindows11.ps1
-```
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/TidyUpWindows11/06_TidyUpWindows11.ps1")
+> ```
