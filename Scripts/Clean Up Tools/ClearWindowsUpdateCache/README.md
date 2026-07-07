@@ -10,7 +10,7 @@ This PowerShell script stops Windows Update services (`wuauserv` and `bits`), pu
 * **Unified Logging:** Appends timestamped execution logs directly to `$env:SystemDrive\Logs\ClearWindowsUpdateCache`.
 
 > [!NOTE]
-> **Log File Location:** C:\Logs\ClearWindowsUpdateCache\SD_Clear_DDMMYY.log (or $env:SystemDrive\Logs\ClearWindowsUpdateCache\SD_Clear_DDMMYY.log)
+> **Log File Location:** `C:\Logs\ClearWindowsUpdateCache\SD_Clear_DDMMYY.log` (or `$env:SystemDrive\Logs\ClearWindowsUpdateCache\SD_Clear_DDMMYY.log`)
 
 ## Prerequisites
 OS Support: Windows 10 / 11 / Windows Server
