@@ -388,6 +388,43 @@ function Discover-ActiveSwitch {
     
     if ($RespondingSwitches.Count -eq 0) {
         Write-Host "[!] No SNMP-enabled switches responded in your local subnet (Community: '$Community')." -ForegroundColor Yellow
+        
+        # --- Fallback: Scan ARP cache for Netgear MAC Address vendor OUIs ---
+        $NetgearOUIs = @(
+            "00-09-5B", "00-14-6C", "00-18-4D", "00-1B-2F", "00-1F-33", "00-22-3F", "00-24-B2", "00-26-F2",
+            "04-A1-51", "10-0D-7F", "14-0C-76", "20-30-07", "20-E5-2A", "28-80-23", "2C-30-33", "30-46-9A",
+            "44-94-FC", "50-6A-03", "78-D6-F0", "84-1B-5E", "9C-D3-6D", "A0-04-60", "A0-21-B7", "A0-40-A0",
+            "B0-7F-B9", "C0-3F-0E", "C0-FF-D4", "E0-46-9A", "E8-FC-AF", "FC-EC-DA"
+        )
+        
+        $PotentialNetgear = @()
+        try {
+            $Neighbors = Get-NetNeighbor -ErrorAction SilentlyContinue | Where-Object { $_.LinkLayerAddress }
+            foreach ($Nb in $Neighbors) {
+                $Mac = $Nb.LinkLayerAddress.Replace(':', '-').ToUpper()
+                foreach ($OUI in $NetgearOUIs) {
+                    if ($Mac.StartsWith($OUI)) {
+                        $PotentialNetgear += [PSCustomObject]@{ IP = $Nb.IPAddress; MAC = $Nb.LinkLayerAddress }
+                    }
+                }
+            }
+        } catch {}
+        
+        if ($PotentialNetgear.Count -gt 0) {
+            Write-Host ""
+            Write-Host "==========================================================" -ForegroundColor Cyan
+            Write-Host " [!] DETECTED UNMANAGED / PLUS NETGEAR CANDIDATES:" -ForegroundColor Yellow
+            Write-Host " The following Netgear MAC addresses were found in your ARP cache."
+            Write-Host " Since Netgear 'Plus' switches (like GS108E) do not support SNMP,"
+            Write-Host " you can try opening their management web GUI in a browser:"
+            Write-Host "==========================================================" -ForegroundColor Cyan
+            foreach ($Dev in $PotentialNetgear) {
+                Write-Host " IP Address: http://$($Dev.IP)  (MAC: $($Dev.MAC))" -ForegroundColor Green
+            }
+            Write-Host "==========================================================" -ForegroundColor Cyan
+            Write-Host ""
+        }
+        
         return $null
     }
     elseif ($RespondingSwitches.Count -eq 1) {
