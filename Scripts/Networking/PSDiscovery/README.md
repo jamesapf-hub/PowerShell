@@ -52,6 +52,8 @@ Get-SwitchPortInfo
 
 ## Command
 
-```powershell
-iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Networking/PSDiscovery/get-switchinfo.ps1")
-```
+> [!TIP]
+> **Fast Execute Command (Online Mode):**
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Networking/PSDiscovery/get-switchinfo.ps1")
+> ```
