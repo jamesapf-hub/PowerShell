@@ -428,7 +428,7 @@ function Discover-ActiveSwitch {
 # Handle help mode
 if ($IPAddress -eq "help" -or $Help) {
     Show-HelpGuide
-    exit
+    return
 }
 
 if ($InMemory -or $Install -or $ForceInstall) {
@@ -438,14 +438,15 @@ if ($InMemory -or $Install -or $ForceInstall) {
         if (Test-Path $LocalScript) {
             Write-Host "[*] Launching local installed version..." -ForegroundColor Cyan
             & $LocalScript @args
-            exit
+            return
         }
     }
-    exit
+    return
 }
 
 # Load SharpSnmpLib assembly early to support interactive discovery
-$DllPath = Join-Path $ScriptDir "Modules\SharpSnmpLib.dll"
+$ScriptDirForAssembly = if ($InMemory) { Join-Path $env:USERPROFILE "PSDiscovery" } else { $ScriptDir }
+$DllPath = Join-Path $ScriptDirForAssembly "Modules\SharpSnmpLib.dll"
 $HasSnmpDll = $false
 
 if (Test-Path $DllPath) {
@@ -512,7 +513,7 @@ if ([string]::IsNullOrWhiteSpace($IPAddress)) {
                 $ExitMenu = $true
             }
             "2" {
-                $PortScript = Join-Path $ScriptDir "Get-SwitchPortInfo.ps1"
+                $PortScript = Join-Path $ScriptDirForAssembly "Get-SwitchPortInfo.ps1"
                 if (Test-Path $PortScript) {
                     & $PortScript
                 }
