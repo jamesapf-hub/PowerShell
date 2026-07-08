@@ -60,7 +60,7 @@ $Xaml = @"
         WindowStartupLocation="CenterScreen" Background="#131313" Foreground="#f3f4f6">
     <Window.Resources>
         <Style x:Key="BrandBtn" TargetType="Button">
-            <Setter Property="Background" Value="#ff6a00"/>
+            <Setter Property="Background" Value="#3B82F6"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Padding" Value="15,8"/>
@@ -68,21 +68,21 @@ $Xaml = @"
             <Setter Property="Cursor" Value="Hand"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#d45800"/>
+                    <Setter Property="Background" Value="#1D4ED8"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="SecBtn" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#ff6a00"/>
-            <Setter Property="BorderBrush" Value="#ff6a00"/>
+            <Setter Property="Foreground" Value="#3B82F6"/>
+            <Setter Property="BorderBrush" Value="#3B82F6"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Padding" Value="12,6"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#ff6a00"/>
+                    <Setter Property="Background" Value="#3B82F6"/>
                     <Setter Property="Foreground" Value="White"/>
                 </Trigger>
             </Style.Triggers>
@@ -115,7 +115,7 @@ $Xaml = @"
                 
                 <StackPanel Grid.Column="0">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="PS C:\&gt;" Foreground="#ff6a00" FontFamily="Consolas" FontSize="20" FontWeight="Bold" Margin="0,0,10,0"/>
+                        <TextBlock Text="PS C:\&gt;" Foreground="#3B82F6" FontFamily="Consolas" FontSize="20" FontWeight="Bold" Margin="0,0,10,0"/>
                         <TextBlock Text="M365 Admin Console" Foreground="White" FontSize="20" FontWeight="Bold"/>
                     </StackPanel>
                     <TextBlock Text="POWERSHELL 7 // MICROSOFT GRAPH SDK v2.0" Foreground="#555" FontFamily="Consolas" FontSize="11" Margin="0,2,0,0"/>
@@ -135,7 +135,7 @@ $Xaml = @"
         <!-- Nav Tabs -->
         <Border Name="borderNav" Visibility="Collapsed" Grid.Row="1" Background="#131313" BorderBrush="#2c2c2e" BorderThickness="0,0,0,1">
             <StackPanel Orientation="Horizontal" Margin="20,0">
-                <Button Name="btnNavConnection" Style="{StaticResource TabBtn}" Content="1. Establish Connection" BorderBrush="#ff6a00" Foreground="White"/>
+                <Button Name="btnNavConnection" Style="{StaticResource TabBtn}" Content="1. Establish Connection" BorderBrush="#3B82F6" Foreground="White"/>
                 <Button Name="btnNavDashboard" Style="{StaticResource TabBtn}" Content="2. Dashboard Insights"/>
                 <Button Name="btnNavDirectory" Style="{StaticResource TabBtn}" Content="3. User Directory"/>
             </StackPanel>
@@ -154,7 +154,7 @@ $Xaml = @"
                         <TextBlock Text="Please select your operational role to begin auditing tenant users." Foreground="#9ca3af" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,25"/>
 
                         <!-- Step 1: Role Selection Cards -->
-                        <TextBlock Text="STEP 1: SELECT YOUR OPERATING ROLE" Foreground="#ff6a00" FontFamily="Consolas" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Center"/>
+                        <TextBlock Text="STEP 1: SELECT YOUR OPERATING ROLE" Foreground="#3B82F6" FontFamily="Consolas" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Center"/>
                         <UniformGrid Columns="2" Margin="0,0,0,25" Width="600">
                             <!-- Service Desk Role Card -->
                             <Button Name="btnRoleSelectServiceDesk" Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" Padding="15" Margin="0,0,10,0" Cursor="Hand" Height="100">
@@ -201,7 +201,7 @@ $Xaml = @"
                         
                         <!-- Step 2: Connection Panel (Collapsed by default, shown once role selected) -->
                         <StackPanel Name="panelConnectionMethods" Visibility="Collapsed" HorizontalAlignment="Center" Width="740">
-                            <TextBlock Text="STEP 2: CHOOSE CONNECTION METHOD" Foreground="#ff6a00" FontFamily="Consolas" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Center"/>
+                            <TextBlock Text="STEP 2: CHOOSE CONNECTION METHOD" Foreground="#3B82F6" FontFamily="Consolas" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Center"/>
                             
                             <!-- Side-by-Side Connection Cards -->
                             <UniformGrid Columns="3" Margin="0,0,0,20">
@@ -274,7 +274,7 @@ $Xaml = @"
                             <!-- Demo Sandbox Option at the bottom -->
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
                                 <TextBlock Text="Need to test without credentials?" Foreground="#777" FontSize="12" VerticalAlignment="Center"/>
-                                <Button Name="btnDemoMode" Background="Transparent" BorderThickness="0" Foreground="#ff6a00" Content="Launch Demo Sandbox Mode" FontWeight="Bold" Cursor="Hand" Margin="8,0,0,0">
+                                <Button Name="btnDemoMode" Background="Transparent" BorderThickness="0" Foreground="#3B82F6" Content="Launch Demo Sandbox Mode" FontWeight="Bold" Cursor="Hand" Margin="8,0,0,0">
                                     <Button.Style>
                                         <Style TargetType="Button">
                                             <Setter Property="Template">
@@ -295,7 +295,7 @@ $Xaml = @"
                 
                 <!-- Connected Session Info Screen -->
                 <StackPanel Name="panelConnectedSession" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Width="450">
-                    <Border Background="#1c1c1e" BorderBrush="#ff6a00" BorderThickness="1" CornerRadius="8" Padding="25">
+                    <Border Background="#1c1c1e" BorderBrush="#3B82F6" BorderThickness="1" CornerRadius="8" Padding="25">
                         <StackPanel>
                             <TextBlock Text="Active Session Established" Foreground="White" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
                             <TextBlock Text="You are successfully authenticated and auditing the tenant." Foreground="#9ca3af" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,20"/>
@@ -312,7 +312,7 @@ $Xaml = @"
                                     </Grid>
                                     <Grid Margin="0,6">
                                         <TextBlock Text="Uptime:" Foreground="#9ca3af" FontSize="12"/>
-                                        <TextBlock Name="txtSessionUptime" Text="00:00:00" Foreground="#ff6a00" FontSize="12" HorizontalAlignment="Right" FontWeight="Bold"/>
+                                        <TextBlock Name="txtSessionUptime" Text="00:00:00" Foreground="#3B82F6" FontSize="12" HorizontalAlignment="Right" FontWeight="Bold"/>
                                     </Grid>
                                     <Grid Margin="0,6">
                                         <TextBlock Text="Mode:" Foreground="#9ca3af" FontSize="12"/>
@@ -348,7 +348,7 @@ $Xaml = @"
                     </Grid.ColumnDefinitions>
                     
                     <!-- Total -->
-                    <Border Grid.Column="0" Background="#1c1c1e" BorderBrush="#ff6a00" BorderThickness="1,0,0,0" Padding="12,8" Margin="0,0,8,0">
+                    <Border Grid.Column="0" Background="#1c1c1e" BorderBrush="#3B82F6" BorderThickness="1,0,0,0" Padding="12,8" Margin="0,0,8,0">
                         <StackPanel>
                             <TextBlock Text="TOTAL LICENSED" Foreground="#9ca3af" FontSize="10" FontWeight="Bold"/>
                             <TextBlock Name="kpiTotal" Text="0" Foreground="White" FontSize="22" FontWeight="Bold" Margin="0,2,0,0"/>
@@ -376,7 +376,7 @@ $Xaml = @"
                         </StackPanel>
                     </Border>
                     <!-- Savings -->
-                    <Border Name="borderKpiSavings" Grid.Column="4" Background="#1c1c1e" BorderBrush="#ff6a00" BorderThickness="1,0,0,0" Padding="12,6" Margin="0,0,8,0">
+                    <Border Name="borderKpiSavings" Grid.Column="4" Background="#1c1c1e" BorderBrush="#3B82F6" BorderThickness="1,0,0,0" Padding="12,6" Margin="0,0,8,0">
                         <StackPanel>
                             <TextBlock Text="WASTED MONEY (&gt;6m)" Foreground="#9ca3af" FontSize="9" FontWeight="Bold"/>
                             <TextBlock Name="kpiSavings" Text="£0.00" Foreground="#ef4444" FontSize="16" FontWeight="Bold" Margin="0,1,0,0"/>
@@ -385,7 +385,7 @@ $Xaml = @"
                         </StackPanel>
                     </Border>
                     <!-- Pool Waste -->
-                    <Border Name="borderKpiPoolWaste" Grid.Column="5" Background="#1c1c1e" BorderBrush="#ff6a00" BorderThickness="1,0,0,0" Padding="12,6">
+                    <Border Name="borderKpiPoolWaste" Grid.Column="5" Background="#1c1c1e" BorderBrush="#3B82F6" BorderThickness="1,0,0,0" Padding="12,6">
                         <StackPanel>
                             <TextBlock Text="POOL WASTE (UNASSIGNED)" Foreground="#9ca3af" FontSize="9" FontWeight="Bold"/>
                                     <TextBlock Name="kpiPoolWaste" Text="£0.00" Foreground="#ef4444" FontSize="16" FontWeight="Bold" Margin="0,1,0,0"/>
@@ -553,7 +553,7 @@ $Xaml = @"
                     
                     <!-- Filters -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <Button Name="btnFilterAll" Content="All Users" Padding="12,6" Background="#ff6a00" Foreground="White" FontWeight="SemiBold" BorderThickness="0" Margin="0,0,6,0" Tag="all"/>
+                        <Button Name="btnFilterAll" Content="All Users" Padding="12,6" Background="#3B82F6" Foreground="White" FontWeight="SemiBold" BorderThickness="0" Margin="0,0,6,0" Tag="all"/>
                         <Button Name="btnFilterActive" Content="Active (&lt;=30d)" Padding="12,6" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,6,0" Tag="active"/>
                         <Button Name="btnFilterInactive90d" Content="Inactive (&gt;90d)" Padding="12,6" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,6,0" Tag="inactive90d"/>
                         <Button Name="btnFilterInactive1yr" Content="Inactive (&gt;1yr)" Padding="12,6" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,6,0" Tag="inactive1yr"/>
@@ -562,7 +562,7 @@ $Xaml = @"
                     
                     <!-- Search Box -->
                     <Grid Grid.Column="1">
-                        <TextBox Name="txtSearch" Background="#0c0c0d" BorderBrush="#2c2c2e" Foreground="White" Padding="8,6" FontSize="12" SelectionBrush="#ff6a00" CaretBrush="White"/>
+                        <TextBox Name="txtSearch" Background="#0c0c0d" BorderBrush="#2c2c2e" Foreground="White" Padding="8,6" FontSize="12" SelectionBrush="#3B82F6" CaretBrush="White"/>
                         <TextBlock Text="Search Display Name/UPN..." Foreground="#555" IsHitTestVisible="False" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
@@ -623,7 +623,7 @@ $Xaml = @"
                                         <Setter Property="Foreground" Value="Black"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding StatusCategory}" Value="Inactive (90-365d)">
-                                        <Setter Property="Background" Value="#f97316"/>
+                                        <Setter Property="Background" Value="#3B82F6"/>
                                         <Setter Property="Foreground" Value="White"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding StatusCategory}" Value="Inactive (&gt;1yr)">
@@ -730,26 +730,26 @@ function Get-MockDateString($DaysAgo) {
 }
 
 $MockData = @(
-    [PSCustomObject]@{ DisplayName = "Alex Wilber"; UserPrincipalName = "AlexW@seriun.co.uk"; AssignedLicenses = "Microsoft 365 Business Premium, Microsoft 365 Copilot"; LastSignInDate = (Get-MockDateString 2); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Adele Vance"; UserPrincipalName = "AdeleV@seriun.co.uk"; AssignedLicenses = "Microsoft 365 Business Premium"; LastSignInDate = (Get-MockDateString 15); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Pradeep Gupta"; UserPrincipalName = "PradeepG@seriun.co.uk"; AssignedLicenses = "Power BI Pro, Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 390); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Megan Bowen"; UserPrincipalName = "MeganB@seriun.co.uk"; AssignedLicenses = "Microsoft 365 E3"; LastSignInDate = (Get-MockDateString 105); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Joni Sherman"; UserPrincipalName = "JoniS@seriun.co.uk"; AssignedLicenses = "Microsoft 365 Business Basic"; LastSignInDate = "No interactive sign-in recorded"; AccountEnabled = $false }
-    [PSCustomObject]@{ DisplayName = "Lynne Robbins"; UserPrincipalName = "LynneR@seriun.co.uk"; AssignedLicenses = "Microsoft 365 F3, Exchange Online (Plan 2)"; LastSignInDate = (Get-MockDateString 410); AccountEnabled = $false }
-    [PSCustomObject]@{ DisplayName = "Isaiah Langer"; UserPrincipalName = "IsaiahL@seriun.co.uk"; AssignedLicenses = "Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 95); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Lidia Holloway"; UserPrincipalName = "LidiaH@seriun.co.uk"; AssignedLicenses = "Microsoft 365 Business Premium, Power BI Pro"; LastSignInDate = (Get-MockDateString 0); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Grady Archie"; UserPrincipalName = "GradyA@seriun.co.uk"; AssignedLicenses = "Microsoft 365 Business Standard"; LastSignInDate = (Get-MockDateString 195); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Patti Fernandez"; UserPrincipalName = "PattiF@seriun.co.uk"; AssignedLicenses = "Microsoft Teams Exploratory"; LastSignInDate = "No interactive sign-in recorded"; AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Nestor Wilke"; UserPrincipalName = "NestorW@seriun.co.uk"; AssignedLicenses = "Microsoft 365 Copilot, Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 35); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Diego Siciliani"; UserPrincipalName = "DiegoS@seriun.co.uk"; AssignedLicenses = "Microsoft 365 Business Premium"; LastSignInDate = (Get-MockDateString 18); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Seriun Test Account"; UserPrincipalName = "seriun.test@seriun.co.uk"; AssignedLicenses = "Microsoft 365 Business Premium"; LastSignInDate = (Get-MockDateString 5); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "JP Admin User"; UserPrincipalName = "jp@seriun.co.uk"; AssignedLicenses = "Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 12); AccountEnabled = $true }
+    [PSCustomObject]@{ DisplayName = "Alex Wilber"; UserPrincipalName = "AlexW@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium, Microsoft 365 Copilot"; LastSignInDate = (Get-MockDateString 2); AccountEnabled = $true }
+    [PSCustomObject]@{ DisplayName = "Adele Vance"; UserPrincipalName = "AdeleV@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium"; LastSignInDate = (Get-MockDateString 15); AccountEnabled = $true }
+    [PSCustomObject]@{ DisplayName = "Pradeep Gupta"; UserPrincipalName = "PradeepG@contoso.com"; AssignedLicenses = "Power BI Pro, Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 390); AccountEnabled = $true }
+    [PSCustomObject]@{ DisplayName = "Megan Bowen"; UserPrincipalName = "MeganB@contoso.com"; AssignedLicenses = "Microsoft 365 E3"; LastSignInDate = (Get-MockDateString 105); AccountEnabled = $true }
+    [PSCustomObject]@{ DisplayName = "Joni Sherman"; UserPrincipalName = "JoniS@contoso.com"; AssignedLicenses = "Microsoft 365 Business Basic"; LastSignInDate = "No interactive sign-in recorded"; AccountEnabled = $false }
+    [PSCustomObject]@{ DisplayName = "Lynne Robbins"; UserPrincipalName = "LynneR@contoso.com"; AssignedLicenses = "Microsoft 365 F3, Exchange Online (Plan 2)"; LastSignInDate = (Get-MockDateString 410); AccountEnabled = $false }
+    [PSCustomObject]@{ DisplayName = "Isaiah Langer"; UserPrincipalName = "IsaiahL@contoso.com"; AssignedLicenses = "Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 95); AccountEnabled = $true }
+    [PSCustomObject]@{ DisplayName = "Lidia Holloway"; UserPrincipalName = "LidiaH@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium, Power BI Pro"; LastSignInDate = (Get-MockDateString 0); AccountEnabled = $true }
+    [PSCustomObject]@{ DisplayName = "Grady Archie"; UserPrincipalName = "GradyA@contoso.com"; AssignedLicenses = "Microsoft 365 Business Standard"; LastSignInDate = (Get-MockDateString 195); AccountEnabled = $true }
+    [PSCustomObject]@{ DisplayName = "Patti Fernandez"; UserPrincipalName = "PattiF@contoso.com"; AssignedLicenses = "Microsoft Teams Exploratory"; LastSignInDate = "No interactive sign-in recorded"; AccountEnabled = $true }
+    [PSCustomObject]@{ DisplayName = "Nestor Wilke"; UserPrincipalName = "NestorW@contoso.com"; AssignedLicenses = "Microsoft 365 Copilot, Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 35); AccountEnabled = $true }
+    [PSCustomObject]@{ DisplayName = "Diego Siciliani"; UserPrincipalName = "DiegoS@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium"; LastSignInDate = (Get-MockDateString 18); AccountEnabled = $true }
+    [PSCustomObject]@{ DisplayName = "Test Admin Account"; UserPrincipalName = "seriun.test@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium"; LastSignInDate = (Get-MockDateString 5); AccountEnabled = $true }
+    [PSCustomObject]@{ DisplayName = "Demo Admin User"; UserPrincipalName = "jp@contoso.com"; AssignedLicenses = "Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 12); AccountEnabled = $true }
 )
 
 $ActivityColors = @{
     "Active (<=30d)"    = "#10b981"
     "Inactive (30-90d)"  = "#eab308"
-    "Inactive (90-365d)" = "#f97316"
+    "Inactive (90-365d)" = "#3B82F6"
     "Inactive (>1yr)"    = "#ef4444"
     "Never Logged In"    = "#64748b"
 }
@@ -1074,14 +1074,14 @@ function Show-VerificationSelectorDialog {
         ResizeMode="NoResize" ShowInTaskbar="False">
     <Window.Resources>
         <Style x:Key="DialogBtn" TargetType="Button">
-            <Setter Property="Background" Value="#ff6a00"/>
+            <Setter Property="Background" Value="#3B82F6"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#d45800"/>
+                    <Setter Property="Background" Value="#1D4ED8"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -1108,8 +1108,8 @@ function Show-VerificationSelectorDialog {
         </Grid.RowDefinitions>
         
         <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="Verification Accounts Detected" Foreground="#ff6a00" FontSize="15" FontWeight="Bold"/>
-            <TextBlock Text="The following Seriun/JP accounts were found in the list. Uncheck any accounts you want to remove from the exported file." 
+            <TextBlock Text="Verification Accounts Detected" Foreground="#3B82F6" FontSize="15" FontWeight="Bold"/>
+            <TextBlock Text="The following Test/Admin accounts were found in the list. Uncheck any accounts you want to remove from the exported file." 
                        Foreground="#9ca3af" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
         </StackPanel>
         
@@ -1201,11 +1201,11 @@ function Show-EmailTemplateDialog {
             </Style.Triggers>
         </Style>
         <Style x:Key="BrandDialogBtn" TargetType="Button" BasedOn="{StaticResource DialogBtn}">
-            <Setter Property="Background" Value="#ff6a00"/>
+            <Setter Property="Background" Value="#3B82F6"/>
             <Setter Property="Foreground" Value="White"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#ff8533"/>
+                    <Setter Property="Background" Value="#60A5FA"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -1220,7 +1220,7 @@ function Show-EmailTemplateDialog {
         
         <!-- Header -->
         <StackPanel Margin="0,0,0,15">
-            <TextBlock Text="GENERATED EMAIL DRAFT" Foreground="#ff6a00" FontSize="14" FontWeight="Bold"/>
+            <TextBlock Text="GENERATED EMAIL DRAFT" Foreground="#3B82F6" FontSize="14" FontWeight="Bold"/>
             <TextBlock Text="Review the generated draft below. You can copy it directly to your clipboard." Foreground="#9ca3af" FontSize="11" Margin="0,3,0,0"/>
         </StackPanel>
         
@@ -1820,7 +1820,7 @@ function Process-UserData($Users) {
         $DisplayNameLower = $user.DisplayName.ToLower()
         $VerificationText = "-"
         if ($Username -like "*seriun*" -or $Username -eq "jp" -or $Username -like "jp.*" -or $Username -like "*.jp" -or $DisplayNameLower -like "*seriun*" -or $DisplayNameLower -match "\bjp\b") {
-            $VerificationText = "Seriun/JP Account"
+            $VerificationText = "Test/Admin Account"
         }
 
         $Enabled = $true
@@ -1984,7 +1984,7 @@ function Process-UserData($Users) {
     $wpf_kpiPoolWasteCount.Text = "$PoolWasteCountVal unused licenses"
     
     # Draw License Bar Chart
-    if ($wpf_panelLicenseChart) { UpdateBarChart $wpf_panelLicenseChart $LicenseMap "#ff6a00" }
+    if ($wpf_panelLicenseChart) { UpdateBarChart $wpf_panelLicenseChart $LicenseMap "#3B82F6" }
     
     # Draw Activity Bar Chart with distinct colors
     $wpf_panelActivityChart.Children.Clear()
@@ -2050,15 +2050,15 @@ function Show-Page($PageName) {
     
     if ($PageName -eq "Connection") {
         $wpf_pageConnection.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_btnNavConnection.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff6a00")
+        $wpf_btnNavConnection.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
         $wpf_btnNavConnection.Foreground = [System.Windows.Media.Brushes]::White
     } elseif ($PageName -eq "Dashboard") {
         $wpf_pageDashboard.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_btnNavDashboard.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff6a00")
+        $wpf_btnNavDashboard.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
         $wpf_btnNavDashboard.Foreground = [System.Windows.Media.Brushes]::White
     } elseif ($PageName -eq "Directory") {
         $wpf_pageDirectory.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_btnNavDirectory.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff6a00")
+        $wpf_btnNavDirectory.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
         $wpf_btnNavDirectory.Foreground = [System.Windows.Media.Brushes]::White
     }
 }
@@ -2085,17 +2085,17 @@ function Show-ConnectionMethod($MethodName) {
     
     if ($MethodName -eq "M365") {
         $wpf_panelMethodM365.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_btnMethodM365.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff6a00")
+        $wpf_btnMethodM365.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
         $wpf_btnMethodM365.Foreground = [System.Windows.Media.Brushes]::White
         $wpf_btnMethodM365.BorderThickness = 0
     } elseif ($MethodName -eq "App") {
         $wpf_panelMethodApp.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_btnMethodApp.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff6a00")
+        $wpf_btnMethodApp.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
         $wpf_btnMethodApp.Foreground = [System.Windows.Media.Brushes]::White
         $wpf_btnMethodApp.BorderThickness = 0
     } elseif ($MethodName -eq "CSV") {
         $wpf_panelMethodCSV.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_btnMethodCSV.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff6a00")
+        $wpf_btnMethodCSV.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
         $wpf_btnMethodCSV.Foreground = [System.Windows.Media.Brushes]::White
         $wpf_btnMethodCSV.BorderThickness = 0
     }
@@ -2105,7 +2105,7 @@ function Select-Role($Role) {
     $Script:UserRole = $Role
     
     if ($Role -eq "ServiceDesk") {
-        $wpf_btnRoleSelectServiceDesk.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff6a00")
+        $wpf_btnRoleSelectServiceDesk.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
         $wpf_btnRoleSelectServiceDesk.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff8c00")
         
         $wpf_btnRoleSelectSales.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1c1c1e")
@@ -2114,7 +2114,7 @@ function Select-Role($Role) {
         $wpf_btnRoleSelectServiceDesk.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1c1c1e")
         $wpf_btnRoleSelectServiceDesk.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
         
-        $wpf_btnRoleSelectSales.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff6a00")
+        $wpf_btnRoleSelectSales.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
         $wpf_btnRoleSelectSales.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff8c00")
     }
     
@@ -2405,8 +2405,8 @@ $wpf_btnDemoMode.Add_Click({
     $wpf_txtStatusLabel.Text = "Active Sandbox Session"
     $wpf_elStatusDot.Fill = [System.Windows.Media.Brushes]::Green
     
-    $wpf_txtSessionTenant.Text = "seriun.co.uk (Demo)"
-    $wpf_txtSessionUser.Text = "admin_demo@seriun.co.uk"
+    $wpf_txtSessionTenant.Text = "contoso.com (Demo)"
+    $wpf_txtSessionUser.Text = "admin_demo@contoso.com"
     $wpf_txtSessionMode.Text = "DEMO STANDALONE"
     $wpf_btnDisconnect.Visibility = [System.Windows.Visibility]::Visible
     
@@ -2500,7 +2500,7 @@ function Set-FilterButtonActive($ActiveButton) {
         $btn.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
         $btn.BorderThickness = 1
     }
-    $ActiveButton.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff6a00")
+    $ActiveButton.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
     $ActiveButton.Foreground = [System.Windows.Media.Brushes]::White
     $ActiveButton.BorderThickness = 0
 }
@@ -2545,9 +2545,9 @@ function Invoke-CSVExport {
         $Path = Join-Path $OutputDir "LicensedUsers_${CleanTenant}_${DateStr}.csv"
         
         $ExcludedUPNs = @()
-        $HasSeriunOrJP = $Script:GridRows | Where-Object { $_.VerificationText -eq "Seriun/JP Account" }
-        if ($HasSeriunOrJP) {
-            $DlgResponse = Show-VerificationSelectorDialog -Users $HasSeriunOrJP
+        $HasTestOrAdmin = $Script:GridRows | Where-Object { $_.VerificationText -eq "Test/Admin Account" }
+        if ($HasTestOrAdmin) {
+            $DlgResponse = Show-VerificationSelectorDialog -Users $HasTestOrAdmin
             if ($DlgResponse.Result -ne "Proceed") {
                 Log-ToTerminal "CSV Export cancelled by user." "Warning"
                 return
@@ -2584,7 +2584,7 @@ function Invoke-CSVExport {
         }
         $ExportRows | Export-Csv -Path $Path -NoTypeInformation -Encoding utf8
         
-        $MsgSuffix = if ($ExcludedUPNs.Count -gt 0) { " (Excluded $($ExcludedUPNs.Count) Seriun/JP account(s))" } else { "" }
+        $MsgSuffix = if ($ExcludedUPNs.Count -gt 0) { " (Excluded $($ExcludedUPNs.Count) Test/Admin account(s))" } else { "" }
         Log-ToTerminal "CSV report auto-saved to: $Path$MsgSuffix" "Success"
         
         $Result = [System.Windows.MessageBox]::Show("CSV successfully exported to:`n$Path`n`nWould you like to open the file?", "Export Success", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Information)
@@ -2649,9 +2649,9 @@ function Invoke-ExcelExport {
         Update-UI
         
         $ExcludedUPNs = @()
-        $HasSeriunOrJP = $Script:GridRows | Where-Object { $_.VerificationText -eq "Seriun/JP Account" }
-        if ($HasSeriunOrJP) {
-            $DlgResponse = Show-VerificationSelectorDialog -Users $HasSeriunOrJP
+        $HasTestOrAdmin = $Script:GridRows | Where-Object { $_.VerificationText -eq "Test/Admin Account" }
+        if ($HasTestOrAdmin) {
+            $DlgResponse = Show-VerificationSelectorDialog -Users $HasTestOrAdmin
             if ($DlgResponse.Result -ne "Proceed") {
                 Log-ToTerminal "Excel Export cancelled by user." "Warning"
                 return
@@ -2718,7 +2718,7 @@ function Invoke-ExcelExport {
             switch ($Cat) {
                 "Active (<=30d)"     { $BgColor = [System.Drawing.ColorTranslator]::FromHtml("#10b981") }
                 "Inactive (30-90d)"   { $BgColor = [System.Drawing.ColorTranslator]::FromHtml("#eab308"); $FontColor = "Black" } # Black text on yellow for legibility
-                "Inactive (90-365d)"  { $BgColor = [System.Drawing.ColorTranslator]::FromHtml("#f97316") }
+                "Inactive (90-365d)"  { $BgColor = [System.Drawing.ColorTranslator]::FromHtml("#3B82F6") }
                 "Inactive (>1yr)"     { $BgColor = [System.Drawing.ColorTranslator]::FromHtml("#ef4444") }
                 "Never Logged In"     { $BgColor = [System.Drawing.ColorTranslator]::FromHtml("#64748b") }
             }
@@ -2829,7 +2829,7 @@ function Invoke-ExcelExport {
         
         Close-ExcelPackage -ExcelPackage $Excel
         
-        $MsgSuffix = if ($ExcludedUPNs.Count -gt 0) { " (Excluded $($ExcludedUPNs.Count) Seriun/JP account(s))" } else { "" }
+        $MsgSuffix = if ($ExcludedUPNs.Count -gt 0) { " (Excluded $($ExcludedUPNs.Count) Test/Admin account(s))" } else { "" }
         Log-ToTerminal "Excel report auto-saved to: $Path$MsgSuffix" "Success"
         
         $Result = [System.Windows.MessageBox]::Show("Excel successfully exported to:`n$Path`n`nWould you like to open the file?", "Export Success", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Information)
@@ -2940,7 +2940,7 @@ function Invoke-PDFExport {
                 <td>$($row.LastSignInDate)</td>
                 <td style="color: #ef4444; font-weight: 600;">$($row.WastedCostText)</td>
                 <td style="color: #10b981; font-weight: 600;">$($row.MonthlySavingsText)</td>
-                <td style="color: #ff6a00; font-weight: 600;">$($row.Recommendation)</td>
+                <td style="color: #3B82F6; font-weight: 600;">$($row.Recommendation)</td>
             </tr>
 "@
             }
@@ -2969,7 +2969,7 @@ function Invoke-PDFExport {
                 <td style="text-align: center; font-size: 11px;">$($row.AccountStatusText)</td>
                 <td style="text-align: right; font-weight: 500;">$($row.WastedCostText)</td>
                 <td style="text-align: right; font-weight: 500;">$($row.MonthlySavingsText)</td>
-                <td style="font-size: 11px; color: #ff6a00;">$($row.Recommendation)</td>
+                <td style="font-size: 11px; color: #3B82F6;">$($row.Recommendation)</td>
             </tr>
 "@
         }
@@ -3062,7 +3062,7 @@ function Invoke-PDFExport {
             line-height: 1.5;
         }
         .header {
-            border-bottom: 3px solid #ff6a00;
+            border-bottom: 3px solid #3B82F6;
             padding-bottom: 20px;
             margin-bottom: 30px;
             display: flex;
@@ -3181,7 +3181,7 @@ function Invoke-PDFExport {
     </div>
 
     <div class="kpi-container">
-        <div class="kpi-card" style="border-left: 3px solid #ff6a00;">
+        <div class="kpi-card" style="border-left: 3px solid #3B82F6;">
             <div class="title">Total Licensed</div>
             <div class="value">$Total</div>
             <div class="sub">Active Entra accounts</div>
@@ -3253,7 +3253,7 @@ function Invoke-PDFExport {
     </table>
 
     <div class="footer">
-        Generated by M365 PowerShell Admin Console &copy; 2026 Seriun. All rights reserved.
+        Generated by M365 PowerShell Admin Console &copy; 2026 Contoso. All rights reserved.
     </div>
 
     <script>

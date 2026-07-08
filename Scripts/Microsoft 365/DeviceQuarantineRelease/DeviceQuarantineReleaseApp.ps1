@@ -31,7 +31,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
         
         <!-- Primary Button Style (Indigo) -->
         <Style TargetType="Button">
-            <Setter Property="Background" Value="#6366F1"/>
+            <Setter Property="Background" Value="#3B82F6"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="15,8"/>
@@ -45,10 +45,10 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#4F46E5"/>
+                                <Setter TargetName="Border" Property="Background" Value="#2563EB"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#3730A3"/>
+                                <Setter TargetName="Border" Property="Background" Value="#1D4ED8"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Border" Property="Background" Value="#1E293B"/>
@@ -128,7 +128,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="Border" Property="BorderBrush" Value="#6366F1"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#3B82F6"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -161,7 +161,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
                                             <Setter TargetName="Border" Property="Background" Value="#1E293B"/>
                                         </Trigger>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="Border" Property="Background" Value="#6366F1"/>
+                                            <Setter TargetName="Border" Property="Background" Value="#3B82F6"/>
                                             <Setter Property="Foreground" Value="White"/>
                                         </Trigger>
                                     </ControlTemplate.Triggers>
@@ -308,7 +308,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
                         <!-- Empty/Feedback States overlaying the ListBox -->
                         <TextBlock Grid.Row="1" x:Name="TxtNoDevices" Text="No quarantined devices found for this user." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#94A3B8" Visibility="Collapsed"/>
-                        <TextBlock Grid.Row="1" x:Name="TxtLoadingDevices" Text="Querying Mobile Devices..." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#6366F1" FontWeight="Bold" Visibility="Collapsed"/>
+                        <TextBlock Grid.Row="1" x:Name="TxtLoadingDevices" Text="Querying Mobile Devices..." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#3B82F6" FontWeight="Bold" Visibility="Collapsed"/>
                     </Grid>
 
                     <!-- Actions Button Panel -->
