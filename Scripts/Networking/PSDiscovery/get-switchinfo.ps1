@@ -64,6 +64,13 @@ function Install-PSDiscovery {
     foreach ($File in $FilesToDownload) {
         $Dest = Join-Path $InstallDir $File
         if ($SourceDir -and (Test-Path (Join-Path $SourceDir $File))) {
+            $SourcePath = [System.IO.Path]::GetFullPath((Join-Path $SourceDir $File))
+            $DestPath = [System.IO.Path]::GetFullPath($Dest)
+            if ($SourcePath -ieq $DestPath) {
+                # Skip self-copy to prevent file locks
+                continue
+            }
+            
             Write-Host "[-] Copying local $File..." -ForegroundColor Gray
             try {
                 Copy-Item -Path (Join-Path $SourceDir $File) -Destination $Dest -Force -ErrorAction Stop
@@ -453,68 +460,79 @@ if (Test-Path $DllPath) {
 
 # Handle interactive mode if IPAddress is empty
 if ([string]::IsNullOrWhiteSpace($IPAddress)) {
-    Clear-Host
-    Write-Host "==========================================================" -ForegroundColor Cyan
-    Write-Host "             PSDiscovery Switch Info Utility             " -ForegroundColor Cyan
-    Write-Host "==========================================================" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Please select an option:" -ForegroundColor Yellow
-    Write-Host " 1. Run SNMP Switch Audit (Auto-Discover or Enter IP)" -ForegroundColor White
-    Write-Host " 2. Run LLDP/CDP Port Capture (Discover Switch & Port)" -ForegroundColor White
-    Write-Host " 3. Install / Reinstall PSDiscovery Locally (For Offline Use)" -ForegroundColor White
-    Write-Host " 4. Exit" -ForegroundColor White
-    Write-Host "==========================================================" -ForegroundColor Cyan
-    Write-Host ""
-    
-    $Choice = Read-Host "Enter your choice [1-4]"
-    Write-Host ""
-    
-    switch ($Choice) {
-        "1" {
-            if (-not $HasSnmpDll) {
-                Write-Host "[!] SharpSnmpLib.dll is missing. Cannot perform SNMP audit or discovery." -ForegroundColor Red
+    $ExitMenu = $false
+    while (-not $ExitMenu) {
+        Clear-Host
+        Write-Host "==========================================================" -ForegroundColor Cyan
+        Write-Host "             PSDiscovery Switch Info Utility             " -ForegroundColor Cyan
+        Write-Host "==========================================================" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "Please select an option:" -ForegroundColor Yellow
+        Write-Host " 1. Run SNMP Switch Audit (Auto-Discover or Enter IP)" -ForegroundColor White
+        Write-Host " 2. Run LLDP/CDP Port Capture (Discover Switch & Port)" -ForegroundColor White
+        Write-Host " 3. Install / Reinstall PSDiscovery Locally (For Offline Use)" -ForegroundColor White
+        Write-Host " 4. Exit" -ForegroundColor White
+        Write-Host "==========================================================" -ForegroundColor Cyan
+        Write-Host ""
+        
+        $Choice = Read-Host "Enter your choice [1-4]"
+        Write-Host ""
+        
+        switch ($Choice) {
+            "1" {
+                if (-not $HasSnmpDll) {
+                    Write-Host "[!] SharpSnmpLib.dll is missing. Cannot perform SNMP audit or discovery." -ForegroundColor Red
+                    Read-Host "Press Enter to continue..."
+                    break
+                }
+                
+                $IPInput = Read-Host "Enter Switch IP Address (Press Enter to auto-discover)"
+                if ([string]::IsNullOrWhiteSpace($IPInput)) {
+                    $IPAddress = Discover-ActiveSwitch -Community $Community
+                    if ([string]::IsNullOrWhiteSpace($IPAddress)) {
+                        # User skipped/failed discovery, prompt manual fallback
+                        $IPFallback = Read-Host "Enter Switch IP Address manually"
+                        if ([string]::IsNullOrWhiteSpace($IPFallback)) {
+                            Write-Host "IP Address cannot be empty." -ForegroundColor Red
+                            Read-Host "Press Enter to continue..."
+                            break
+                        }
+                        $IPAddress = $IPFallback
+                    }
+                }
+                else {
+                    $IPAddress = $IPInput
+                }
+                
+                $CommunityInput = Read-Host "Enter SNMP Community String [Default: public]"
+                if (-not [string]::IsNullOrWhiteSpace($CommunityInput)) {
+                    $Community = $CommunityInput
+                }
+                
+                $ExitMenu = $true
+            }
+            "2" {
+                $PortScript = Join-Path $ScriptDir "Get-SwitchPortInfo.ps1"
+                if (Test-Path $PortScript) {
+                    & $PortScript
+                }
+                else {
+                    Write-Host "[!] Could not locate Get-SwitchPortInfo.ps1. Please run option 3 to install." -ForegroundColor Red
+                }
+                Read-Host "Press Enter to continue..."
+            }
+            "3" {
+                Install-PSDiscovery -Force
+                Read-Host "Press Enter to continue..."
+            }
+            "4" {
+                Write-Host "Exiting PSDiscovery Switch Info Utility." -ForegroundColor Green
                 exit
             }
-            
-            $IPInput = Read-Host "Enter Switch IP Address (Press Enter to auto-discover)"
-            if ([string]::IsNullOrWhiteSpace($IPInput)) {
-                $IPAddress = Discover-ActiveSwitch -Community $Community
-                if ([string]::IsNullOrWhiteSpace($IPAddress)) {
-                    # User skipped/failed discovery, prompt manual fallback
-                    $IPFallback = Read-Host "Enter Switch IP Address manually"
-                    if ([string]::IsNullOrWhiteSpace($IPFallback)) {
-                        Write-Host "IP Address cannot be empty. Exiting." -ForegroundColor Red
-                        exit
-                    }
-                    $IPAddress = $IPFallback
-                }
+            Default {
+                Write-Host "Invalid selection. Please enter a number between 1 and 4." -ForegroundColor Red
+                Start-Sleep -Seconds 1
             }
-            else {
-                $IPAddress = $IPInput
-            }
-            
-            $CommunityInput = Read-Host "Enter SNMP Community String [Default: public]"
-            if (-not [string]::IsNullOrWhiteSpace($CommunityInput)) {
-                $Community = $CommunityInput
-            }
-        }
-        "2" {
-            $PortScript = Join-Path $ScriptDir "Get-SwitchPortInfo.ps1"
-            if (Test-Path $PortScript) {
-                & $PortScript
-            }
-            else {
-                Write-Host "[!] Could not locate Get-SwitchPortInfo.ps1. Please run option 3 to install." -ForegroundColor Red
-            }
-            exit
-        }
-        "3" {
-            Install-PSDiscovery -Force
-            exit
-        }
-        Default {
-            Write-Host "Exiting PSDiscovery Switch Info Utility." -ForegroundColor Green
-            exit
         }
     }
 }
