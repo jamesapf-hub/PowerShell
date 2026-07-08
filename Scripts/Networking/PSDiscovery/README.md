@@ -50,7 +50,7 @@ Get-SwitchPortInfo
 * **SNMP Audit Text Logs:** Detailed connection logs and audit outputs are appended to `C:\Logs\PSDiscovery\get-switchinfo.log`.
 * **CDP/LLDP CSV Inventories:** Every successful CDP/LLDP discovery runs and appends to customer-specific inventories at `C:\Log\PSDiscovery\SwitchInventory_[CustomerName].csv` (defaults to `SwitchInventory.csv`).
 
-## Command
+## Fast Execute
 
 > [!TIP]
 > **Fast Execute Command (Online Mode):**
