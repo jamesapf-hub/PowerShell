@@ -8,7 +8,9 @@ This utility discovers switch port details passively using CDP/LLDP packet captu
 ## Features
 - **Passive Switch Port Discovery**: Captures CDP and LLDP packets to discover what switch, port, and VLAN your computer is physically plugged into (requires Administrator privileges).
 - **Active SNMP Switch Auditing**: Queries any network switch via SNMP v2c to map interface indexes, descriptions, operational statuses, and active VLAN assignments (does not require Administrator privileges).
-- **Fast Execute & Auto-Installer**: Run a single command directly from GitHub to execute immediately, download local copies of scripts and dependencies (including `PSDiscoveryProtocol` and `Lextm.SharpSnmpLib` DLL), and register shortcut functions in your PowerShell Profile.
+- **SNMP MAC Table Port Lookup**: Automatically detects your local computer's MAC address and queries the switch's forwarding database (FDB Bridge MIB) to resolve the exact switch port you are connected to.
+- **Auto-Discovery Scanning**: Automatically scans your default gateway, active ARP neighbor table, and common subnet suffixes to find SNMP-responsive switches if no IP is provided.
+- **Fast Execute & Auto-Installer**: Run a single command directly from GitHub to execute immediately, download local copies of scripts and dependencies (including `PSDiscoveryProtocol` and `Lextm.SharpSnmpLib` DLL with active process-lock protection), and register shortcut functions in your PowerShell Profile.
 
 ---
 
@@ -31,16 +33,19 @@ Simply type:
 ```powershell
 get-switchinfo
 ```
-Choose option `1` to run a real SNMP audit, `2` to run an LLDP/CDP port capture, or `3` to reinstall/update the tool locally.
+The menu has built-in loop protection (won't close on accidental Enter/invalid keys) and lets you:
+* Choose **Option 1**: Run an SNMP Switch Audit. Leave the IP blank to **auto-discover** active SNMP switches on your subnet! Once selected, the script will automatically discover your active MAC address and attempt to map it to the exact switch port you are connected to.
+* Choose **Option 2**: Run a passive LLDP/CDP port capture (redirects to the packet sniffer).
+* Choose **Option 3**: Update/reinstall the utility locally.
 
 ### 2. Active SNMP Switch Audits
-Query a switch's interface VLAN assignments:
+Query a switch's interface VLAN assignments and map your connected port:
 ```powershell
 get-switchinfo -IPAddress 192.168.1.1 -Community public
 ```
 
 ### 3. Passive CDP/LLDP Capture
-Capture and save physical link info directly to local CSV logs:
+Capture physical link info and save it directly to customer CSV logs:
 ```powershell
 Get-SwitchPortInfo
 ```
