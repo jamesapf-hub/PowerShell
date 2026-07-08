@@ -158,7 +158,12 @@ function Install-PSDiscovery {
             }
         }
         catch {
-            Write-Host "[!] Failed to install SharpSnmpLib dependency: $_" -ForegroundColor Red
+            if (Test-Path $DllDest) {
+                Write-Host "[-] SharpSnmpLib.dll is already loaded in the current session. Skipping overwrite." -ForegroundColor Yellow
+            }
+            else {
+                Write-Host "[!] Failed to install SharpSnmpLib dependency: $_" -ForegroundColor Red
+            }
         }
         finally {
             if (Test-Path $ZipPath) { Remove-Item -Path $ZipPath -Force -ErrorAction SilentlyContinue | Out-Null }
@@ -431,16 +436,9 @@ if ($IPAddress -eq "help" -or $Help) {
     return
 }
 
-if ($InMemory -or $Install -or $ForceInstall) {
-    $Success = Install-PSDiscovery -Force:($ForceInstall -or $InMemory)
-    if ($Success -and $InMemory) {
-        $LocalScript = Join-Path $env:USERPROFILE "PSDiscovery\get-switchinfo.ps1"
-        if (Test-Path $LocalScript) {
-            Write-Host "[*] Launching local installed version..." -ForegroundColor Cyan
-            & $LocalScript @args
-            return
-        }
-    }
+# Only run installer if explicitly requested via parameters
+if ($Install -or $ForceInstall) {
+    Install-PSDiscovery -Force:$ForceInstall
     return
 }
 
