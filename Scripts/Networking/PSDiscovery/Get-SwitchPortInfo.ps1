@@ -185,25 +185,43 @@ Initialize-CustomerCsv -Path $CsvPath -CustomerName $CustomerName -LogFile $LogF
 try {
     Write-ScriptLog -Message "Starting Get-SwitchPortInfo execution." -LogFile $LogFile -Level INFO
 
-    # 3. Check and install PSDiscoveryProtocol dependency
+    # 3. Check and import PSDiscoveryProtocol dependency
     Write-ScriptLog -Message "Checking for PSDiscoveryProtocol module dependency..." -LogFile $LogFile -Level INFO
-    if (-not (Get-Module -ListAvailable -Name PSDiscoveryProtocol)) {
-        Write-ScriptLog -Message "PSDiscoveryProtocol module is not installed. Attempting installation for CurrentUser..." -LogFile $LogFile -Level WARNING
+    
+    $LocalModulePath = Join-Path $ScriptDir "Modules\PSDiscoveryProtocol\PSDiscoveryProtocol.psd1"
+    $ModuleLoaded = $false
+    
+    if (Test-Path $LocalModulePath) {
         try {
-            Install-Module -Name PSDiscoveryProtocol -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
-            Write-ScriptLog -Message "PSDiscoveryProtocol installed successfully." -LogFile $LogFile -Level SUCCESS
-        } 
+            Import-Module $LocalModulePath -Force -ErrorAction Stop
+            $ModuleLoaded = $true
+            Write-ScriptLog -Message "Imported PSDiscoveryProtocol dynamically from local Modules folder." -LogFile $LogFile -Level SUCCESS
+        }
         catch {
-            Write-ScriptLog -Message "Auto-installation failed. Please run 'Install-Module PSDiscoveryProtocol -Scope CurrentUser' in an elevated console." -LogFile $LogFile -Level ERROR
-            throw $_
+            Write-ScriptLog -Message "Failed to load local PSDiscoveryProtocol: $_" -LogFile $LogFile -Level WARNING
         }
     }
-    else {
-        Write-ScriptLog -Message "PSDiscoveryProtocol module already installed." -LogFile $LogFile -Level SUCCESS
+    
+    if (-not $ModuleLoaded) {
+        if (-not (Get-Module -ListAvailable -Name PSDiscoveryProtocol)) {
+            Write-ScriptLog -Message "PSDiscoveryProtocol module is not installed. Attempting installation for CurrentUser..." -LogFile $LogFile -Level WARNING
+            try {
+                Install-Module -Name PSDiscoveryProtocol -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+                Write-ScriptLog -Message "PSDiscoveryProtocol installed successfully." -LogFile $LogFile -Level SUCCESS
+                Import-Module -Name PSDiscoveryProtocol -Force -ErrorAction Stop
+                $ModuleLoaded = $true
+            } 
+            catch {
+                Write-ScriptLog -Message "Auto-installation failed. Please run 'Install-Module PSDiscoveryProtocol -Scope CurrentUser' in an elevated console." -LogFile $LogFile -Level ERROR
+                throw $_
+            }
+        }
+        else {
+            Write-ScriptLog -Message "PSDiscoveryProtocol module already installed. Importing..." -LogFile $LogFile -Level SUCCESS
+            Import-Module -Name PSDiscoveryProtocol -Force -ErrorAction Stop
+            $ModuleLoaded = $true
+        }
     }
-
-    # Explicitly import the module to ensure all cmdlets are available
-    Import-Module -Name PSDiscoveryProtocol -Force -ErrorAction Stop
 
     # 4. Interactive Menu Loop
     $ExitMenu = $false
@@ -223,18 +241,19 @@ try {
         Write-Host " 2. View Switch Inventory CSV File" -ForegroundColor White
         Write-Host " 3. Change Current Customer/Company" -ForegroundColor White
         Write-Host " 4. View Switch Discovery Logs" -ForegroundColor White
-        Write-Host " 5. Exit" -ForegroundColor White
+        Write-Host " 5. Install / Reinstall PSDiscovery Locally (For Offline Use)" -ForegroundColor White
+        Write-Host " 6. Exit" -ForegroundColor White
         Write-Host "==========================================================" -ForegroundColor Cyan
         Write-Host ""
         
-        $Selection = Read-Host "Enter your choice [1-5]"
+        $Selection = Read-Host "Enter your choice [1-6]"
         Write-Host ""
         
         switch ($Selection) {
             "1" {
                 Write-ScriptLog -Message "Starting packet capture for customer: $CustomerName..." -LogFile $LogFile -Level INFO
                 Write-ScriptLog -Message "Listening for CDP/LLDP packets on network interfaces (this may take up to 60 seconds)..." -LogFile $LogFile -Level INFO
-
+ 
                 try {
                     $Packet = Invoke-DiscoveryProtocolCapture -ErrorAction Stop
                 }
@@ -242,14 +261,14 @@ try {
                     Write-ScriptLog -Message "Capture command failed. Make sure you are running as Administrator or have WinPcap/Npcap installed if required." -LogFile $LogFile -Level ERROR
                     $Packet = $null
                 }
-
+ 
                 if ($Packet) {
                     Write-ScriptLog -Message "Packet(s) captured successfully. Parsing discovery data..." -LogFile $LogFile -Level INFO
                     $Data = Get-DiscoveryProtocolData -Packet $Packet
-
+ 
                     if ($Data) {
                         $Records = [System.Collections.Generic.List[PSCustomObject]]::new()
-
+ 
                         foreach ($Connection in $Data) {
                             $Device = $Connection.Device
                             $Port = $Connection.Port
@@ -257,11 +276,11 @@ try {
                             $Model = $Connection.Model
                             $IP = $Connection.IPAddress
                             $Type = $Connection.Type
-
+ 
                             # Format human-readable console/log message
                             $InfoMsg = "[$Type] Connected to Device: $Device | Port: $Port | VLAN: $VLAN | Switch IP: $IP | Switch Model: $Model"
                             Write-ScriptLog -Message $InfoMsg -LogFile $LogFile -Level SUCCESS
-
+ 
                             # Build record object for CSV export
                             $Record = [PSCustomObject]@{
                                 Timestamp    = (Get-Date -Format "dd/MM/yy HH:mm:ss")
@@ -276,7 +295,7 @@ try {
                             }
                             $Records.Add($Record)
                         }
-
+ 
                         # Export/Append findings to the CSV file
                         try {
                             $Records | Export-Csv -Path $CsvPath -Append -NoTypeInformation -ErrorAction Stop
@@ -331,12 +350,22 @@ try {
                 }
             }
             "5" {
+                $InfoScript = Join-Path $ScriptDir "get-switchinfo.ps1"
+                if (Test-Path $InfoScript) {
+                    Write-Host "Running local PSDiscovery Installer..." -ForegroundColor Cyan
+                    & $InfoScript -Install -ForceInstall
+                }
+                else {
+                    Write-Host "[!] Could not locate get-switchinfo.ps1 to run the installer." -ForegroundColor Red
+                }
+            }
+            "6" {
                 $ExitMenu = $true
                 Write-ScriptLog -Message "User exited the interactive menu." -LogFile $LogFile -Level INFO
                 Write-Host "Thank you for using PSDiscovery Switch Utility!" -ForegroundColor Green
             }
             Default {
-                Write-Host "Invalid selection. Please enter a number between 1 and 5." -ForegroundColor Red
+                Write-Host "Invalid selection. Please enter a number between 1 and 6." -ForegroundColor Red
             }
         }
         
