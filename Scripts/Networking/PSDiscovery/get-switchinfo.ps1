@@ -436,6 +436,101 @@ if ($HasSnmpDll) {
     }
     
     Write-Host "[+] Connected to switch: $SysName ($SysDesc)" -ForegroundColor Green
+    
+    # --- Local MAC Address lookup via SNMP Bridge Table ---
+    $LocalMac = $null
+    $LocalMacBytes = $null
+    try {
+        $ActiveRoute = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($ActiveRoute) {
+            $Adapter = Get-NetAdapter -InterfaceIndex $ActiveRoute.InterfaceIndex -ErrorAction SilentlyContinue
+            if ($Adapter) {
+                $LocalMac = $Adapter.MacAddress
+                $CleanMac = $LocalMac -replace '[^0-9A-Fa-f]'
+                if ($CleanMac.Length -eq 12) {
+                    $LocalMacBytes = for ($i = 0; $i -lt 12; $i += 2) {
+                        [Convert]::ToInt32($CleanMac.Substring($i, 2), 16)
+                    }
+                }
+            }
+        }
+    }
+    catch {
+        Write-Verbose "Failed to determine local PC MAC address: $_"
+    }
+
+    if ($LocalMacBytes) {
+        Write-Host "[*] Searching switch MAC table for local PC MAC: $LocalMac..." -ForegroundColor Cyan
+        $MacOidSuffix = $LocalMacBytes -join '.'
+        $FdbPortOid = ".1.3.6.1.2.1.17.4.3.1.2.$MacOidSuffix"
+        
+        $BridgePort = $null
+        try {
+            $FdbResult = [Lextm.SharpSnmpLib.Messaging.Messenger]::Get(
+                [Lextm.SharpSnmpLib.VersionCode]::V2,
+                $endpoint,
+                $communityOctet,
+                [System.Collections.Generic.List[Lextm.SharpSnmpLib.Variable]]::new(@([Lextm.SharpSnmpLib.Variable]::new([Lextm.SharpSnmpLib.ObjectIdentifier]::new($FdbPortOid)))),
+                $Timeout
+            )
+            if ($FdbResult -and $FdbResult.Count -gt 0 -and $FdbResult[0].Data.ToString() -ne "NoSuchInstance") {
+                $BridgePort = [int]$FdbResult[0].Data.ToString()
+            }
+        }
+        catch {
+            Write-Verbose "MAC table query failed: $_"
+        }
+        
+        if ($BridgePort) {
+            $IfIndexOid = ".1.3.6.1.2.1.17.1.4.1.2.$BridgePort"
+            $IfIndex = $null
+            try {
+                $IfIndexResult = [Lextm.SharpSnmpLib.Messaging.Messenger]::Get(
+                    [Lextm.SharpSnmpLib.VersionCode]::V2,
+                    $endpoint,
+                    $communityOctet,
+                    [System.Collections.Generic.List[Lextm.SharpSnmpLib.Variable]]::new(@([Lextm.SharpSnmpLib.Variable]::new([Lextm.SharpSnmpLib.ObjectIdentifier]::new($IfIndexOid)))),
+                    $Timeout
+                )
+                if ($IfIndexResult -and $IfIndexResult.Count -gt 0 -and $IfIndexResult[0].Data.ToString() -ne "NoSuchInstance") {
+                    $IfIndex = [int]$IfIndexResult[0].Data.ToString()
+                }
+            }
+            catch {}
+            
+            if ($IfIndex) {
+                $PortNameOid = ".1.3.6.1.2.1.2.2.1.2.$IfIndex"
+                $PortName = $null
+                try {
+                    $PortNameResult = [Lextm.SharpSnmpLib.Messaging.Messenger]::Get(
+                        [Lextm.SharpSnmpLib.VersionCode]::V2,
+                        $endpoint,
+                        $communityOctet,
+                        [System.Collections.Generic.List[Lextm.SharpSnmpLib.Variable]]::new(@([Lextm.SharpSnmpLib.Variable]::new([Lextm.SharpSnmpLib.ObjectIdentifier]::new($PortNameOid)))),
+                        $Timeout
+                    )
+                    if ($PortNameResult -and $PortNameResult.Count -gt 0 -and $PortNameResult[0].Data.ToString() -ne "NoSuchInstance") {
+                        $PortName = $PortNameResult[0].Data.ToString()
+                    }
+                }
+                catch {}
+                
+                if ($PortName) {
+                    Write-Host ""
+                    Write-Host "==========================================================" -ForegroundColor Cyan
+                    Write-Host " [!] CONNECTED PORT IDENTIFIED VIA MAC LOOKUP:" -ForegroundColor Yellow
+                    Write-Host " PC MAC Address:  $LocalMac"
+                    Write-Host " Switch Port:     $PortName (Index: $IfIndex)"
+                    Write-Host "==========================================================" -ForegroundColor Cyan
+                    Write-Host ""
+                }
+            }
+        }
+        else {
+            Write-Host "[-] MAC address not found in default VLAN forwarding table. (Switch might use VLAN-specific community, or MAC has aged out)." -ForegroundColor Yellow
+        }
+    }
+
     Write-Host "[*] Fetching VLAN assignment profiles..." -ForegroundColor Cyan
     
     # 2. Walk ifDescr (Interface names)
