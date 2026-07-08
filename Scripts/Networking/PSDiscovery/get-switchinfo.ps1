@@ -291,6 +291,131 @@ function Show-HelpGuide {
     Write-Host "==========================================================" -ForegroundColor Cyan
 }
 
+# Helper function to get potential SNMP switch/gateway candidate IPs
+function Get-SNMPCandidates {
+    $Candidates = [System.Collections.Generic.List[string]]::new()
+    
+    # 1. Get default gateway
+    try {
+        $Gateways = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue | 
+                    Where-Object { $_.NextHop -ne "0.0.0.0" } | 
+                    Select-Object -ExpandProperty NextHop -Unique
+        foreach ($Gw in $Gateways) {
+            if ($Gw -and $Gw -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$') {
+                $Candidates.Add($Gw)
+            }
+        }
+    } catch {}
+    
+    # 2. Get active neighbors (ARP cache)
+    try {
+        $Neighbors = Get-NetNeighbor -State Reachable,Permanent,Delay,Probe -ErrorAction SilentlyContinue | 
+                     Where-Object { $_.IPAddress -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$' -and $_.IPAddress -notmatch '^(224|239|255)\.' } |
+                     Select-Object -ExpandProperty IPAddress -Unique
+        foreach ($Nb in $Neighbors) {
+            if (-not $Candidates.Contains($Nb)) {
+                $Candidates.Add($Nb)
+            }
+        }
+    } catch {}
+    
+    # 3. Add common host suffixes on the local subnet (e.g. .1, .254, .2, .250, .3, .253)
+    try {
+        $ActiveRoute = Get-NetRoute -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($ActiveRoute) {
+            $IPInfo = Get-NetIPAddress -InterfaceIndex $ActiveRoute.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($IPInfo) {
+                if ($IPInfo.IPAddress -match '^(\d{1,3}\.\d{1,3}\.\d{1,3}\.)\d{1,3}$') {
+                    $SubnetBase = $Matches[1]
+                    $CommonSuffixes = @("1", "254", "2", "250", "3", "253")
+                    foreach ($Suffix in $CommonSuffixes) {
+                        $CandidateIP = "$SubnetBase$Suffix"
+                        if (-not $Candidates.Contains($CandidateIP)) {
+                            $Candidates.Add($CandidateIP)
+                        }
+                    }
+                }
+            }
+        }
+    } catch {}
+    
+    return $Candidates
+}
+
+# Helper function to scan subnet candidate IPs for SNMP responsiveness
+function Discover-ActiveSwitch {
+    param(
+        [string]$Community,
+        [int]$Timeout = 300
+    )
+    
+    Write-Host "[*] Scanning local network candidates for SNMP responsiveness..." -ForegroundColor Cyan
+    $Candidates = Get-SNMPCandidates
+    if ($Candidates.Count -eq 0) {
+        Write-Host "[!] No local network candidates found. Please specify an IP address manually." -ForegroundColor Red
+        return $null
+    }
+    
+    $RespondingSwitches = [System.Collections.Generic.List[PSCustomObject]]::new()
+    $communityOctet = [Lextm.SharpSnmpLib.OctetString]::new($Community)
+    
+    foreach ($IP in $Candidates) {
+        Write-Host "[-] Testing candidate: $IP..." -ForegroundColor Gray
+        try {
+            $ipAddr = [System.Net.IPAddress]::Parse($IP)
+            $endpoint = [System.Net.IPEndPoint]::new($ipAddr, 161)
+            
+            $SysNameVar = [System.Collections.Generic.List[Lextm.SharpSnmpLib.Variable]]::new()
+            [Lextm.SharpSnmpLib.Messaging.Messenger]::Walk(
+                [Lextm.SharpSnmpLib.VersionCode]::V2,
+                $endpoint,
+                $communityOctet,
+                [Lextm.SharpSnmpLib.ObjectIdentifier]::new(".1.3.6.1.2.1.1.5"),
+                $SysNameVar,
+                $Timeout,
+                [Lextm.SharpSnmpLib.Messaging.WalkMode]::WithinSubtree
+            )
+            if ($SysNameVar.Count -gt 0) {
+                $Name = $SysNameVar[0].Data.ToString()
+                Write-Host "[+] Found SNMP responder at $($IP): $Name" -ForegroundColor Green
+                $null = $RespondingSwitches.Add([PSCustomObject]@{ IP = $IP; Name = $Name })
+            }
+        }
+        catch {
+            # Ignore timeouts and connection failures
+        }
+    }
+    
+    if ($RespondingSwitches.Count -eq 0) {
+        Write-Host "[!] No SNMP-enabled switches responded in your local subnet (Community: '$Community')." -ForegroundColor Yellow
+        return $null
+    }
+    elseif ($RespondingSwitches.Count -eq 1) {
+        $Selected = $RespondingSwitches[0]
+        Write-Host "[*] Automatically selected only responding switch: $($Selected.IP) ($($Selected.Name))" -ForegroundColor Green
+        return $Selected.IP
+    }
+    else {
+        Write-Host ""
+        Write-Host "Multiple SNMP devices found. Please select one:" -ForegroundColor Yellow
+        for ($i = 0; $i -lt $RespondingSwitches.Count; $i++) {
+            Write-Host " [$($i + 1)] $($RespondingSwitches[$i].IP) - $($RespondingSwitches[$i].Name)"
+        }
+        Write-Host " [$($RespondingSwitches.Count + 1)] Enter a different IP Address manually"
+        Write-Host ""
+        $Sel = Read-Host "Choice [1-$($RespondingSwitches.Count + 1)]"
+        
+        $Parsed = 0
+        if ([int]::TryParse($Sel, [ref]$Parsed)) {
+            $Idx = $Parsed - 1
+            if ($Idx -ge 0 -and $Idx -lt $RespondingSwitches.Count) {
+                return $RespondingSwitches[$Idx].IP
+            }
+        }
+        return $null
+    }
+}
+
 # --- Main Bootstrapper & Execution ---
 
 # Handle help mode
@@ -312,6 +437,20 @@ if ($InMemory -or $Install -or $ForceInstall) {
     exit
 }
 
+# Load SharpSnmpLib assembly early to support interactive discovery
+$DllPath = Join-Path $ScriptDir "Modules\SharpSnmpLib.dll"
+$HasSnmpDll = $false
+
+if (Test-Path $DllPath) {
+    try {
+        [System.Reflection.Assembly]::LoadFrom($DllPath) | Out-Null
+        $HasSnmpDll = $true
+    }
+    catch {
+        Write-Warning "Failed to load SNMP assembly from ${DllPath}: $_"
+    }
+}
+
 # Handle interactive mode if IPAddress is empty
 if ([string]::IsNullOrWhiteSpace($IPAddress)) {
     Clear-Host
@@ -320,7 +459,7 @@ if ([string]::IsNullOrWhiteSpace($IPAddress)) {
     Write-Host "==========================================================" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "Please select an option:" -ForegroundColor Yellow
-    Write-Host " 1. Run SNMP Switch Audit (Requires Switch IP)" -ForegroundColor White
+    Write-Host " 1. Run SNMP Switch Audit (Auto-Discover or Enter IP)" -ForegroundColor White
     Write-Host " 2. Run LLDP/CDP Port Capture (Discover Switch & Port)" -ForegroundColor White
     Write-Host " 3. Install / Reinstall PSDiscovery Locally (For Offline Use)" -ForegroundColor White
     Write-Host " 4. Exit" -ForegroundColor White
@@ -332,11 +471,28 @@ if ([string]::IsNullOrWhiteSpace($IPAddress)) {
     
     switch ($Choice) {
         "1" {
-            $IPAddress = Read-Host "Enter Switch IP Address"
-            if ([string]::IsNullOrWhiteSpace($IPAddress)) {
-                Write-Host "IP Address cannot be empty. Exiting." -ForegroundColor Red
+            if (-not $HasSnmpDll) {
+                Write-Host "[!] SharpSnmpLib.dll is missing. Cannot perform SNMP audit or discovery." -ForegroundColor Red
                 exit
             }
+            
+            $IPInput = Read-Host "Enter Switch IP Address (Press Enter to auto-discover)"
+            if ([string]::IsNullOrWhiteSpace($IPInput)) {
+                $IPAddress = Discover-ActiveSwitch -Community $Community
+                if ([string]::IsNullOrWhiteSpace($IPAddress)) {
+                    # User skipped/failed discovery, prompt manual fallback
+                    $IPFallback = Read-Host "Enter Switch IP Address manually"
+                    if ([string]::IsNullOrWhiteSpace($IPFallback)) {
+                        Write-Host "IP Address cannot be empty. Exiting." -ForegroundColor Red
+                        exit
+                    }
+                    $IPAddress = $IPFallback
+                }
+            }
+            else {
+                $IPAddress = $IPInput
+            }
+            
             $CommunityInput = Read-Host "Enter SNMP Community String [Default: public]"
             if (-not [string]::IsNullOrWhiteSpace($CommunityInput)) {
                 $Community = $CommunityInput
@@ -360,20 +516,6 @@ if ([string]::IsNullOrWhiteSpace($IPAddress)) {
             Write-Host "Exiting PSDiscovery Switch Info Utility." -ForegroundColor Green
             exit
         }
-    }
-}
-
-# Load SharpSnmpLib assembly if present
-$DllPath = Join-Path $ScriptDir "Modules\SharpSnmpLib.dll"
-$HasSnmpDll = $false
-
-if (Test-Path $DllPath) {
-    try {
-        [System.Reflection.Assembly]::LoadFrom($DllPath) | Out-Null
-        $HasSnmpDll = $true
-    }
-    catch {
-        Write-Warning "Failed to load SNMP assembly from ${DllPath}: $_"
     }
 }
 
