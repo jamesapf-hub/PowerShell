@@ -1,0 +1,12 @@
+{
+  "name": "PowerShell Repository",
+  "description": "A collection of helpful PowerShell scripts and automation tools for daily use.",
+  "folders": {
+    "Scripts": {
+      "description": "General purpose PowerShell scripts"
+    },
+    "Automation": {
+      "description": "Automated deployment and management tools"
+    }
+  }
+}
