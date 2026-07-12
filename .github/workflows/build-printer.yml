@@ -72,7 +72,7 @@ jobs:
           $Printers = Import-Csv '.\printers.csv'
           $FirstPrinterName = $Printers[0].Name
           $SanitizedName = $FirstPrinterName -replace '[\\/:*?"<>|]', '-'
-          $LogFolder = "c:\Seriun\Printer\$SanitizedName"
+          $LogFolder = "c:\Log\Printer\$SanitizedName"
           if (-not (Test-Path $LogFolder)) { New-Item -ItemType Directory -Path $LogFolder -Force | Out-Null }
           Start-Transcript -Path "$LogFolder\Install-Printer.log" -Append
           $PcaService = Get-Service -Name "PcaSvc" -ErrorAction SilentlyContinue

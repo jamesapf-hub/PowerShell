@@ -241,7 +241,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
         ResizeMode="CanResize">
     
     <Window.Resources>
-        <!-- Primary Action Button Style (Seriun Orange Accent) -->
+        <!-- Primary Action Button Style (Brand Orange Accent) -->
         <Style TargetType="Button" x:Key="PrimaryBtn">
             <Setter Property="Background" Value="#ff6900"/>
             <Setter Property="Foreground" Value="White"/>
@@ -265,7 +265,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
             </Style.Triggers>
         </Style>
 
-        <!-- Secondary Action Button Style (Outline Seriun Orange Accent) -->
+        <!-- Secondary Action Button Style (Outline Brand Orange Accent) -->
         <Style TargetType="Button" x:Key="AccentBtn">
             <Setter Property="Background" Value="#131313"/>
             <Setter Property="Foreground" Value="#ff6900"/>
@@ -293,7 +293,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
             </Style.Triggers>
         </Style>
 
-        <!-- General Button Style (Seriun Secondary Elements) -->
+        <!-- General Button Style (Brand Secondary Elements) -->
         <Style TargetType="Button" x:Key="DefaultBtn">
             <Setter Property="Background" Value="#1b1b1b"/>
             <Setter Property="Foreground" Value="#e4e4e7"/>
@@ -320,7 +320,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
             </Style.Triggers>
         </Style>
 
-        <!-- Script Card Item Style (Seriun Surface System) -->
+        <!-- Script Card Item Style (Brand Surface System) -->
         <Style TargetType="Border" x:Key="ScriptCardStyle">
             <Setter Property="Background" Value="#131313"/>
             <Setter Property="BorderBrush" Value="#1b1b1b"/>

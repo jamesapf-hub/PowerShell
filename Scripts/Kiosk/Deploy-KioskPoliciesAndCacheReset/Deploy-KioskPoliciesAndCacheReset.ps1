@@ -59,9 +59,9 @@ if ($env:USERNAME -eq "SYSTEM") {
         }
 
         # 2. Scrub Legacy Custom Run Hooks (requires SYSTEM/Admin privileges)
-        if (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "SeriunAppWatcher" -ErrorAction SilentlyContinue) {
-            Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "SeriunAppWatcher" -Force
-            Write-SetupLog "CLEANUP: Removed legacy 'SeriunAppWatcher' registry run key successfully."
+        if (Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "LegacyAppWatcher" -ErrorAction SilentlyContinue) {
+            Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "LegacyAppWatcher" -Force
+            Write-SetupLog "CLEANUP: Removed legacy 'LegacyAppWatcher' registry run key successfully."
         }
         
         # 3. Inject the HKLM Run Key to trigger the script on actual User Logon
