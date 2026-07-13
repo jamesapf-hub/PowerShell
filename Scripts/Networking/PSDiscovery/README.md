@@ -11,6 +11,7 @@ This utility is designed for network engineers and IT administrators to identify
 * **Fast Execute & Auto-Installer:** Runs directly from GitHub to execute immediately, downloads local copies of scripts and dependencies (including `PSDiscoveryProtocol` and `Lextm.SharpSnmpLib` DLL with active process-lock protection), and registers shortcut functions in your PowerShell Profile.
 
 > [!NOTE]
+> **Last Updated:** 2026-07-13 16:59 UTC
 > **Log File Location:** `C:\Logs\PSDiscovery\get-switchinfo.log` (or `$env:SystemDrive\Logs\PSDiscovery\get-switchinfo.log`)
 
 ## Prerequisites
