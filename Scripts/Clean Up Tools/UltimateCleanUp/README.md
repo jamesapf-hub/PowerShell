@@ -52,11 +52,18 @@ UltimateCleanUp/
 ├── README.md                  # This documentation guide
 └── Scripts/                   # Sub-cleanup scripts folder
     ├── 01_SystemTempCleaner.ps1
-    ├── 02_BrowserCacheCleaner.ps1
     ├── 03_CleanAdobeOrphanInstallers.ps1
     ├── 04_ClearWindowsUpdateCache.ps1
     ├── 05_RemoveOldUserProfiles.ps1
     └── 06_TidyUpWindows11.ps1
 ```
+
+## Fast Execute
+> [!TIP]
+> **Run Locally in PowerShell (as Administrator):**
+> After downloading and extracting the package, you can execute the dashboard directly via the command line:
+> ```powershell
+> powershell.exe -ExecutionPolicy Bypass -File .\Start-UltimateCleanUp.ps1
+> ```
 
 
