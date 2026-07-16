@@ -56,11 +56,13 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 # Helper to query profiles
 function Get-UserProfileList {
     $fso = New-Object -ComObject Scripting.FileSystemObject
-    Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\*' -ErrorAction SilentlyContinue |
+    $regPath = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList'
+    
+    Get-ChildItem -Path $regPath -ErrorAction SilentlyContinue |
         Where-Object { $_.PSChildName -match '^S-1-5-21-' } |
         ForEach-Object {
             $sid = $_.PSChildName
-            $profilePath = $_.ProfileImagePath
+            $profilePath = $_.GetValue("ProfileImagePath")
             if (-not [string]::IsNullOrWhiteSpace($profilePath)) {
                 $folderName = Split-Path $profilePath -Leaf
                 $username = "Unknown SID ($folderName)"
