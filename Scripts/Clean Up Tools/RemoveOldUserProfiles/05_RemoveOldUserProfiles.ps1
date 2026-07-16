@@ -205,7 +205,7 @@ if ($Force) {
     Write-Host "`nAll profiles below will be permanently deleted. Select the ones you want to delete:" -ForegroundColor Yellow
     for ($i = 0; $i -lt $profilesToRemove.Count; $i++) {
         $profile = $profilesToRemove[$i]
-        Write-Host "[$i] $($profile.UserName) | Size: $($profile.SizeGB) GB | $($profile.ProfilePath)"
+        Write-Host "[$i] $($profile.UserName) | Size: $($profile.SizeGB) GB"
     }
     
     Write-Host ""
@@ -261,7 +261,7 @@ if ($Force) {
     $checkedListBox.CheckOnClick = $true
     
     foreach ($profile in $profilesToRemove) {
-        $item = "$($profile.UserName) | Size: $($profile.SizeGB) GB | $($profile.ProfilePath)"
+        $item = "$($profile.UserName) | Size: $($profile.SizeGB) GB"
         $checkedListBox.Items.Add($item, $true) | Out-Null
     }
     $form.Controls.Add($checkedListBox)
