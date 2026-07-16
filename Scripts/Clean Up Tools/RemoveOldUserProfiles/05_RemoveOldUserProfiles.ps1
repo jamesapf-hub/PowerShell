@@ -78,10 +78,16 @@ function Get-UserProfileList {
             $size = 0
             if ($profilePath -and (Test-Path -Path $profilePath -PathType Container)) {
                 try {
-                    $size = $fso.GetFolder($profilePath).Size
-                } catch {
-                    # Fallback to standard Get-ChildItem if COM fails
-                    try { $size = (Get-ChildItem -LiteralPath $profilePath -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum } catch {}
+                    $fsoSize = $fso.GetFolder($profilePath).Size
+                    if ($null -ne $fsoSize) { $size = $fsoSize }
+                } catch {}
+
+                # Fallback if COM object silently failed or returned null
+                if ($size -eq 0) {
+                    try { 
+                        $fallbackSize = (Get-ChildItem -LiteralPath $profilePath -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+                        if ($null -ne $fallbackSize) { $size = $fallbackSize }
+                    } catch {}
                 }
             }
 
