@@ -31,11 +31,11 @@ Dependencies: Requires the Windows Installer (`msiserver`) service.
 ### 2. Logging & Outputs
 * Details on patch names, sizes, ownership commands, and total space recovered are displayed on the console.
 
-## Fast Execute
 
+## Fast Execute
 > [!TIP]
 > **Run Directly in PowerShell (as Administrator):**
 > You can download and execute this script instantly without saving the file locally:
 > ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/CleanAdobeOrphanInstallers/03_CleanAdobeOrphanInstallers.ps1")
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean Up Tools/CleanAdobeOrphanInstallers/03_CleanAdobeOrphanInstallers.ps1")
 > ```

@@ -73,3 +73,11 @@ To inspect specific user accounts, select the **User Directory** tab from the to
 1. **Filter Categories:** Quickly filter the directory by **Active (<=30d)**, **Inactive (>90d)**, **Inactive (>1yr)**, or **Never Logged In** buttons.
 2. **Search Box:** Type display names or UPNs to filter the table instantly in memory.
 3. **Audit Grid:** Highlights rows with distinct colors (green for active, orange for warnings, red for critical) to provide instant visual context.
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Microsoft 365/UserLicenceCheck/Console.ps1")
+> ```

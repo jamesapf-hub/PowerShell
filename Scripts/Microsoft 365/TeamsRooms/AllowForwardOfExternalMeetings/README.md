@@ -42,11 +42,11 @@ The script provides color-coded console output and writes to a local log file at
 
 Verify success by checking the console output or log file for "Calendar processing successfully configured" and "Security restriction applied successfully".
 
-## Fast Execute
 
+## Fast Execute
 > [!TIP]
 > **Run Directly in PowerShell (as Administrator):**
 > You can download and execute this script instantly without saving the file locally:
 > ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Microsoft%20365/TeamsRooms/AllowForwardOfExternalMeetings/ExternalTeamsRoom.ps1")
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Microsoft 365/TeamsRooms/AllowForwardOfExternalMeetings/ExternalTeamsRoom.ps1")
 > ```

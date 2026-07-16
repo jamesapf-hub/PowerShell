@@ -22,3 +22,11 @@ Sets up a watchdog scheduled task to monitor UWP app processes. If the primary k
    ```powershell
    .\ScheduledTaskWindowsAppLogOff.ps1
    ```
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Kiosk/ScheduledTaskWindowsAppLogOff/ScheduledTaskWindowsAppLogOff.ps1")
+> ```

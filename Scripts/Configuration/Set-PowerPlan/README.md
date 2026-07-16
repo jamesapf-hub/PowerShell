@@ -22,3 +22,11 @@ Configures a high-performance power plan scheme. It disables sleep mode, standby
    ```powershell
    .\Set-PowerPlan.ps1
    ```
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Configuration/Set-PowerPlan/Set-PowerPlan.ps1")
+> ```

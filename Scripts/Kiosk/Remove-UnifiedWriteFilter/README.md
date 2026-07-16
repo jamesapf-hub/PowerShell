@@ -22,3 +22,11 @@ This script disables and configures the Windows Unified Write Filter (UWF) confi
    ```powershell
    .\Remove-UnifiedWriteFilter.ps1
    ```
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Kiosk/Remove-UnifiedWriteFilter/Remove-UnifiedWriteFilter.ps1")
+> ```

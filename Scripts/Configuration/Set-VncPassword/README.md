@@ -22,3 +22,11 @@ Configures and resets TightVNC / UltraVNC server administrative passwords in the
    ```powershell
    .\Set-VncPassword.ps1
    ```
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Configuration/Set-VncPassword/Set-VncPassword.ps1")
+> ```

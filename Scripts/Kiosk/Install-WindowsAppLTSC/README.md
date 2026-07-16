@@ -22,3 +22,11 @@ Performs offline provisioning of the Microsoft Windows App for Windows 10 IoT LT
    ```powershell
    .\Install-WindowsAppLTSC.ps1
    ```
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Kiosk/Install-WindowsAppLTSC/Install-WindowsAppLTSC.ps1")
+> ```

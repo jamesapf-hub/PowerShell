@@ -28,3 +28,11 @@ Downloads and silently installs the Datto RMM Agent using site credentials. This
    ```powershell
    .\Install-DattoRmmAgent.ps1
    ```
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Software/Install-DattoRmmAgent/Install-DattoRmmAgent.ps1")
+> ```

@@ -22,3 +22,11 @@ Downloads the latest Microsoft Edge Enterprise x64 MSI package directly from Mic
    ```powershell
    .\Update-EdgeBrowser.ps1
    ```
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Software/Update-EdgeBrowser/Update-EdgeBrowser.ps1")
+> ```

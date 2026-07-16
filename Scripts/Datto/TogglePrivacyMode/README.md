@@ -33,8 +33,8 @@ The script provides color-coded console output and writes to a local log file at
 - **Green (SUCCESS):** Configuration applied or task scheduled successfully.
 - **Red (ERROR):** Any failure to locate the config, modify the XML, or create the scheduled task.
 
-## Fast Execute
 
+## Fast Execute
 > [!TIP]
 > **Run Directly in PowerShell (as Administrator):**
 > You can download and execute this script instantly without saving the file locally:
