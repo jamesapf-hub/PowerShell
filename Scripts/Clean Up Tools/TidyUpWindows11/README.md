@@ -6,7 +6,8 @@ This script checks for the presence of leftover Windows upgrade cache folders (`
 ### Key Features
 * **Targeted Folders:** Targets `C:\$WINDOWS.~WS` (installation workspace) and `C:\ESD` (upgrade ESD files).
 * **Automatic Ownership:** Natively runs `takeown` and `icacls` commands to grant full access to administrators before deletion.
-* **Dry-Run Mode (WhatIf):** Runs a WhatIf dry-run first to check folders before applying changes.
+* **Dry-Run Mode (WhatIf):** Runs a WhatIf dry-run first to check folders before applying changes. Use `-DryRun` to bypass prompts and strict-test.
+* **Space Calculation:** Dynamically calculates and logs the total megabytes processed.
 
 > [!NOTE]
 > **Log File Location:** `C:\Logs\TidyUpWindows11\TidyUpWindows11_DDMMYY.log` (or `$env:SystemDrive\Logs\TidyUpWindows11\TidyUpWindows11_DDMMYY.log`)
