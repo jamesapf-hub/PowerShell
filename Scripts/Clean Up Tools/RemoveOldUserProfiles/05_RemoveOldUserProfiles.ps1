@@ -14,6 +14,7 @@
 param(
     [switch]$Force,
     [switch]$DryRun,
+    [switch]$ConsoleMode,
     [string[]]$ExcludeUsers
 )
 
@@ -54,12 +55,14 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 # Helper to query profiles
 function Get-UserProfileList {
+    $fso = New-Object -ComObject Scripting.FileSystemObject
     Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\*' -ErrorAction SilentlyContinue |
         Where-Object { $_.PSChildName -match '^S-1-5-21-' } |
         ForEach-Object {
             $sid = $_.PSChildName
             $profilePath = $_.ProfilePath
-            $username = "Unknown SID ($sid)"
+            $folderName = Split-Path $profilePath -Leaf
+            $username = "Unknown SID ($folderName)"
             try {
                 $account = (New-Object System.Security.Principal.SecurityIdentifier($sid)).Translate([System.Security.Principal.NTAccount])
                 $username = $account.Value
@@ -68,8 +71,11 @@ function Get-UserProfileList {
             $size = 0
             if ($profilePath -and (Test-Path -Path $profilePath -PathType Container)) {
                 try {
-                    $size = (Get-ChildItem -LiteralPath $profilePath -Recurse -File -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
-                } catch {}
+                    $size = $fso.GetFolder($profilePath).Size
+                } catch {
+                    # Fallback to standard Get-ChildItem if COM fails
+                    try { $size = (Get-ChildItem -LiteralPath $profilePath -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum } catch {}
+                }
             }
 
             [PSCustomObject]@{
@@ -164,6 +170,44 @@ if ($Force) {
     $WhatIfPreference = $true
     Run-Cleanup
     Write-Log "Strict DryRun completed. No changes were made." "INFO" "Gray"
+} elseif ($ConsoleMode) {
+    Write-Log "Launching interactive console selection menu..." "INFO" "Cyan"
+    Write-Host "`nAll profiles below will be permanently deleted. Select the ones you want to delete:" -ForegroundColor Yellow
+    for ($i = 0; $i -lt $profilesToRemove.Count; $i++) {
+        $profile = $profilesToRemove[$i]
+        Write-Host "[$i] $($profile.UserName) | Size: $($profile.SizeGB) GB | $($profile.ProfilePath)"
+    }
+    
+    Write-Host ""
+    $selection = Read-Host "Enter numbers to DELETE separated by commas (e.g. 0,2,3), or 'all' to delete everything, or 'none' to cancel"
+    
+    if ($selection -eq 'none' -or [string]::IsNullOrWhiteSpace($selection)) {
+        Write-Log "Cancelled by user. No changes were made." "INFO" "Gray"
+    } elseif ($selection -eq 'all') {
+        Write-Log "=== RUNNING REAL CLEANUP ===" "SUCCESS"
+        $WhatIfPreference = $false
+        Run-Cleanup
+    } else {
+        $approvedProfiles = @()
+        $indexes = $selection -split ',' | ForEach-Object { $_.Trim() }
+        foreach ($index in $indexes) {
+            if ($index -match '^\d+$') {
+                $idx = [int]$index
+                if ($idx -ge 0 -and $idx -lt $profilesToRemove.Count) {
+                    $approvedProfiles += $profilesToRemove[$idx]
+                }
+            }
+        }
+        
+        $profilesToRemove = $approvedProfiles
+        if ($profilesToRemove.Count -eq 0) {
+            Write-Log "No valid profiles selected. No changes were made." "INFO" "Gray"
+        } else {
+            Write-Log "=== RUNNING REAL CLEANUP ===" "SUCCESS"
+            $WhatIfPreference = $false
+            Run-Cleanup
+        }
+    }
 } else {
     Write-Log "Launching interactive profile selection menu..." "INFO" "Cyan"
     Add-Type -AssemblyName System.Windows.Forms
