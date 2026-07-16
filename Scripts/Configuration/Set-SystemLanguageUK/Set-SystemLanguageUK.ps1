@@ -77,7 +77,7 @@ try {
 try {
     # 7. Copy Settings to Welcome Screen (Logon page) and New User Templates
     # This replicates the settings to HKEY_USERS\.DEFAULT (Logon screen) and the default profile template.
-    Copy-UserInternationalSettingsToSystem -WelcomeScreen $true -NewUserTemplates $true -ErrorAction Stop
+    Copy-UserInternationalSettingsToSystem -WelcomeScreen $true -NewUser $true -ErrorAction Stop
     Write-Log "SUCCESS: International settings copied to Welcome Screen (logon page) and New User Templates."
 } catch {
     Write-Log "ERROR: Failed to copy international settings to system accounts. Reason: $_"
