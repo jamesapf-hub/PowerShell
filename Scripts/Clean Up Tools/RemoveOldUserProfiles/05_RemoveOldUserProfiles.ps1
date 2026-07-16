@@ -162,41 +162,39 @@ $profilesToRemove | Format-Table UserName, ProfilePath, SizeGB -AutoSize | Out-S
 
 function Run-Cleanup {
     foreach ($profile in $profilesToRemove) {
-        if ($PSCmdlet.ShouldProcess("$($profile.UserName) ($($profile.ProfilePath))", "Delete User Profile")) {
-            try {
-                Write-Log "Removing profile for $($profile.UserName)..." "INFO" "Cyan"
-                if ($WhatIfPreference) {
-                    Write-Host "What if: Performing cleanup on profile $($profile.ProfilePath) (SID: $($profile.SID))" -ForegroundColor Gray
+        try {
+            Write-Log "Removing profile for $($profile.UserName)..." "INFO" "Cyan"
+            if ($WhatIfPreference) {
+                Write-Host "What if: Performing cleanup on profile $($profile.ProfilePath) (SID: $($profile.SID))" -ForegroundColor Gray
+            } else {
+                $deleted = $false
+                $wmiProfile = Get-WmiObject -Class Win32_UserProfile | Where-Object { $_.SID -eq $profile.SID }
+                if ($wmiProfile) {
+                    $wmiProfile.Delete()
+                    Write-Log "Successfully removed profile via WMI." "SUCCESS"
+                    $deleted = $true
                 } else {
-                    $deleted = $false
-                    $wmiProfile = Get-WmiObject -Class Win32_UserProfile | Where-Object { $_.SID -eq $profile.SID }
-                    if ($wmiProfile) {
-                        $wmiProfile.Delete()
-                        Write-Log "Successfully removed profile via WMI." "SUCCESS"
-                        $deleted = $true
-                    } else {
-                        Write-Log "Profile not found via WMI. Attempting forced manual cleanup..." "WARNING"
-                    }
+                    Write-Log "Profile not found via WMI. Attempting forced manual cleanup..." "WARNING"
+                }
 
-                    # Force Cleanup Fallback for Ghost SIDs
-                    if (-not $deleted) {
-                        # 1. Delete physical folder if it exists
-                        if ($profile.ProfilePath -and (Test-Path -Path $profile.ProfilePath)) {
-                            Remove-Item -Path $profile.ProfilePath -Force -Recurse -ErrorAction SilentlyContinue
-                            Write-Log "Force deleted stranded profile folder." "SUCCESS"
-                        }
-                        
-                        # 2. Delete the dead registry key
-                        $regPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$($profile.SID)"
-                        if (Test-Path -Path $regPath) {
-                            Remove-Item -Path $regPath -Force -Recurse -ErrorAction SilentlyContinue
-                            Write-Log "Successfully purged dead registry key." "SUCCESS"
-                        }
+                # Force Cleanup Fallback for Ghost SIDs
+                if (-not $deleted) {
+                    # 1. Delete physical folder if it exists
+                    if ($profile.ProfilePath -and (Test-Path -Path $profile.ProfilePath)) {
+                        Remove-Item -Path $profile.ProfilePath -Force -Recurse -ErrorAction SilentlyContinue
+                        Write-Log "Force deleted stranded profile folder." "SUCCESS"
+                    }
+                    
+                    # 2. Delete the dead registry key
+                    $regPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$($profile.SID)"
+                    if (Test-Path -Path $regPath) {
+                        Remove-Item -Path $regPath -Force -Recurse -ErrorAction SilentlyContinue
+                        Write-Log "Successfully purged dead registry key." "SUCCESS"
                     }
                 }
-            } catch {
-                Write-Log "Failed to remove profile: $($_.Exception.Message)" "ERROR"
             }
+        } catch {
+            Write-Log "Failed to remove profile: $($_.Exception.Message)" "ERROR"
         }
     }
 }
