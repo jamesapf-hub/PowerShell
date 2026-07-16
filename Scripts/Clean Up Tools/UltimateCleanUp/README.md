@@ -19,13 +19,15 @@ OS Support: Windows 10 / 11 / Windows Server
 PowerShell: Windows PowerShell 5.1 or PowerShell Core 7+
 Permissions: Local Administrator rights required (the batch launcher handles UAC elevation prompts automatically).
 
-## How to Download & Run
+## Walkthrough & Usage Guide
 
-### 1. Download the Package
-Simply download this entire `UltimateCleanUp` directory from the repository.
+### 1. Download & Extract the Package
+1. In the Web Portal, click the **Package & Download** button to download the `UltimateCleanUp` `.zip` package.
+2. Extract the downloaded ZIP file to a folder on your computer.
 
 ### 2. Run the Dashboard (GUI)
-Double-click **`Run-UltimateCleanUp.bat`** inside this folder.
+1. Open the extracted folder.
+2. Double-click **`Run-UltimateCleanUp.bat`**.
 * Note: The script handles UAC elevation checks automatically. If it requires administrator permissions, a prompt will appear, and it will relaunch in a new elevated window.
 
 ### 3. Run via Command-Line (CLI)
