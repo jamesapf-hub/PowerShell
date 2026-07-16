@@ -29,8 +29,24 @@ param (
 )
 
 # Set base parameters
-$PSScriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
-if (-not $PSScriptRoot) { $PSScriptRoot = Get-Location }
+$PSScriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition -ErrorAction SilentlyContinue
+
+# CRITICAL SAFETY GUARD: Prevent script from running in memory via iex
+if (-not $PSScriptRoot -or $PSScriptRoot -match "^iex") {
+    Write-Host ""
+    Write-Host "==========================================================" -ForegroundColor Red
+    Write-Host "CRITICAL ERROR: UltimateCleanUp Cannot Be Run From Memory!" -ForegroundColor Red
+    Write-Host "==========================================================" -ForegroundColor Red
+    Write-Host "UltimateCleanUp is a packaged utility that requires local" -ForegroundColor Yellow
+    Write-Host "copies of all sub-scripts to build its dashboard." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Please use the 'Package & Download' feature in the portal" -ForegroundColor White
+    Write-Host "to download the entire UltimateCleanUp folder, extract it," -ForegroundColor White
+    Write-Host "and double-click Run-UltimateCleanUp.bat locally." -ForegroundColor White
+    Write-Host "==========================================================" -ForegroundColor Red
+    exit 1
+}
+
 $ScriptsFolder = Join-Path -Path $PSScriptRoot -ChildPath "Scripts"
 
 # Ensure Scripts folder exists
