@@ -13,6 +13,7 @@
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
     [switch]$Force,
+    [switch]$DryRun,
     [string[]]$ExcludeUsers
 )
 
@@ -158,6 +159,11 @@ function Run-Cleanup {
 if ($Force) {
     $WhatIfPreference = $false
     Run-Cleanup
+} elseif ($DryRun) {
+    Write-Log "=== STARTING WHATIF DRY-RUN (Strict Mode) ===" "WARNING"
+    $WhatIfPreference = $true
+    Run-Cleanup
+    Write-Log "Strict DryRun completed. No changes were made." "INFO" "Gray"
 } else {
     Write-Log "=== STARTING WHATIF DRY-RUN ===" "WARNING"
     $WhatIfPreference = $true
