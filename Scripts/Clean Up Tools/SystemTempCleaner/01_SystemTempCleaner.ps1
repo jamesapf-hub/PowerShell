@@ -8,9 +8,10 @@
     Runs the cleanup silently without confirmation prompts.
 #>
 
-[CmdletBinding(SupportsShouldProcess=$true)]
+[CmdletBinding()]
 param(
-    [switch]$Force
+    [switch]$Force,
+    [switch]$DryRun
 )
 
 # Define Log Path in UK Date Format (DDMMYY)
@@ -56,15 +57,15 @@ function Run-Cleanup {
         $files = Get-ChildItem -Path "$SysTemp\*" -Recurse -Force -ErrorAction SilentlyContinue
         $count = 0
         foreach ($file in $files) {
-            if ($PSCmdlet.ShouldProcess($file.FullName, "Delete System Temp File")) {
-                try {
-                    if (-not $WhatIfPreference) {
-                        Remove-Item -Path $file.FullName -Recurse -Force -ErrorAction Stop
-                    }
-                    $count++
-                } catch {
-                    Write-Log "Failed to delete: $($file.FullName) - $($_.Exception.Message)" "WARNING"
+            try {
+                if ($WhatIfPreference) {
+                    Write-Host "What if: Performing operation 'Delete System Temp File' on Target '$($file.FullName)'" -ForegroundColor Gray
+                } else {
+                    Remove-Item -Path $file.FullName -Recurse -Force -ErrorAction Stop
                 }
+                $count++
+            } catch {
+                # Silently skip locked files to prevent console spam
             }
         }
         Write-Log "Processed $count system temp items." "SUCCESS"
@@ -77,15 +78,15 @@ function Run-Cleanup {
         $files = Get-ChildItem -Path "$UserTemp\*" -Recurse -Force -ErrorAction SilentlyContinue
         $count = 0
         foreach ($file in $files) {
-            if ($PSCmdlet.ShouldProcess($file.FullName, "Delete User Temp File")) {
-                try {
-                    if (-not $WhatIfPreference) {
-                        Remove-Item -Path $file.FullName -Recurse -Force -ErrorAction Stop
-                    }
-                    $count++
-                } catch {
-                    Write-Log "Failed to delete: $($file.FullName) - $($_.Exception.Message)" "WARNING"
+            try {
+                if ($WhatIfPreference) {
+                    Write-Host "What if: Performing operation 'Delete User Temp File' on Target '$($file.FullName)'" -ForegroundColor Gray
+                } else {
+                    Remove-Item -Path $file.FullName -Recurse -Force -ErrorAction Stop
                 }
+                $count++
+            } catch {
+                # Silently skip locked files to prevent console spam
             }
         }
         Write-Log "Processed $count user temp items." "SUCCESS"
@@ -98,27 +99,29 @@ function Run-Cleanup {
         $files = Get-ChildItem -Path "$Prefetch\*" -Recurse -Force -ErrorAction SilentlyContinue
         $count = 0
         foreach ($file in $files) {
-            if ($PSCmdlet.ShouldProcess($file.FullName, "Delete Prefetch File")) {
-                try {
-                    if (-not $WhatIfPreference) {
-                        Remove-Item -Path $file.FullName -Recurse -Force -ErrorAction Stop
-                    }
-                    $count++
-                } catch {
-                    Write-Log "Failed to delete: $($file.FullName) - $($_.Exception.Message)" "WARNING"
+            try {
+                if ($WhatIfPreference) {
+                    Write-Host "What if: Performing operation 'Delete Prefetch File' on Target '$($file.FullName)'" -ForegroundColor Gray
+                } else {
+                    Remove-Item -Path $file.FullName -Recurse -Force -ErrorAction Stop
                 }
+                $count++
+            } catch {
+                # Silently skip locked files to prevent console spam
             }
         }
         Write-Log "Processed $count prefetch items." "SUCCESS"
     }
 
     # 4. Recycle Bin
-    if ($PSCmdlet.ShouldProcess("Recycle Bin", "Empty Recycle Bin")) {
-        Write-Log "Emptying Recycle Bin..." "INFO" "Cyan"
-        if (-not $WhatIfPreference) {
+    Write-Log "Emptying Recycle Bin..." "INFO" "Cyan"
+    if ($WhatIfPreference) {
+        Write-Host "What if: Performing operation 'Empty Recycle Bin' on Target 'Recycle Bin'" -ForegroundColor Gray
+    } else {
+        try {
             Clear-RecycleBin -Force -ErrorAction SilentlyContinue | Out-Null
-        }
-        Write-Log "Recycle Bin cleared." "SUCCESS"
+            Write-Log "Recycle Bin cleared." "SUCCESS"
+        } catch {}
     }
 }
 
@@ -127,19 +130,31 @@ if ($Force) {
     $WhatIfPreference = $false
     Run-Cleanup
     Write-Log "Cleanup complete." "SUCCESS"
-} else {
-    Write-Log "=== STARTING WHATIF DRY-RUN ===" "WARNING"
+} elseif ($DryRun) {
+    Write-Log "=== STARTING WHATIF DRY-RUN (Strict Mode) ===" "WARNING"
     $WhatIfPreference = $true
     Run-Cleanup
-    
-    Write-Host ""
-    $confirmation = Read-Host "WhatIf dry-run completed. Do you want to run this for real now? (Y/N)"
-    if ($confirmation -eq 'Y' -or $confirmation -eq 'Yes') {
-        Write-Log "=== RUNNING REAL CLEANUP ===" "SUCCESS"
-        $WhatIfPreference = $false
+    Write-Log "Strict DryRun completed. No changes were made." "INFO" "Gray"
+} else {
+    if (-not [Environment]::UserInteractive) {
+        Write-Log "Non-interactive session detected. Forcing Strict DryRun to prevent hanging." "WARNING" "Yellow"
+        $WhatIfPreference = $true
         Run-Cleanup
-        Write-Log "Cleanup complete." "SUCCESS"
+        Write-Log "DryRun complete. Re-run with -Force to execute actual cleanup." "INFO" "Gray"
     } else {
-        Write-Log "Cancelled. No changes were made." "INFO" "Gray"
+        Write-Log "=== STARTING WHATIF DRY-RUN ===" "WARNING"
+        $WhatIfPreference = $true
+        Run-Cleanup
+        
+        Write-Host ""
+        $confirmation = Read-Host "WhatIf dry-run completed. Do you want to run this for real now? (Y/N)"
+        if ($confirmation -eq 'Y' -or $confirmation -eq 'Yes') {
+            Write-Log "=== RUNNING REAL CLEANUP ===" "SUCCESS"
+            $WhatIfPreference = $false
+            Run-Cleanup
+            Write-Log "Cleanup complete." "SUCCESS"
+        } else {
+            Write-Log "Cancelled. No changes were made." "INFO" "Gray"
+        }
     }
 }
