@@ -91,11 +91,14 @@ function Get-UserProfileList {
                 }
             }
 
+            $isActive = Test-Path "Registry::HKEY_USERS\$sid"
+
             [PSCustomObject]@{
                 SID         = $sid
                 ProfilePath = $profilePath
                 UserName    = $username
                 SizeGB      = [math]::Round($size / 1GB, 3)
+                IsActive    = $isActive
             }
         }
 }
@@ -211,7 +214,8 @@ if ($Force) {
     Write-Host "`nAll profiles below will be permanently deleted. Select the ones you want to delete:" -ForegroundColor Yellow
     for ($i = 0; $i -lt $profilesToRemove.Count; $i++) {
         $profile = $profilesToRemove[$i]
-        Write-Host "[$i] $($profile.UserName) | Size: $($profile.SizeGB) GB"
+        $activeTag = if ($profile.IsActive) { " [ACTIVE USER]" } else { "" }
+        Write-Host "[$i] $($profile.UserName)$activeTag | Size: $($profile.SizeGB) GB"
     }
     
     Write-Host ""
@@ -267,8 +271,10 @@ if ($Force) {
     $checkedListBox.CheckOnClick = $true
     
     foreach ($profile in $profilesToRemove) {
-        $item = "$($profile.UserName) | Size: $($profile.SizeGB) GB"
-        $checkedListBox.Items.Add($item, $true) | Out-Null
+        $activeTag = if ($profile.IsActive) { " [ACTIVE USER]" } else { "" }
+        $item = "$($profile.UserName)$activeTag | Size: $($profile.SizeGB) GB"
+        $isChecked = -not $profile.IsActive
+        $checkedListBox.Items.Add($item, $isChecked) | Out-Null
     }
     $form.Controls.Add($checkedListBox)
     
