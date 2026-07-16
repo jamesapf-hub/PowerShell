@@ -60,7 +60,7 @@ function Get-UserProfileList {
         Where-Object { $_.PSChildName -match '^S-1-5-21-' } |
         ForEach-Object {
             $sid = $_.PSChildName
-            $profilePath = $_.ProfilePath
+            $profilePath = $_.ProfileImagePath
             if (-not [string]::IsNullOrWhiteSpace($profilePath)) {
                 $folderName = Split-Path $profilePath -Leaf
                 $username = "Unknown SID ($folderName)"
