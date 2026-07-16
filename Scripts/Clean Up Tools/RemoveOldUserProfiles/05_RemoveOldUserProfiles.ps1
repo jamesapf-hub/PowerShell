@@ -165,17 +165,69 @@ if ($Force) {
     Run-Cleanup
     Write-Log "Strict DryRun completed. No changes were made." "INFO" "Gray"
 } else {
-    Write-Log "=== STARTING WHATIF DRY-RUN ===" "WARNING"
-    $WhatIfPreference = $true
-    Run-Cleanup
+    Write-Log "Launching interactive profile selection menu..." "INFO" "Cyan"
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
     
-    Write-Host ""
-    $confirmation = Read-Host "WhatIf dry-run completed. Do you want to run this for real now? (Y/N)"
-    if ($confirmation -eq 'Y' -or $confirmation -eq 'Yes') {
-        Write-Log "=== RUNNING REAL CLEANUP ===" "SUCCESS"
-        $WhatIfPreference = $false
-        Run-Cleanup
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = 'Select Profiles to Delete'
+    $form.Size = New-Object System.Drawing.Size(500,400)
+    $form.StartPosition = 'CenterScreen'
+    $form.Topmost = $true
+    
+    $label = New-Object System.Windows.Forms.Label
+    $label.Location = New-Object System.Drawing.Point(10,10)
+    $label.Size = New-Object System.Drawing.Size(460,20)
+    $label.Text = 'All profiles below will be permanently deleted. UNTICK any you want to KEEP:'
+    $form.Controls.Add($label)
+    
+    $checkedListBox = New-Object System.Windows.Forms.CheckedListBox
+    $checkedListBox.Location = New-Object System.Drawing.Point(10,40)
+    $checkedListBox.Size = New-Object System.Drawing.Size(460,260)
+    $checkedListBox.CheckOnClick = $true
+    
+    foreach ($profile in $profilesToRemove) {
+        $item = "$($profile.UserName) | Size: $($profile.SizeGB) GB | $($profile.ProfilePath)"
+        $checkedListBox.Items.Add($item, $true) | Out-Null
+    }
+    $form.Controls.Add($checkedListBox)
+    
+    $okButton = New-Object System.Windows.Forms.Button
+    $okButton.Location = New-Object System.Drawing.Point(150,310)
+    $okButton.Size = New-Object System.Drawing.Size(90,30)
+    $okButton.Text = 'Delete Selected'
+    $okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $form.Controls.Add($okButton)
+    
+    $cancelButton = New-Object System.Windows.Forms.Button
+    $cancelButton.Location = New-Object System.Drawing.Point(260,310)
+    $cancelButton.Size = New-Object System.Drawing.Size(75,30)
+    $cancelButton.Text = 'Cancel'
+    $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+    $form.Controls.Add($cancelButton)
+    
+    $form.AcceptButton = $okButton
+    $form.CancelButton = $cancelButton
+    
+    $result = $form.ShowDialog()
+    
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        $approvedProfiles = @()
+        for ($i = 0; $i -lt $checkedListBox.Items.Count; $i++) {
+            if ($checkedListBox.GetItemChecked($i)) {
+                $approvedProfiles += $profilesToRemove[$i]
+            }
+        }
+        
+        $profilesToRemove = $approvedProfiles
+        if ($profilesToRemove.Count -eq 0) {
+            Write-Log "All profiles were unchecked. No changes were made." "INFO" "Gray"
+        } else {
+            Write-Log "=== RUNNING REAL CLEANUP ===" "SUCCESS"
+            $WhatIfPreference = $false
+            Run-Cleanup
+        }
     } else {
-        Write-Log "Cancelled. No changes were made." "INFO" "Gray"
+        Write-Log "Cancelled by user. No changes were made." "INFO" "Gray"
     }
 }
