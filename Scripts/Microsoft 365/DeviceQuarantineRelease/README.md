@@ -35,3 +35,11 @@ powershell.exe -ExecutionPolicy Bypass -File .\DeviceQuarantineReleaseApp.ps1
 
 ### 2. Logging & Outputs
 * **GUI Live Feed:** Underlying operations (including remote connection, directory fetching, CAS mailbox updates, and disconnect handshakes) write telemetry entries directly to the console area at the bottom.
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Microsoft 365/DeviceQuarantineRelease/DeviceQuarantineReleaseApp.ps1")
+> ```

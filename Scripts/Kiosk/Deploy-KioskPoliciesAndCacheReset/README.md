@@ -17,3 +17,11 @@ Permissions: Local Administrator rights required.
    ```powershell
    .\Deploy-KioskPoliciesAndCacheReset.ps1
    ```
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Kiosk/Deploy-KioskPoliciesAndCacheReset/Deploy-KioskPoliciesAndCacheReset.ps1")
+> ```

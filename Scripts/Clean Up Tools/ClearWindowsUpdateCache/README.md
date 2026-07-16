@@ -31,10 +31,11 @@ Execution Policy: RemoteSigned or Bypass
 * Standard outputs and service status logs are written to the console in real-time.
 * A persistent execution log is saved under `$env:SystemDrive\Logs\ClearWindowsUpdateCache\SD_Clear_DDMMYY.log` using the UK date format (DDMMYY).
 
-### 3. Fast Execute One-Liner
+
+## Fast Execute
 > [!TIP]
 > **Run Directly in PowerShell (as Administrator):**
 > You can download and execute this script instantly without saving the file locally:
 > ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/ClearWindowsUpdateCache/04_ClearWindowsUpdateCache.ps1")
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean Up Tools/ClearWindowsUpdateCache/04_ClearWindowsUpdateCache.ps1")
 > ```

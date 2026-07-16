@@ -22,3 +22,11 @@ Triggers Windows Update check and installation using the native Windows Update A
    ```powershell
    .\Install-WindowsUpdatesLTSC.ps1
    ```
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Software/Install-WindowsUpdatesLTSC/Install-WindowsUpdatesLTSC.ps1")
+> ```

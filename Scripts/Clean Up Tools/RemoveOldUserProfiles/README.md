@@ -31,11 +31,11 @@ Permissions: Local Administrator rights required (elevation check included)
 ### 2. Logging & Outputs
 * Outputs scanning statistics, user profile tables, and WMI deletion status codes.
 
-## Fast Execute
 
+## Fast Execute
 > [!TIP]
 > **Run Directly in PowerShell (as Administrator):**
 > You can download and execute this script instantly without saving the file locally:
 > ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/RemoveOldUserProfiles/05_RemoveOldUserProfiles.ps1")
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean Up Tools/RemoveOldUserProfiles/05_RemoveOldUserProfiles.ps1")
 > ```

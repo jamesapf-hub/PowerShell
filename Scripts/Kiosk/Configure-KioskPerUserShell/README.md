@@ -18,3 +18,11 @@ Permissions: Local Administrator rights required (modifies Winlogon registry key
    ```powershell
    .\Configure-KioskPerUserShell.ps1 -KioskUser "User" -ShellPath "C:\Program Files\Wyse\WyseEasySetup\WyseEasySetupShell.exe"
    ```
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Kiosk/Configure-KioskPerUserShell/Configure-KioskPerUserShell.ps1")
+> ```

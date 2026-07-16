@@ -22,3 +22,11 @@ Creates a scheduled task to run Kiosk Shell App runtime fixes on user authentica
    ```powershell
    .\Schedule-KioskAppRuntimeFix.ps1
    ```
+
+## Fast Execute
+> [!TIP]
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Kiosk/Schedule-KioskAppRuntimeFix/Schedule-KioskAppRuntimeFix.ps1")
+> ```

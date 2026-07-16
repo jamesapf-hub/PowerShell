@@ -51,10 +51,11 @@ Get-SwitchPortInfo
 * **SNMP Audit Text Logs:** Detailed connection logs and audit outputs are appended to `C:\Logs\PSDiscovery\get-switchinfo.log`.
 * **CDP/LLDP CSV Inventories:** Every successful CDP/LLDP discovery runs and appends to customer-specific inventories at `C:\Log\PSDiscovery\SwitchInventory_[CustomerName].csv` (defaults to `SwitchInventory.csv`).
 
-## Fast Execute
 
+## Fast Execute
 > [!TIP]
-> **Fast Execute Command (Online Mode):**
+> **Run Directly in PowerShell (as Administrator):**
+> You can download and execute this script instantly without saving the file locally:
 > ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Networking/PSDiscovery/get-switchinfo.ps1")
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Networking/PSDiscovery/Export-TopologyLink.ps1")
 > ```
