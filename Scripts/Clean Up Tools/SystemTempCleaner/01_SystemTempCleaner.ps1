@@ -50,6 +50,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 }
 
 function Run-Cleanup {
+    $script:totalBytesSaved = 0
     # 1. System Temp
     $SysTemp = "C:\Windows\Temp"
     if (Test-Path $SysTemp) {
@@ -63,6 +64,7 @@ function Run-Cleanup {
                 } else {
                     Remove-Item -Path $file.FullName -Recurse -Force -ErrorAction Stop
                 }
+                if ($file.Length) { $script:totalBytesSaved += $file.Length }
                 $count++
             } catch {
                 # Silently skip locked files to prevent console spam
@@ -84,6 +86,7 @@ function Run-Cleanup {
                 } else {
                     Remove-Item -Path $file.FullName -Recurse -Force -ErrorAction Stop
                 }
+                if ($file.Length) { $script:totalBytesSaved += $file.Length }
                 $count++
             } catch {
                 # Silently skip locked files to prevent console spam
@@ -105,6 +108,7 @@ function Run-Cleanup {
                 } else {
                     Remove-Item -Path $file.FullName -Recurse -Force -ErrorAction Stop
                 }
+                if ($file.Length) { $script:totalBytesSaved += $file.Length }
                 $count++
             } catch {
                 # Silently skip locked files to prevent console spam
@@ -123,6 +127,9 @@ function Run-Cleanup {
             Write-Log "Recycle Bin cleared." "SUCCESS"
         } catch {}
     }
+
+    $savedMB = [math]::Round($script:totalBytesSaved / 1MB, 2)
+    Write-Log "Total temp file space processed: $savedMB MB" "SUCCESS" "Green"
 }
 
 # Execution Flow
