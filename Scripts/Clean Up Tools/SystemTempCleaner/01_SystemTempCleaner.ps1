@@ -136,25 +136,18 @@ if ($Force) {
     Run-Cleanup
     Write-Log "Strict DryRun completed. No changes were made." "INFO" "Gray"
 } else {
-    if (-not [Environment]::UserInteractive) {
-        Write-Log "Non-interactive session detected. Forcing Strict DryRun to prevent hanging." "WARNING" "Yellow"
-        $WhatIfPreference = $true
+    Write-Log "=== STARTING WHATIF DRY-RUN ===" "WARNING"
+    $WhatIfPreference = $true
+    Run-Cleanup
+    
+    Write-Host ""
+    $confirmation = Read-Host "WhatIf dry-run completed. Do you want to run this for real now? (Y/N)"
+    if ($confirmation -eq 'Y' -or $confirmation -eq 'Yes') {
+        Write-Log "=== RUNNING REAL CLEANUP ===" "SUCCESS"
+        $WhatIfPreference = $false
         Run-Cleanup
-        Write-Log "DryRun complete. Re-run with -Force to execute actual cleanup." "INFO" "Gray"
+        Write-Log "Cleanup complete." "SUCCESS"
     } else {
-        Write-Log "=== STARTING WHATIF DRY-RUN ===" "WARNING"
-        $WhatIfPreference = $true
-        Run-Cleanup
-        
-        Write-Host ""
-        $confirmation = Read-Host "WhatIf dry-run completed. Do you want to run this for real now? (Y/N)"
-        if ($confirmation -eq 'Y' -or $confirmation -eq 'Yes') {
-            Write-Log "=== RUNNING REAL CLEANUP ===" "SUCCESS"
-            $WhatIfPreference = $false
-            Run-Cleanup
-            Write-Log "Cleanup complete." "SUCCESS"
-        } else {
-            Write-Log "Cancelled. No changes were made." "INFO" "Gray"
-        }
+        Write-Log "Cancelled. No changes were made." "INFO" "Gray"
     }
 }
