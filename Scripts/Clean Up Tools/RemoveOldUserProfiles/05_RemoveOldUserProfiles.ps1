@@ -92,6 +92,12 @@ function Get-UserProfileList {
             }
 
             $isActive = Test-Path "Registry::HKEY_USERS\$sid"
+            try {
+                $consoleUser = (Get-WmiObject -Class Win32_ComputerSystem).UserName
+                if ($consoleUser -and $username -eq $consoleUser) {
+                    $isActive = $true
+                }
+            } catch {}
 
             [PSCustomObject]@{
                 SID         = $sid
