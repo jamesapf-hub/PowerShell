@@ -61,8 +61,13 @@ function Get-UserProfileList {
         ForEach-Object {
             $sid = $_.PSChildName
             $profilePath = $_.ProfilePath
-            $folderName = Split-Path $profilePath -Leaf
-            $username = "Unknown SID ($folderName)"
+            if (-not [string]::IsNullOrWhiteSpace($profilePath)) {
+                $folderName = Split-Path $profilePath -Leaf
+                $username = "Unknown SID ($folderName)"
+            } else {
+                $username = "Unknown SID ($sid) [Path Missing]"
+            }
+            
             try {
                 $account = (New-Object System.Security.Principal.SecurityIdentifier($sid)).Translate([System.Security.Principal.NTAccount])
                 $username = $account.Value
@@ -162,6 +167,11 @@ function Run-Cleanup {
 }
 
 # Execution Flow
+if (-not [Environment]::UserInteractive) {
+    Write-Log "Non-interactive session detected. Forcing Console Mode." "WARNING" "Yellow"
+    $ConsoleMode = $true
+}
+
 if ($Force) {
     $WhatIfPreference = $false
     Run-Cleanup
