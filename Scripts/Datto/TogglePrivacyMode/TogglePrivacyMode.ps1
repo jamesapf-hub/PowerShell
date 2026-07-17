@@ -1,28 +1,16 @@
 <#
-    #      ██╗██████╗
-    #      ██║██╔══██╗
-    #      ██║██████╔╝
-    # ██   ██║██╔═══╝
-    # ╚█████╔╝██║     
-    #  ╚════╝ ╚═╝   
-
 .SYNOPSIS
-Toggles the 'PrivacyMode' setting in the CentraStage CagService user.config file and schedules a service restart.
-
+    Toggles the 'PrivacyMode' setting in the CentraStage CagService user.config file and schedules a service restart.
 .DESCRIPTION
-This script performs two main actions:
-1.  It reads the 'DisplayVersion' from the CentraStage uninstall registry key to construct the correct path to the 'user.config' file for the CentraStage CagService.
-2.  It then reads the 'user.config' XML file, locates the 'PrivacyMode' setting, and toggles its value between 'True' and 'False'.
-3.  Finally, it saves the modified XML file.
-4.  After modifying the configuration, it sets up a scheduled task to restart the 'Datto RMM' service (formerly CentraStage) in one minute. This scheduled task is configured to run once, with highest privileges, and to delete itself immediately after completion or expiration. This ensures the configuration change takes effect without hanging the current script execution.
-
-.PARAMETER
-None. This script does not accept any parameters.
-
+    This script performs the following actions:
+    1. Reads the 'DisplayVersion' from the CentraStage registry path to build the path to the 'user.config' file.
+    2. Modifies the 'user.config' XML file to toggle the 'PrivacyMode' value (True/False).
+    3. Creates a self-deleting scheduled task that restarts the 'Datto RMM' service one minute later to apply the changes without stalling deployment tools.
 .NOTES
-    Author   : JP
-    Created  : 2025-07-18
-    Version  : 1.3
+    Author     : JP
+    Created    : 2025-07-18
+    Version    : 1.3
+    Log Path   : $env:SystemDrive\Logs\TogglePrivacyMode\TogglePrivacyMode.log
 #>
 
 # --- CONFIGURATION & LOGGING ---
