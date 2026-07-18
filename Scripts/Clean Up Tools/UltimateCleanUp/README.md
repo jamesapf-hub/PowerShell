@@ -1,6 +1,8 @@
 # Ultimate PC CleanUp Utility
 
 ## Overview
+> **Short Description:** The ultimate self-contained PC cleanup utility.
+
 This is the self-contained package for the **Ultimate PC CleanUp Utility**. It includes the central dark-themed WPF dashboard/CLI runner (`Start-UltimateCleanUp.ps1`), the double-click launcher (`Run-UltimateCleanUp.bat`), and all 6 sub-cleanup scripts flatly packaged inside the `Scripts/` directory.
 
 ### Discovered Tasks Included:

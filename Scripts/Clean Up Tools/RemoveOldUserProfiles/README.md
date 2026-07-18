@@ -1,6 +1,8 @@
 # Remove Old User Profiles Guide
 
 ## Overview
+> **Short Description:** Removes old user profiles from the system.
+
 The **User Profile Cleanup Tool** (`05_RemoveOldUserProfiles.ps1`) is an automated PowerShell utility designed to detect and safely purge orphaned or deleted Active Directory user profiles from Windows machines. It intelligently detects live users to prevent accidental deletion, forcibly bypasses NTFS restrictions to report highly accurate folder sizes, and dynamically swaps between a graphical window and a text-based console menu depending on the execution environment (e.g. Desktop vs. Datto RMM).
 
 ### Key Features

@@ -1,6 +1,8 @@
 # Windows Update Cache Cleanup Guide
 
 ## Overview
+> **Short Description:** Clears the SoftwareDistribution cache.
+
 This PowerShell script stops Windows Update services (`wuauserv` and `bits`), purges the `C:\Windows\SoftwareDistribution\Download` cache directory, and restarts the services. It runs in a dry-run (WhatIf) mode first to show potential cleanup statistics, allowing administrators to confirm execution before applying changes.
 
 ### Key Features

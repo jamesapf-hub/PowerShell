@@ -1,6 +1,8 @@
 # Windows Upgrade Folder Cleanup Guide
 
 ## Overview
+> **Short Description:** Removes Windows 11 upgrade leftovers.
+
 This script checks for the presence of leftover Windows upgrade cache folders (`C:\$WINDOWS.~WS` and `C:\ESD`), takes ownership and grants permissions recursively, and deletes them to recover disk space.
 
 ### Key Features
