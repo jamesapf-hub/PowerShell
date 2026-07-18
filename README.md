@@ -31,6 +31,19 @@ If you cannot run scripts due to execution policy limits, you can set it in an a
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
+## Script Categories & Descriptions
+
+To keep the portal navigation meaningful, the scripts are organized into the following categories under `Scripts/`:
+*   **Clean Up Tools:** Utilities to clean system caches, remove temporary files, and reclaim disk space.
+*   **Configuration:** OS parameter customization, registry settings adjustments, and profile changes.
+*   **Datto:** Datto RMM component scripts, policy triggers, and automated status checks.
+*   **Intune:** Intune app packaging helpers, custom proactive remediations, and MDM policy templates.
+*   **Kiosk:** Dedicated locking and provisioning scripts for single-app kiosk endpoints.
+*   **Microsoft 365:** User creation, license checks, and tenant management scripts (Exchange, Entra, Teams).
+*   **Networking:** Ping diagnostics, subnet scanners, DNS resolvers, and network status checks.
+*   **Sample:** Reference templates demonstrating standard portal layouts, logging, and error handling.
+*   **Software:** Silent software deployment wrappers, updates, and application uninstallation scripts.
+
 ## Static Code Analysis (Linting)
 
 This repository includes custom settings for **PSScriptAnalyzer** to keep code formatting clean and uniform. If you use VS Code, it will automatically detect [PSScriptAnalyzerSettings.psd1](PSScriptAnalyzerSettings.psd1) and show warnings/errors inline.
