@@ -1,6 +1,8 @@
 # Toggle Privacy Mode Guide
 
 ## Overview
+> **Short Description:** Toggles the 'PrivacyMode' setting in Datto RMM.
+
 Toggles the 'PrivacyMode' setting in the CentraStage (Datto RMM) CagService user.config file and schedules a service restart.
 
 ### Key Features
@@ -33,11 +35,8 @@ The script provides color-coded console output and writes to a local log file at
 - **Green (SUCCESS):** Configuration applied or task scheduled successfully.
 - **Red (ERROR):** Any failure to locate the config, modify the XML, or create the scheduled task.
 
-
 ## Fast Execute
-> [!TIP]
-> **Run Directly in PowerShell (as Administrator):**
-> You can download and execute this script instantly without saving the file locally:
-> ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Datto/TogglePrivacyMode/TogglePrivacyMode.ps1")
-> ```
+
+> [!WARNING]
+> **N/A - Datto RMM Component:**
+> This script relies on Datto environment variables and cannot be run locally. You must package this script into a Datto RMM Component to execute it on target endpoints.
