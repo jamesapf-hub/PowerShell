@@ -1,6 +1,8 @@
 # Adobe Orphan Installer Patch Cleaner Guide
 
 ## Overview
+> **Short Description:** Cleans Adobe installer patch files.
+
 This script scans the `C:\Windows\Installer` directory for orphaned Adobe installer patch files (`.msp`), calculates potential disk space savings, and deletes them. It runs in a dry-run (WhatIf) mode first by default to allow review before deletion.
 
 ### Key Features

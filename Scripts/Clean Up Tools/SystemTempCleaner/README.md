@@ -1,6 +1,8 @@
 # System Temp Files & Recycle Bin Cleaner Guide
 
 ## Overview
+> **Short Description:** Cleans Windows system temp files and cache.
+
 This PowerShell script cleans Windows system temporary files, user temp files, Windows Prefetch cache, and empties the Recycle Bin. It operates in a dry-run (WhatIf) mode first by default to allow safe review before any files are modified.
 
 ### Key Features
