@@ -37,7 +37,7 @@ Dependencies: Requires the Windows Installer (`msiserver`) service.
 ## Fast Execute
 > [!TIP]
 > **Run Directly in PowerShell (as Administrator):**
-> You can download and execute this script instantly without saving the file locally:
+> You can download and execute this script instantly using the short URL:
 > ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean Up Tools/CleanAdobeOrphanInstallers/03_CleanAdobeOrphanInstallers.ps1")
+> irm phnx.it/cleanadobe | iex
 > ```
