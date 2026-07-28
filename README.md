@@ -34,6 +34,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ## Script Categories & Descriptions
 
 To keep the portal navigation meaningful, the scripts are organized into the following categories under `Scripts/`:
+*   **Azure:** Azure VM metadata extraction, Instance Metadata Service (IMDS) queries, cloud resource management, and Azure automation tools.
 *   **Clean Up Tools:** Utilities to clean system caches, remove temporary files, and reclaim disk space.
 *   **Configuration:** OS parameter customization, registry settings adjustments, and profile changes.
 *   **Datto:** Datto RMM component scripts, policy triggers, and automated status checks.
