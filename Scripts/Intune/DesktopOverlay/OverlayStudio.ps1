@@ -390,10 +390,25 @@ $btnTest.Add_Click({
         $ipVal     = if ($Config.ShowIP) { 1 } else { 0 }
         $serialVal = if ($Config.ShowSerial) { 1 } else { 0 }
 
-        $execArgs = "-NoProfile -ExecutionPolicy Bypass -Command `"`& '$ScriptPath' -Title '$($Config.Title)' -SupportPhone '$($Config.Phone)' -SupportEmail '$($Config.Email)' -Position '$($Config.Position)' -AccentColorHex '$accentHex' -BgColorHex '$bgHex' -TextColorHex '$textHex' -ShowHost $hostVal -ShowUser $userVal -ShowIP $ipVal -ShowSerial $serialVal`""
-        if ($Config.AlwaysOnTop) { $execArgs = $execArgs.Substring(0, $execArgs.Length - 1) + " -AlwaysOnTop`"" }
+        $argList = @(
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-File", $ScriptPath,
+            "-Title", $Config.Title,
+            "-SupportPhone", $Config.Phone,
+            "-SupportEmail", $Config.Email,
+            "-Position", $Config.Position,
+            "-AccentColorHex", $accentHex,
+            "-BgColorHex", $bgHex,
+            "-TextColorHex", $textHex,
+            "-ShowHost", $hostVal,
+            "-ShowUser", $userVal,
+            "-ShowIP", $ipVal,
+            "-ShowSerial", $serialVal
+        )
+        if ($Config.AlwaysOnTop) { $argList += "-AlwaysOnTop" }
 
-        Start-Process powershell.exe -ArgumentList $execArgs
+        Start-Process -FilePath "powershell.exe" -ArgumentList $argList
     } catch {
         [System.Windows.Forms.MessageBox]::Show("Error testing live overlay:`n`n$_", "Test Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
     }
