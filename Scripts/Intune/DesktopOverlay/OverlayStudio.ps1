@@ -391,6 +391,7 @@ $btnTest.Add_Click({
         $serialVal = if ($Config.ShowSerial) { 1 } else { 0 }
 
         $argList = @(
+            "-NoExit",
             "-NoProfile",
             "-ExecutionPolicy", "Bypass",
             "-File", $ScriptPath,
