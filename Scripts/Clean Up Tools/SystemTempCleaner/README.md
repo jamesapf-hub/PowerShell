@@ -37,7 +37,11 @@ Execution Policy: RemoteSigned or Bypass
 ## Fast Execute
 > [!TIP]
 > **Run Directly in PowerShell (as Administrator):**
-> You can download and execute this script instantly without saving the file locally:
 > ```powershell
 > iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean Up Tools/SystemTempCleaner/01_SystemTempCleaner.ps1")
+> ```
+>
+> **Short Branded URL (phnx.it):**
+> ```powershell
+> irm phnx.it/15EF40O | iex
 > ```

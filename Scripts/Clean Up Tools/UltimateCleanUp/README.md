@@ -63,9 +63,10 @@ UltimateCleanUp/
 ```
 
 ## Fast Execute
+
 > [!TIP]
 > **Run Locally in PowerShell (as Administrator):**
-> After downloading and extracting the package, you can execute the dashboard directly via the command line:
+> Download and extract the package folder, then run the launcher command:
 > ```powershell
 > powershell.exe -ExecutionPolicy Bypass -File .\Start-UltimateCleanUp.ps1
 > ```
