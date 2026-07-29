@@ -13,7 +13,7 @@ if ([string]::IsNullOrEmpty($PSScriptRoot) -or $PSScriptRoot -match "^iex") {
     throw "In-memory execution (via iex / irm) is not supported for bundled packages. Build-IntunePackage.ps1 relies on local relative files (src/ directory and IntuneWinAppUtil.exe). Please download and extract the repository package locally before executing."
 }
 
-$WorkspaceRoot = $PSScriptRoot
+$WorkspaceRoot = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
 $SrcFolder     = Join-Path -Path $WorkspaceRoot -ChildPath "src"
 $OutputDir     = Join-Path -Path $WorkspaceRoot -ChildPath "output"
 $ToolPath      = Join-Path -Path $WorkspaceRoot -ChildPath "IntuneWinAppUtil.exe"
