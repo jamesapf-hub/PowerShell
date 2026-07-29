@@ -51,9 +51,13 @@ When creating the Win32 App in Microsoft Intune Admin Center:
 
 ## Fast Execute
 
+> [!WARNING]
+> **Bundled Package Notice:**
+> This tool is a multi-file package (`src/` payload files, `OverlayStudio.ps1`, `IntuneWinAppUtil.exe`) and cannot be executed in-memory via `irm | iex`. Please download or clone the repository package locally before executing.
+
 > [!TIP]
 > **Run Studio Locally (as Administrator):**
-> Execute the Overlay Studio GUI on your workstation:
+> Execute the Overlay Studio GUI locally on your workstation:
 > ```powershell
 > powershell.exe -ExecutionPolicy Bypass -File .\OverlayStudio.ps1
 > ```
