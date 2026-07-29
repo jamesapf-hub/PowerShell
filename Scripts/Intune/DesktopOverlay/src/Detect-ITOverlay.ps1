@@ -1,11 +1,6 @@
-<#
-.SYNOPSIS
-    Intune Win32 App Detection Script for IT Support Desktop Overlay
-.DESCRIPTION
-    Checks if C:\ProgramData\ITSupportOverlay\Start-ITOverlay.ps1 exists
-    and if the Scheduled Task ITSupportOverlay is registered.
-    Includes optional logging for troubleshooting.
-#>
+param(
+    [string]$TargetVersion = "1.0.0"
+)
 
 $InstallDir = "C:\ProgramData\ITSupportOverlay"
 $ScriptFile = "$InstallDir\Start-ITOverlay.ps1"
@@ -23,13 +18,22 @@ function Write-DetectLog {
 $FileExists = Test-Path -Path $ScriptFile
 $TaskExists = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 
-Write-DetectLog "Detection Check -> ScriptFile Exists: $FileExists | Scheduled Task Exists: $([bool]$TaskExists)"
-
-if ($FileExists -and $TaskExists) {
-    Write-DetectLog "Status: INSTALLED"
-    Write-Output "ITSupportOverlay Installed"
-    exit 0
-} else {
-    Write-DetectLog "Status: NOT INSTALLED"
+if (-not $FileExists -or -not $TaskExists) {
+    Write-DetectLog "Status: NOT INSTALLED (File or Task missing)"
     exit 1
 }
+
+# Version Check for Overwrite / Update Deployments
+$installedContent = Get-Content -Path $ScriptFile -Raw -ErrorAction SilentlyContinue
+if ($installedContent -match '\[string\]\$BuildVersion\s*=\s*"([^"]*)"') {
+    $InstalledVersion = $Matches[1]
+    Write-DetectLog "Version Check -> Installed: $InstalledVersion | Target: $TargetVersion"
+    if ($InstalledVersion -ne $TargetVersion) {
+        Write-DetectLog "Status: OUTDATED VERSION ($InstalledVersion != $TargetVersion). Triggering Intune reinstall update."
+        exit 1
+    }
+}
+
+Write-DetectLog "Status: INSTALLED & COMPLIANT ($TargetVersion)"
+Write-Output "ITSupportOverlay Installed ($TargetVersion)"
+exit 0

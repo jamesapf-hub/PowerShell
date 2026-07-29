@@ -11,7 +11,11 @@ param(
     [string]$Title = "IT SUPPORT HELPDESK",
     [string]$SupportPhone = "0800 123 4567",
     [string]$SupportEmail = "support@company.com",
+    [string]$SupportHours = "Mon-Fri: 08:30 - 17:00",
+    [ValidateSet("PhoneFirst", "EmailFirst")][string]$FieldOrder = "EmailFirst",
     [ValidateSet("BottomRight", "TopRight", "BottomLeft", "TopLeft")][string]$Position = "BottomRight",
+    [ValidateSet("Small", "Medium", "Large")][string]$Size = "Small",
+    [string]$FontFamily = "Segoe UI",
     [switch]$AlwaysOnTop = $false,
     [string]$AccentColorHex = "#0EA5E9",
     [string]$BgColorHex = "#1A202C",
@@ -20,6 +24,7 @@ param(
     $ShowUser = $true,
     $ShowIP = $true,
     $ShowSerial = $true,
+    [string]$BuildVersion = "1.0.0",
     [string]$LogPath = "C:\ProgramData\ITSupportOverlay\overlay.log"
 )
 
@@ -68,8 +73,7 @@ function Write-Log {
 Write-Log "--- Starting IT Support Desktop Overlay (Position: $Position, Desktop Mode: $([bool](-not $AlwaysOnTop))) ---" "INFO"
 
 # --- In-Memory Safety Guard ---
-$CurrentScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Path $MyInvocation.MyCommand.Path -Parent -ErrorAction SilentlyContinue }
-if ($PSScriptRoot -match "^iex" -or [string]::IsNullOrEmpty($CurrentScriptDir)) {
+if ([string]::IsNullOrEmpty($MyInvocation.MyCommand.Path) -or $MyInvocation.MyCommand.Path -match "^iex") {
     Write-Log "In-memory execution (via iex / WebString) detected. Aborting." "ERROR"
     Write-Error "In-memory execution is not supported. Please download and extract the package locally."
     exit 1
@@ -123,10 +127,8 @@ public class Win32OverlayHelper {
 }
 "@
     try {
-        Add-Type -TypeDefinition $Win32Signature -ErrorAction Stop
-    } catch {
-        Write-Log "Win32OverlayHelper type already loaded." "INFO"
-    }
+        Add-Type -TypeDefinition $Win32Signature -ErrorAction SilentlyContinue
+    } catch {}
 }
 
 # --- System Information Helpers ---
@@ -174,7 +176,29 @@ try {
     $form.TopMost         = [bool]$AlwaysOnTop
     $form.BackColor       = $BgColor
     $form.Opacity         = 0.92
-    $form.Size            = New-Object System.Drawing.Size(310, 160)
+    # Size Presets Calculation
+    switch ($Size) {
+        "Medium" {
+            $formWidth    = 380
+            $formHeight   = 200
+            $fontSize     = 10.5
+            $dashSeparator = "----------------------------------------------------"
+        }
+        "Large" {
+            $formWidth    = 460
+            $formHeight   = 240
+            $fontSize     = 12.0
+            $dashSeparator = "------------------------------------------------------------------"
+        }
+        default { # Small
+            $formWidth    = 310
+            $formHeight   = 160
+            $fontSize     = 9.0
+            $dashSeparator = "-----------------------------------------------"
+        }
+    }
+
+    $form.Size = New-Object System.Drawing.Size($formWidth, $formHeight)
 
     # Position Calculation
     $workingArea = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
@@ -218,9 +242,18 @@ try {
     # Build Text Lines
     $lines = @()
     $lines += $Title.ToUpper()
-    $lines += "-----------------------------------------------"
-    $lines += "Phone:  $SupportPhone"
-    $lines += "Email:  $SupportEmail"
+    $lines += $dashSeparator
+
+    if ($FieldOrder -eq "EmailFirst") {
+        if (-not [string]::IsNullOrWhiteSpace($SupportEmail)) { $lines += "Email:  $SupportEmail" }
+        if (-not [string]::IsNullOrWhiteSpace($SupportPhone)) { $lines += "Phone:  $SupportPhone" }
+    } else {
+        if (-not [string]::IsNullOrWhiteSpace($SupportPhone)) { $lines += "Phone:  $SupportPhone" }
+        if (-not [string]::IsNullOrWhiteSpace($SupportEmail)) { $lines += "Email:  $SupportEmail" }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($SupportHours)) {
+        $lines += "Hours:  $SupportHours"
+    }
     $lines += ""
 
     $sysFields = @()
@@ -237,7 +270,8 @@ try {
     $label = New-Object System.Windows.Forms.Label
     $label.Dock      = [System.Windows.Forms.DockStyle]::Fill
     $label.ForeColor = $TextColor
-    $label.Font      = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Regular)
+    $selectedFont    = try { New-Object System.Drawing.Font($FontFamily, $fontSize, [System.Drawing.FontStyle]::Regular) } catch { New-Object System.Drawing.Font("Segoe UI", $fontSize) }
+    $label.Font      = $selectedFont
     $label.Padding   = New-Object System.Windows.Forms.Padding(0, 8, 0, 0)
     $label.Text      = ($lines -join "`n")
     $panel.Controls.Add($label)
@@ -290,4 +324,5 @@ try {
     Start-Sleep -Seconds 5
     exit 1
 }
+
 
