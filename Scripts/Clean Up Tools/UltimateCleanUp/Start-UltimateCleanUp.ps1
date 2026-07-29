@@ -32,7 +32,7 @@ param (
 $PSScriptRoot = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition -ErrorAction SilentlyContinue
 
 # CRITICAL SAFETY GUARD: Prevent script from running in memory via iex
-if (-not $PSScriptRoot -or $PSScriptRoot -match "^iex") {
+if ([string]::IsNullOrEmpty($PSScriptRoot) -or $PSScriptRoot -match "^iex") {
     Write-Host ""
     Write-Host "==========================================================" -ForegroundColor Red
     Write-Host "CRITICAL ERROR: UltimateCleanUp Cannot Be Run From Memory!" -ForegroundColor Red

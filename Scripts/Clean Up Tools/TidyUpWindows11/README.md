@@ -35,7 +35,11 @@ Permissions: Local Administrator rights required (elevation check included)
 ## Fast Execute
 > [!TIP]
 > **Run Directly in PowerShell (as Administrator):**
-> You can download and execute this script instantly without saving the file locally:
 > ```powershell
 > iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean Up Tools/TidyUpWindows11/06_TidyUpWindows11.ps1")
+> ```
+>
+> **Short Branded URL (phnx.it):**
+> ```powershell
+> irm phnx.it/IUJ95H7 | iex
 > ```
