@@ -25,8 +25,12 @@ Configures regional settings, user locale, system locale, and keyboard layouts t
 
 ## Fast Execute
 > [!TIP]
-> **Run Directly in PowerShell (as Administrator):**
-> You can download and execute this script instantly without saving the file locally:
+> **Short Branded URL (phnx.it):**
+> ```powershell
+> irm phnx.it/UKLANG1 | iex
+> ```
+>
+> **Full Transparent GitHub Command:**
 > ```powershell
 > iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Configuration/Set-SystemLanguageUK/Set-SystemLanguageUK.ps1")
 > ```

@@ -38,8 +38,12 @@ Queries the Azure Instance Metadata Service (IMDS) at `http://169.254.169.254` f
 ## Fast Execute
 
 > [!TIP]
-> **Run Directly in PowerShell:**
-> You can execute this script directly inside an Azure VM without saving files locally:
+> **Short Branded URL (phnx.it):**
+> ```powershell
+> irm phnx.it/AZVM01X | iex
+> ```
+>
+> **Full Transparent GitHub Command:**
 > ```powershell
 > iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Azure/HelpfulTools/Get-AzureVmDetails/Get-AzureVmDetails.ps1")
 > ```
