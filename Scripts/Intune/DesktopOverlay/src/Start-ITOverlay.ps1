@@ -250,28 +250,31 @@ try {
             $WS_EX_TOOLWINDOW   = 0x00000080
             $WS_EX_NOACTIVATE   = 0x08000000
 
-            $currentStyle = [Win32OverlayHelper]::GetWindowLong($form.Handle, $GWL_EXSTYLE)
-            $newStyle = ($currentStyle -bor $WS_EX_TRANSPARENT -bor $WS_EX_TOOLWINDOW -bor $WS_EX_NOACTIVATE)
-            $null = [Win32OverlayHelper]::SetWindowLong($form.Handle, $GWL_EXSTYLE, $newStyle)
+            $hasWin32 = try { [bool]([System.Management.Automation.PSTypeName]'Win32OverlayHelper').Type } catch { $false }
+            if ($hasWin32) {
+                $currentStyle = [Win32OverlayHelper]::GetWindowLong($form.Handle, $GWL_EXSTYLE)
+                $newStyle = ($currentStyle -bor $WS_EX_TRANSPARENT -bor $WS_EX_TOOLWINDOW -bor $WS_EX_NOACTIVATE)
+                $null = [Win32OverlayHelper]::SetWindowLong($form.Handle, $GWL_EXSTYLE, $newStyle)
 
-            if (-not $AlwaysOnTop) {
-                $Progman = [Win32OverlayHelper]::FindWindow("Progman", $null)
-                if ($Progman -ne [IntPtr]::Zero) {
-                    $null = [Win32OverlayHelper]::SetParent($form.Handle, $Progman)
+                if (-not $AlwaysOnTop) {
+                    $Progman = [Win32OverlayHelper]::FindWindow("Progman", $null)
+                    if ($Progman -ne [IntPtr]::Zero) {
+                        $null = [Win32OverlayHelper]::SetParent($form.Handle, $Progman)
+                    }
+
+                    $HWND_BOTTOM      = [IntPtr]1
+                    $SWP_NOSIZE       = 0x0001
+                    $SWP_NOMOVE       = 0x0002
+                    $SWP_NOACTIVATE   = 0x0010
+                    $SWP_FRAMECHANGED = 0x0020
+                    $flags = $SWP_NOSIZE -bor $SWP_NOMOVE -bor $SWP_NOACTIVATE -bor $SWP_FRAMECHANGED
+                    $null = [Win32OverlayHelper]::SetWindowPos($form.Handle, $HWND_BOTTOM, 0, 0, 0, 0, $flags)
                 }
-
-                $HWND_BOTTOM      = [IntPtr]1
-                $SWP_NOSIZE       = 0x0001
-                $SWP_NOMOVE       = 0x0002
-                $SWP_NOACTIVATE   = 0x0010
-                $SWP_FRAMECHANGED = 0x0020
-                $flags = $SWP_NOSIZE -bor $SWP_NOMOVE -bor $SWP_NOACTIVATE -bor $SWP_FRAMECHANGED
-                $null = [Win32OverlayHelper]::SetWindowPos($form.Handle, $HWND_BOTTOM, 0, 0, 0, 0, $flags)
             }
 
             Write-Log "Overlay window styles applied successfully." "INFO"
         } catch {
-            Write-Log "Error setting window Z-order in Form_Load: $_" "ERROR"
+            Write-Log "Non-fatal error setting window Z-order in Form_Load: $_" "WARN"
         }
     })
 
@@ -281,6 +284,10 @@ try {
 
 } catch {
     Write-Log "Fatal error in overlay loop: $_" "ERROR"
+    try {
+        [System.Windows.Forms.MessageBox]::Show("Error starting desktop overlay:`n`n$_", "Overlay Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+    } catch {}
+    Start-Sleep -Seconds 5
     exit 1
 }
 
