@@ -6,6 +6,13 @@
     customize, preview, test, and package the IT Support Desktop Overlay into an Intune Win32 (.intunewin) file.
 #>
 
+# --- In-Memory Guard for Bundled Packages ---
+if ([string]::IsNullOrEmpty($PSScriptRoot) -or $PSScriptRoot -match "^iex") {
+    Write-Host "ERROR: In-memory execution (via iex / irm) is not supported for bundled packages." -ForegroundColor Red
+    Write-Error "OverlayStudio.ps1 relies on local relative files (src/ payload directory and IntuneWinAppUtil.exe). Please download and extract the repository package locally before executing."
+    exit 1
+}
+
 # --- Resolve Absolute Script Root Folder ---
 $Script:RootPath = $PSScriptRoot
 if ([string]::IsNullOrEmpty($Script:RootPath)) {
