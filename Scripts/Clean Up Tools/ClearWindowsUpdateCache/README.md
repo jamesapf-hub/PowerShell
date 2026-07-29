@@ -36,12 +36,12 @@ Execution Policy: RemoteSigned or Bypass
 
 ## Fast Execute
 > [!TIP]
-> **Run Directly in PowerShell (as Administrator):**
-> ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean Up Tools/ClearWindowsUpdateCache/04_ClearWindowsUpdateCache.ps1")
-> ```
->
 > **Short Branded URL (phnx.it):**
 > ```powershell
 > irm phnx.it/JOPQEV6 | iex
+> ```
+>
+> **Full Transparent GitHub Command:**
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean Up Tools/ClearWindowsUpdateCache/04_ClearWindowsUpdateCache.ps1")
 > ```

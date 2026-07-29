@@ -115,12 +115,12 @@ The script provides deeply color-coded console output during its execution. When
 ## Fast Execute
 
 > [!TIP]
-> **Run Directly in PowerShell (as Administrator):**
-> ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean%20Up%20Tools/RemoveOldUserProfiles/05_RemoveOldUserProfiles.ps1")
-> ```
->
 > **Short Branded URL (phnx.it):**
 > ```powershell
 > irm phnx.it/UNVPY3P | iex
+> ```
+>
+> **Full Transparent GitHub Command:**
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean Up Tools/RemoveOldUserProfiles/05_RemoveOldUserProfiles.ps1")
 > ```

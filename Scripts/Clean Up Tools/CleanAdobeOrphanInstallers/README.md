@@ -36,12 +36,12 @@ Dependencies: Requires the Windows Installer (`msiserver`) service.
 
 ## Fast Execute
 > [!TIP]
-> **Run Directly in PowerShell (as Administrator):**
-> ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean Up Tools/CleanAdobeOrphanInstallers/03_CleanAdobeOrphanInstallers.ps1")
-> ```
->
 > **Short Branded URL (phnx.it):**
 > ```powershell
 > irm phnx.it/AD79K4X | iex
+> ```
+>
+> **Full Transparent GitHub Command:**
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Clean Up Tools/CleanAdobeOrphanInstallers/03_CleanAdobeOrphanInstallers.ps1")
 > ```
