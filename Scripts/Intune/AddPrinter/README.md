@@ -254,8 +254,8 @@ powershell.exe -ExecutionPolicy Bypass -File .\Start-PackagerGui.ps1
 
 ## Fast Execute
 > [!TIP]
-> **Run Directly in PowerShell (as Administrator):**
-> You can download and execute this script instantly without saving the file locally:
+> **Run Locally in PowerShell (as Administrator):**
+> Execute the packager utility GUI locally on your workstation:
 > ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Intune/AddPrinter/AddPrinter.ps1")
+> powershell.exe -ExecutionPolicy Bypass -File .\AddPrinter.ps1
 > ```
