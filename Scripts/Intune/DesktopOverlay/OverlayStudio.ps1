@@ -406,7 +406,8 @@ $btnTest.Add_Click({
             "-ShowIP", $ipVal,
             "-ShowSerial", $serialVal
         )
-        if ($Config.AlwaysOnTop) { $argList += "-AlwaysOnTop" }
+        # Always float topmost during live studio testing so test overlay is visible on screen
+        $argList += "-AlwaysOnTop"
 
         Start-Process -FilePath "powershell.exe" -ArgumentList $argList
     } catch {

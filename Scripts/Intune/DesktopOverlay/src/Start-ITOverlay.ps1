@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Enterprise Desktop Overlay - IT Support Helpdesk Info
 .DESCRIPTION
@@ -68,7 +68,8 @@ function Write-Log {
 Write-Log "--- Starting IT Support Desktop Overlay (Position: $Position, Desktop Mode: $([bool](-not $AlwaysOnTop))) ---" "INFO"
 
 # --- In-Memory Safety Guard ---
-if ($PSScriptRoot -match "^iex" -or [string]::IsNullOrEmpty($PSScriptRoot)) {
+$CurrentScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Path $MyInvocation.MyCommand.Path -Parent -ErrorAction SilentlyContinue }
+if ($PSScriptRoot -match "^iex" -or [string]::IsNullOrEmpty($CurrentScriptDir)) {
     Write-Log "In-memory execution (via iex / WebString) detected. Aborting." "ERROR"
     Write-Error "In-memory execution is not supported. Please download and extract the package locally."
     exit 1
