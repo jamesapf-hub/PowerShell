@@ -9,11 +9,14 @@
 $ErrorActionPreference = "Stop"
 
 # --- In-Memory Guard for Bundled Packages ---
-if ([string]::IsNullOrEmpty($PSScriptRoot) -or $PSScriptRoot -match "^iex") {
+if ([string]::IsNullOrEmpty($MyInvocation.MyCommand.Path) -or $MyInvocation.MyCommand.Path -match "^iex") {
     throw "In-memory execution (via iex / irm) is not supported for bundled packages. Build-IntunePackage.ps1 relies on local relative files (src/ directory and IntuneWinAppUtil.exe). Please download and extract the repository package locally before executing."
 }
 
-$WorkspaceRoot = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
+$WorkspaceRoot = $PSScriptRoot
+if ([string]::IsNullOrEmpty($WorkspaceRoot)) {
+    $WorkspaceRoot = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
+}
 $SrcFolder     = Join-Path -Path $WorkspaceRoot -ChildPath "src"
 $OutputDir     = Join-Path -Path $WorkspaceRoot -ChildPath "output"
 $ToolPath      = Join-Path -Path $WorkspaceRoot -ChildPath "IntuneWinAppUtil.exe"
@@ -63,6 +66,56 @@ if ($Process.ExitCode -eq 0) {
     if ($IntuneWimFile) {
         Write-Host "Generated Intune Package: $($IntuneWimFile.FullName) ($([math]::Round($IntuneWimFile.Length / 1KB, 2)) KB)" -ForegroundColor Green
     }
+
+    # Copy Custom Intune Detection Script to Output Directory
+    $DetectSrc = Join-Path -Path $SrcFolder -ChildPath "Detect-ITOverlay.ps1"
+    $DetectDst = Join-Path -Path $OutputDir -ChildPath "Detect-ITOverlay.ps1"
+    if (Test-Path -Path $DetectSrc) {
+        Copy-Item -Path $DetectSrc -Destination $DetectDst -Force
+        Write-Host "Copied Intune Detection Script to Output: $DetectDst" -ForegroundColor Green
+    }
+
+    # Generate Intune-Deployment-Instructions.txt in Output Directory
+    $InstructionsPath = Join-Path -Path $OutputDir -ChildPath "Intune-Deployment-Instructions.txt"
+    $InstructionsContent = @"
+========================================================================
+MICROSOFT INTUNE WIN32 APP DEPLOYMENT CONFIGURATION
+Package: IT Support Desktop Overlay
+========================================================================
+
+1. APP INFORMATION
+   - Name: IT Support Desktop Overlay
+   - Description: Renders IT support helpdesk contact details and system diagnostics on endpoint desktops.
+   - Publisher: IT Department
+
+2. PROGRAM CONFIGURATION
+   - Install command:
+     powershell.exe -ExecutionPolicy Bypass -File .\Install-ITOverlay.ps1
+
+   - Uninstall command:
+     powershell.exe -ExecutionPolicy Bypass -File .\Uninstall-ITOverlay.ps1
+
+   - Install behavior:
+     System
+
+   - Device restart behavior:
+     No action
+
+3. DETECTION RULES
+   - Rules format: Use a custom detection script
+   - Script file: Detect-ITOverlay.ps1 (Included in this output folder)
+   - Run script as 32-bit process on 64-bit clients: No
+   - Enforce script signature check: No
+
+========================================================================
+FILES IN THIS OUTPUT FOLDER:
+  - Install-ITOverlay.intunewim        : Upload to Intune Win32 App file
+  - Detect-ITOverlay.ps1               : Upload to Intune Custom Detection Script
+  - Intune-Deployment-Instructions.txt : Quick deployment reference guide
+========================================================================
+"@
+    Set-Content -Path $InstructionsPath -Value $InstructionsContent -Encoding UTF8
+    Write-Host "Generated Deployment Instructions: $InstructionsPath" -ForegroundColor Green
 } else {
     Write-Error "IntuneWinAppUtil failed with exit code $($Process.ExitCode):`n$Output`n$ErrorOutput"
 }

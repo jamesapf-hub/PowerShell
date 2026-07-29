@@ -1,7 +1,7 @@
 @echo off
 title IT Support Overlay Studio
 echo ============================================================
-echo Opening IT Support Overlay Studio & Package Builder...
+echo Opening IT Support Overlay Studio and Package Builder...
 echo ============================================================
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0OverlayStudio.ps1"
 if %ERRORLEVEL% NEQ 0 (
