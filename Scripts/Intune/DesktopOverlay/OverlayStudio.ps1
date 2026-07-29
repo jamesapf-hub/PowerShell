@@ -8,9 +8,7 @@
 
 # --- In-Memory Guard for Bundled Packages ---
 if ([string]::IsNullOrEmpty($PSScriptRoot) -or $PSScriptRoot -match "^iex") {
-    Write-Host "ERROR: In-memory execution (via iex / irm) is not supported for bundled packages." -ForegroundColor Red
-    Write-Error "OverlayStudio.ps1 relies on local relative files (src/ payload directory and IntuneWinAppUtil.exe). Please download and extract the repository package locally before executing."
-    exit 1
+    throw "In-memory execution (via iex / irm) is not supported for bundled packages. OverlayStudio.ps1 relies on local relative files (src/ payload directory and IntuneWinAppUtil.exe). Please download and extract the repository package locally before executing."
 }
 
 # --- Resolve Absolute Script Root Folder ---
