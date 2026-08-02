@@ -45,8 +45,7 @@ Verify success by checking the console output or log file for "Calendar processi
 
 ## Fast Execute
 > [!TIP]
-> **Run Directly in PowerShell (as Administrator):**
-> You can download and execute this script instantly without saving the file locally:
+> **Short Branded URL (phnx.it):**
 > ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Microsoft 365/TeamsRooms/AllowForwardOfExternalMeetings/ExternalTeamsRoom.ps1")
+> irm phnx.it/EXTROOM | iex
 > ```

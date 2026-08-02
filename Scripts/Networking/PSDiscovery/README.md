@@ -54,8 +54,7 @@ Get-SwitchPortInfo
 
 ## Fast Execute
 > [!TIP]
-> **Run Directly in PowerShell (as Administrator):**
-> You can download and execute this script instantly without saving the file locally:
+> **Short Branded URL (phnx.it):**
 > ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Networking/PSDiscovery/Export-TopologyLink.ps1")
+> irm phnx.it/PSDOP1X | iex
 > ```
