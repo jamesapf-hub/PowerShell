@@ -38,8 +38,7 @@ powershell.exe -ExecutionPolicy Bypass -File .\DeviceQuarantineReleaseApp.ps1
 
 ## Fast Execute
 > [!TIP]
-> **Run Directly in PowerShell (as Administrator):**
-> You can download and execute this script instantly without saving the file locally:
+> **Short Branded URL (phnx.it):**
 > ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Microsoft 365/DeviceQuarantineRelease/DeviceQuarantineReleaseApp.ps1")
+> irm phnx.it/DEVQRN1 | iex
 > ```

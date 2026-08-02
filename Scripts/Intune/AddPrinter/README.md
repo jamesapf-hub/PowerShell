@@ -254,8 +254,7 @@ powershell.exe -ExecutionPolicy Bypass -File .\Start-PackagerGui.ps1
 
 ## Fast Execute
 > [!TIP]
-> **Run Locally in PowerShell (as Administrator):**
-> Execute the packager utility GUI locally on your workstation:
+> **Short Branded URL (phnx.it):**
 > ```powershell
-> powershell.exe -ExecutionPolicy Bypass -File .\AddPrinter.ps1
+> irm phnx.it/ADDPRNT | iex
 > ```

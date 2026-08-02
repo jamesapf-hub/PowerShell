@@ -65,10 +65,9 @@ UltimateCleanUp/
 ## Fast Execute
 
 > [!TIP]
-> **Run Locally in PowerShell (as Administrator):**
-> Download and extract the package folder, then run the launcher command:
+> **Short Branded URL (phnx.it):**
 > ```powershell
-> powershell.exe -ExecutionPolicy Bypass -File .\Start-UltimateCleanUp.ps1
+> irm phnx.it/ULTCLN1 | iex
 > ```
 
 

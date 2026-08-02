@@ -76,8 +76,7 @@ To inspect specific user accounts, select the **User Directory** tab from the to
 
 ## Fast Execute
 > [!TIP]
-> **Run Directly in PowerShell (as Administrator):**
-> You can download and execute this script instantly without saving the file locally:
+> **Short Branded URL (phnx.it):**
 > ```powershell
-> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Microsoft 365/UserLicenceCheck/Console.ps1")
+> irm phnx.it/LICCHK1 | iex
 > ```
