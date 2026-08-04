@@ -7,7 +7,7 @@ The `Console.ps1` script launches a modern, dark-themed (Kinetic Command) admini
 * **ActiveSync Status Inspection:** Retrieves all mobile devices associated with a mailbox, showing Device Model, OS, Client Type, Access State, and Quarantine reason.
 * **Cost Savings Analysis:** Dynamically calculates accumulated wasted license spend and projects recurring monthly savings for inactive accounts.
 * **Interactive Visualization:** Displays interactive charts showing license distributions and user inactivity timelines, along with a live telemetry execution log.
-* **Advanced Exclusion Filter:** Prompts to filter/exclude Seriun or JP verification accounts during report export.
+* **Advanced Exclusion Filter:** Prompts to filter/exclude test or admin verification accounts during report export.
 
 > [!NOTE]
 > **Log File Location:** `C:\Logs\UserLicenceCheck\LicensedUsers_RunLog_DDMMYY.log` (or `%SystemDrive%\Logs\UserLicenceCheck\LicensedUsers_RunLog_DDMMYY.log`)
@@ -16,6 +16,8 @@ The `Console.ps1` script launches a modern, dark-themed (Kinetic Command) admini
 OS Support: Windows 10 / 11 (due to WPF graphical requirements)
 PowerShell: PowerShell 7.2 or later (Windows PowerShell 5.1 is not supported)
 Permissions: Entra ID reader/admin role context (Global Reader, Global Administrator, Security Reader, or Reports Reader). No local Windows administrative rights are required to run the script or GUI dashboard.
+Licensing (Last Sign-In Telemetry): Microsoft Entra ID P1 or P2 license (included with Microsoft 365 Business Premium, Enterprise E3/E5, or standalone Entra ID P1/P2).
+- *Non-Premium Tenant Behavior:* If the tenant lacks Entra ID P1/P2 licensing, Microsoft Graph restricts `SignInActivity` date access. The tool gracefully detects this and runs the complete license audit, cost analysis, and report exporter without sign-in timestamps (displaying *"Requires Entra ID P1/P2"*).
 Dependencies: `Microsoft.Graph` module (will auto-install if missing), `ImportExcel` module (for Excel reports; checks and prompts for permission to install on-demand).
 
 ## Walkthrough & Usage Guide
@@ -76,7 +78,8 @@ To inspect specific user accounts, select the **User Directory** tab from the to
 
 ## Fast Execute
 > [!TIP]
-> **Short Branded URL (phnx.it):**
+> **Run Packaged Bundle Locally in PowerShell:**
+> Because this console relies on local relative files (`LicensePrices.csv`, `LicencedUsersSigninDate.ps1`), download and extract the package folder, then execute locally (or use `LaunchConsole.bat`):
 > ```powershell
-> irm phnx.it/LICCHK1 | iex
+> powershell.exe -ExecutionPolicy Bypass -File .\Console.ps1
 > ```

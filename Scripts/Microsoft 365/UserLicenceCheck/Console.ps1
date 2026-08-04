@@ -172,7 +172,7 @@ $Xaml = @"
                                     </Style>
                                 </Button.Style>
                                 <StackPanel>
-                                    <TextBlock Text="🛠️ Service Desk" Foreground="White" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="[Desk] Service Desk" Foreground="White" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
                                     <TextBlock Text="Standard view: licenses, statuses &amp; accounts. Hides all financials." Foreground="#9ca3af" FontSize="11" TextWrapping="Wrap" TextAlignment="Center" Margin="0,5,0,0"/>
                                 </StackPanel>
                             </Button>
@@ -193,7 +193,7 @@ $Xaml = @"
                                     </Style>
                                 </Button.Style>
                                 <StackPanel>
-                                    <TextBlock Text="💰 Sales &amp; Business" Foreground="White" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="[$] Sales &amp; Business" Foreground="White" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
                                     <TextBlock Text="Financial view: savings, wasted costs, and downgrade recommendations." Foreground="#9ca3af" FontSize="11" TextWrapping="Wrap" TextAlignment="Center" Margin="0,5,0,0"/>
                                 </StackPanel>
                             </Button>
@@ -261,7 +261,7 @@ $Xaml = @"
                                         <Button Grid.Row="2" Name="btnBrowseCSV" Background="Transparent" BorderThickness="0" Padding="0" Cursor="Hand">
                                             <Border BorderBrush="#2c2c2e" BorderThickness="1" Background="#0c0c0d" CornerRadius="6" Padding="15" Height="100">
                                                 <StackPanel VerticalAlignment="Center">
-                                                    <TextBlock Text="📁" FontSize="20" HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                                                    <TextBlock Text="[CSV]" Foreground="#3B82F6" FontFamily="Consolas" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
                                                     <TextBlock Text="Browse CSV File" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
                                                     <TextBlock Text="Click to select file" Foreground="#555" FontSize="9" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                                 </StackPanel>
@@ -747,11 +747,12 @@ $MockData = @(
 )
 
 $ActivityColors = @{
-    "Active (<=30d)"    = "#10b981"
-    "Inactive (30-90d)"  = "#eab308"
-    "Inactive (90-365d)" = "#3B82F6"
-    "Inactive (>1yr)"    = "#ef4444"
-    "Never Logged In"    = "#64748b"
+    "Active (<=30d)"          = "#10b981"
+    "Inactive (30-90d)"        = "#eab308"
+    "Inactive (90-365d)"       = "#3B82F6"
+    "Inactive (>1yr)"          = "#ef4444"
+    "Never Logged In"          = "#64748b"
+    "Requires Entra ID P1/P2" = "#8b5cf6"
 }
 
 # Determine script directory
@@ -1532,13 +1533,46 @@ function Invoke-AuditReport {
                 }
             }
             
-            Log-ToTerminal "Retrieving licensed users with Filter 'assignedLicenses/count ne 0'..." "Info"
+            Log-ToTerminal "Retrieving licensed users from Microsoft Graph..." "Info"
             Update-UI
             
-            $UserProperties = @('Id', 'DisplayName', 'UserPrincipalName', 'AssignedLicenses', 'SignInActivity', 'AccountEnabled')
-            $LicensedUsers = Get-MgUser -Filter "assignedLicenses/`$count ne 0" -ConsistencyLevel eventual -CountVariable LicensedCount -All -Property $UserProperties
+            $LicensedUsers = $null
+            $HasSignInActivity = $true
+
+            try {
+                # Attempt 1: Query with SignInActivity (requires Entra ID P1/P2)
+                $UserProperties = @('Id', 'DisplayName', 'UserPrincipalName', 'AssignedLicenses', 'SignInActivity', 'AccountEnabled')
+                $LicensedUsers = Get-MgUser -Filter "assignedLicenses/`$count ne 0" -ConsistencyLevel eventual -CountVariable LicensedCount -All -Property $UserProperties -ErrorAction Stop
+            } catch {
+                if ($_ -match "Authentication_RequestFromNonPremiumTenantOrB2CTenant" -or $_ -match "premium license" -or $_ -match "403" -or $_ -match "SignInActivity") {
+                    Log-ToTerminal "Notice: Tenant does not have Entra ID P1/P2 Premium license. Proceeding without sign-in dates..." "Warning"
+                    Update-UI
+                    $HasSignInActivity = $false
+                    try {
+                        # Attempt 2: Query without SignInActivity
+                        $UserPropertiesBasic = @('Id', 'DisplayName', 'UserPrincipalName', 'AssignedLicenses', 'AccountEnabled')
+                        $LicensedUsers = Get-MgUser -Filter "assignedLicenses/`$count ne 0" -ConsistencyLevel eventual -CountVariable LicensedCount -All -Property $UserPropertiesBasic -ErrorAction Stop
+                    } catch {
+                        Log-ToTerminal "Advanced filter query failed. Falling back to retrieving all tenant users..." "Warning"
+                        Update-UI
+                        $AllUsers = Get-MgUser -All -Property Id, DisplayName, UserPrincipalName, AssignedLicenses, AccountEnabled -ErrorAction Stop
+                        $LicensedUsers = $AllUsers | Where-Object { $_.AssignedLicenses -and $_.AssignedLicenses.Count -gt 0 }
+                    }
+                } else {
+                    Log-ToTerminal "Advanced filter query failed ($($_)). Retrying standard user query..." "Warning"
+                    Update-UI
+                    $HasSignInActivity = $false
+                    try {
+                        $AllUsers = Get-MgUser -All -Property Id, DisplayName, UserPrincipalName, AssignedLicenses, AccountEnabled -ErrorAction Stop
+                        $LicensedUsers = $AllUsers | Where-Object { $_.AssignedLicenses -and $_.AssignedLicenses.Count -gt 0 }
+                    } catch {
+                        throw $_
+                    }
+                }
+            }
             
-            Log-ToTerminal "Fetched $($LicensedUsers.Count) users from Graph. Resolving details..." "Info"
+            $UserCount = if ($LicensedUsers) { $LicensedUsers.Count } else { 0 }
+            Log-ToTerminal "Fetched $UserCount licensed users from Graph. Resolving details..." "Info"
             Update-UI
             
             $Users = [System.Collections.Generic.List[PSCustomObject]]::new()
@@ -1553,8 +1587,14 @@ function Invoke-AuditReport {
                 }
                 $LicString = $Lics -join ", "
                 
-                $LastSignIn = $u.SignInActivity.LastSuccessfulSignInDateTime
-                if (-not $LastSignIn) { $LastSignIn = "No interactive sign-in recorded" }
+                $LastSignIn = if ($HasSignInActivity -and $u.SignInActivity) { $u.SignInActivity.LastSuccessfulSignInDateTime } else { $null }
+                if (-not $LastSignIn) {
+                    if (-not $HasSignInActivity) {
+                        $LastSignIn = "Requires Entra ID P1/P2"
+                    } else {
+                        $LastSignIn = "No interactive sign-in recorded"
+                    }
+                }
                 
                 $Users.Add([PSCustomObject]@{
                     DisplayName       = $u.DisplayName
@@ -1588,7 +1628,7 @@ function Parse-DateString($DateStr) {
     if ($null -eq $DateStr) { return $null }
     if ($DateStr -is [System.DateTime]) { return $DateStr }
     if ([string]::IsNullOrWhiteSpace($DateStr)) { return $null }
-    if ($DateStr -like "*no interactive*" -or $DateStr -like "*recorded*") { return $null }
+    if ($DateStr -like "*no interactive*" -or $DateStr -like "*recorded*" -or $DateStr -like "*Requires Entra ID*") { return $null }
     
     # Try en-GB (UK) first
     [DateTime]$ParsedDate = [DateTime]::MinValue
@@ -1611,6 +1651,9 @@ function Parse-DateString($DateStr) {
 }
 
 function Get-DaysSince($DateStr) {
+    if ($null -eq $DateStr) { return [double]::PositiveInfinity }
+    if ($DateStr -like "*Requires Entra ID*" -or $DateStr -like "*No P1/P2*") { return -1 }
+    
     $Date = Parse-DateString $DateStr
     if ($null -eq $Date) { return [double]::PositiveInfinity }
     
@@ -1620,6 +1663,9 @@ function Get-DaysSince($DateStr) {
 }
 
 function Format-LastSignIn($DateStr) {
+    if ($null -eq $DateStr) { return "Never" }
+    if ($DateStr -like "*Requires Entra ID*" -or $DateStr -like "*No P1/P2*") { return "Requires Entra ID P1/P2" }
+    
     $Date = Parse-DateString $DateStr
     if ($null -eq $Date) { return "Never" }
     return $Date.ToString("yyyy-MM-dd HH:mm")
@@ -1766,16 +1812,28 @@ function Process-UserData($Users) {
     $Inactive90d = 0
     $Inactive1yr = 0
     $Never = 0
+    $NoP1P2Count = 0
     
     $LicenseMap = @{}
-    $ActivityMap = [ordered]@{
-        "Active (<=30d)"    = 0
-        "Inactive (30-90d)"  = 0
-        "Inactive (90-365d)" = 0
-        "Inactive (>1yr)"    = 0
-        "Never Logged In"    = 0
+    $ActivityMap = [ordered]@{}
+    
+    $HasNoP1P2 = $false
+    foreach ($user in $Users) {
+        if ($user.LastSignInDate -like "*Requires Entra ID*" -or $user.LastSignInDate -like "*No P1/P2*") {
+            $HasNoP1P2 = $true
+            break
+        }
     }
     
+    if ($HasNoP1P2) {
+        $ActivityMap["Requires Entra ID P1/P2"] = 0
+    }
+    $ActivityMap["Active (<=30d)"]    = 0
+    $ActivityMap["Inactive (30-90d)"]  = 0
+    $ActivityMap["Inactive (90-365d)"] = 0
+    $ActivityMap["Inactive (>1yr)"]    = 0
+    $ActivityMap["Never Logged In"]    = 0
+
     $DataGridRows = [System.Collections.Generic.List[PSCustomObject]]::new()
     
     foreach ($user in $Users) {
@@ -1783,7 +1841,11 @@ function Process-UserData($Users) {
         
         $StatusText = ""
         $Category = ""
-        if ($Days -eq [double]::PositiveInfinity) {
+        if ($Days -eq -1) {
+            $StatusText = "No P1/P2 License"
+            $Category = "Requires Entra ID P1/P2"
+            $NoP1P2Count++
+        } elseif ($Days -eq [double]::PositiveInfinity) {
             $StatusText = "Never Logged In"
             $Category = "Never Logged In"
             $Never++
@@ -1805,7 +1867,11 @@ function Process-UserData($Users) {
             $Inactive90d++
         }
         
-        $ActivityMap[$Category]++
+        if ($ActivityMap.Contains($Category)) {
+            $ActivityMap[$Category]++
+        } else {
+            $ActivityMap[$Category] = 1
+        }
         
         if ($user.AssignedLicenses) {
             $user.AssignedLicenses.Split(',') | ForEach-Object {
@@ -1827,15 +1893,18 @@ function Process-UserData($Users) {
         if ($null -ne $user.AccountEnabled) {
             $Enabled = $user.AccountEnabled
         }
-        $AccountStatusText = if ($Enabled) { "Enabled" } else { "🚫 Blocked" }
+        $AccountStatusText = if ($Enabled) { "Enabled" } else { "Disabled (Blocked)" }
 
         $WastedCost = 0.00
         $MonthlySavings = 0.00
-        if ($Days -gt 180) {
+        if ($Days -gt 180 -and $Days -ne [double]::PositiveInfinity -and $Days -ne -1) {
             $InactiveDays = $Days
-            if ($Days -eq [double]::PositiveInfinity) {
-                $InactiveDays = 365
-            }
+            $Months = $InactiveDays / 30
+            $MonthlyPrice = Get-LicenseMonthlyPrice $user.AssignedLicenses
+            $WastedCost = $MonthlyPrice * $Months
+            $MonthlySavings = $MonthlyPrice
+        } elseif ($Days -eq [double]::PositiveInfinity) {
+            $InactiveDays = 365
             $Months = $InactiveDays / 30
             $MonthlyPrice = Get-LicenseMonthlyPrice $user.AssignedLicenses
             $WastedCost = $MonthlyPrice * $Months
@@ -1850,7 +1919,7 @@ function Process-UserData($Users) {
             $LicsArray = $user.AssignedLicenses.Split(',') | ForEach-Object { $_.Trim() }
             $MonthlyPrice = Get-LicenseMonthlyPrice $user.AssignedLicenses
             
-            if ($Days -eq [double]::PositiveInfinity -or $Days -gt 180) {
+            if ($Days -eq [double]::PositiveInfinity -or ($Days -gt 180 -and $Days -ne -1)) {
                 if ($MonthlyPrice -gt 0) {
                     $Recommendation = "Reclaim: Remove all licenses (Save £{0:N2}/mo)" -f $MonthlyPrice
                 }
@@ -2019,7 +2088,7 @@ function Filter-DataGrid {
         } elseif ($Script:ActiveFilter -eq "active") {
             $FilterMatch = ($row.StatusCategory -eq "Active (<=30d)")
         } elseif ($Script:ActiveFilter -eq "inactive90d") {
-            $FilterMatch = ($row.DaysSince -ge 90)
+            $FilterMatch = ($row.DaysSince -ge 90 -and $row.DaysSince -ne -1)
         } elseif ($Script:ActiveFilter -eq "inactive1yr") {
             $FilterMatch = ($row.StatusCategory -eq "Inactive (>1yr)")
         } elseif ($Script:ActiveFilter -eq "never") {
