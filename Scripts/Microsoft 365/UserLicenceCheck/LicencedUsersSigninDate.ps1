@@ -281,23 +281,45 @@ if (-not $LoadedGlobalSkus) {
 }
 
 # Filter only for users that have at least one assigned license
-Write-Log "Retrieving licensed users and sign-in activity..."
+Write-Log "Retrieving licensed users from Microsoft Graph..."
 
 # Disable progress bar rendering temporarily to speed up large query execution
 $OriginalProgressPreference = $ProgressPreference
 $ProgressPreference = 'SilentlyContinue'
 
+$LicensedUsers = $null
+$HasSignInActivity = $true
+
 try {
     $UserProperties = @('Id', 'DisplayName', 'UserPrincipalName', 'AssignedLicenses', 'SignInActivity')
-    $LicensedUsers = Get-MgUser -Filter "assignedLicenses/`$count ne 0" -ConsistencyLevel eventual -CountVariable LicensedCount -All -Property $UserProperties
+    $LicensedUsers = Get-MgUser -Filter "assignedLicenses/`$count ne 0" -ConsistencyLevel eventual -CountVariable LicensedCount -All -Property $UserProperties -ErrorAction Stop
 } catch {
-    Write-Log "Failed to retrieve users from Microsoft Graph. Error: $_" -Type Error
-    $ProgressPreference = $OriginalProgressPreference
-    Write-Log "Execution halted due to query failure." -ForegroundColor Red
-    Disconnect-MgGraph | Out-Null
-    return
+    if ($_ -match "Authentication_RequestFromNonPremiumTenantOrB2CTenant" -or $_ -match "premium license" -or $_ -match "403" -or $_ -match "SignInActivity") {
+        Write-Log "Tenant does not have Entra ID P1/P2 Premium license. Retrying user retrieval without sign-in dates..." -Type Warning
+        $HasSignInActivity = $false
+        try {
+            $UserPropertiesBasic = @('Id', 'DisplayName', 'UserPrincipalName', 'AssignedLicenses')
+            $LicensedUsers = Get-MgUser -Filter "assignedLicenses/`$count ne 0" -ConsistencyLevel eventual -CountVariable LicensedCount -All -Property $UserPropertiesBasic -ErrorAction Stop
+        } catch {
+            Write-Log "Advanced filter query failed. Falling back to standard user retrieval..." -Type Warning
+            $AllUsers = Get-MgUser -All -Property Id, DisplayName, UserPrincipalName, AssignedLicenses -ErrorAction Stop
+            $LicensedUsers = $AllUsers | Where-Object { $_.AssignedLicenses -and $_.AssignedLicenses.Count -gt 0 }
+        }
+    } else {
+        Write-Log "Advanced query failed. Falling back to standard user retrieval without sign-in dates..." -Type Warning
+        $HasSignInActivity = $false
+        try {
+            $AllUsers = Get-MgUser -All -Property Id, DisplayName, UserPrincipalName, AssignedLicenses -ErrorAction Stop
+            $LicensedUsers = $AllUsers | Where-Object { $_.AssignedLicenses -and $_.AssignedLicenses.Count -gt 0 }
+        } catch {
+            Write-Log "Failed to retrieve users from Microsoft Graph. Error: $_" -Type Error
+            $ProgressPreference = $OriginalProgressPreference
+            Write-Log "Execution halted due to query failure." -ForegroundColor Red
+            Disconnect-MgGraph | Out-Null
+            return
+        }
+    }
 } finally {
-    # Restore original progress preference
     $ProgressPreference = $OriginalProgressPreference
 }
 
@@ -462,7 +484,7 @@ function Parse-DateString($DateStr) {
     if ($null -eq $DateStr) { return $null }
     if ($DateStr -is [System.DateTime]) { return $DateStr }
     if ([string]::IsNullOrWhiteSpace($DateStr)) { return $null }
-    if ($DateStr -like "*no interactive*" -or $DateStr -like "*recorded*") { return $null }
+    if ($DateStr -like "*no interactive*" -or $DateStr -like "*recorded*" -or $DateStr -like "*Requires Entra ID*") { return $null }
     
     # Try en-GB (UK) first
     [DateTime]$ParsedDate = [DateTime]::MinValue
@@ -485,6 +507,9 @@ function Parse-DateString($DateStr) {
 }
 
 function Get-DaysSince($DateStr) {
+    if ($null -eq $DateStr) { return [double]::PositiveInfinity }
+    if ($DateStr -like "*Requires Entra ID*" -or $DateStr -like "*No P1/P2*") { return -1 }
+    
     $Date = Parse-DateString $DateStr
     if ($null -eq $Date) { return [double]::PositiveInfinity }
     
@@ -508,8 +533,8 @@ foreach ($User in $LicensedUsers) {
     $LicenseString = $UserLicenses -join ", "
 
     # Extract the last successful sign-in timestamp
-    $LastSignInRaw = $User.SignInActivity.LastSuccessfulSignInDateTime
-    $LastSignIn = "No interactive sign-in recorded"
+    $LastSignInRaw = if ($HasSignInActivity -and $User.SignInActivity) { $User.SignInActivity.LastSuccessfulSignInDateTime } else { $null }
+    $LastSignIn = if (-not $HasSignInActivity) { "Requires Entra ID P1/P2" } else { "No interactive sign-in recorded" }
     if ($LastSignInRaw) {
         $ParsedSignIn = Parse-DateString $LastSignInRaw
         if ($null -ne $ParsedSignIn) {
@@ -527,11 +552,14 @@ foreach ($User in $LicensedUsers) {
     $Days = Get-DaysSince $LastSignIn
     $WastedCost = 0.00
     $MonthlySavings = 0.00
-    if ($Days -gt 180) {
+    if ($Days -gt 180 -and $Days -ne [double]::PositiveInfinity -and $Days -ne -1) {
         $InactiveDays = $Days
-        if ($Days -eq [double]::PositiveInfinity) {
-            $InactiveDays = 365
-        }
+        $Months = $InactiveDays / 30
+        $MonthlyPrice = Get-LicenseMonthlyPrice $LicenseString
+        $WastedCost = $MonthlyPrice * $Months
+        $MonthlySavings = $MonthlyPrice
+    } elseif ($Days -eq [double]::PositiveInfinity) {
+        $InactiveDays = 365
         $Months = $InactiveDays / 30
         $MonthlyPrice = Get-LicenseMonthlyPrice $LicenseString
         $WastedCost = $MonthlyPrice * $Months
@@ -546,7 +574,7 @@ foreach ($User in $LicensedUsers) {
         $LicsArray = $LicenseString.Split(',') | ForEach-Object { $_.Trim() }
         $MonthlyPrice = Get-LicenseMonthlyPrice $LicenseString
         
-        if ($Days -eq [double]::PositiveInfinity -or $Days -gt 180) {
+        if ($Days -eq [double]::PositiveInfinity -or ($Days -gt 180 -and $Days -ne -1)) {
             if ($MonthlyPrice -gt 0) {
                 $Recommendation = "Reclaim: Remove all licenses (Save £{0:N2}/mo)" -f $MonthlyPrice
             }
