@@ -967,12 +967,15 @@ if ((Test-Path "`$targetPath\DownloadBackgrounds.ps1") -and (Get-ScheduledTask -
 
 1. App Information
 Name: Corporate Desktop and Lock Screen Background
-Description: Sets the desktop background and optionally the lock screen, automatically applying to all users.
+Description: Sets the desktop background and optionally the lock screen, automatically applying to all users. Logs are written to C:\Logs\DesktopBackground for troubleshooting.
 Publisher: IT Department
 
 2. Program
-Install command: powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File .\Install.ps1
-Uninstall command: powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File .\Uninstall.ps1
+Install command:
+powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File .\Install.ps1
+
+Uninstall command:
+powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File .\Uninstall.ps1
 
 Install behavior: System
 Device restart behavior: No specific action
