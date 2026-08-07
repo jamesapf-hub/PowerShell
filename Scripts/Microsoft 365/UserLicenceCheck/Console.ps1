@@ -3361,6 +3361,7 @@ function Invoke-EmailDraftGeneration {
     $Inactive = ($Script:GridRows | Where-Object { $_.StatusCategory -eq "Inactive (90-365d)" }).Count
     $Critical = ($Script:GridRows | Where-Object { $_.StatusCategory -eq "Inactive (>1yr)" }).Count
     $Never = ($Script:GridRows | Where-Object { $_.StatusCategory -eq "Never Logged In" }).Count
+    $NoP1P2 = ($Script:GridRows | Where-Object { $_.StatusCategory -eq "Requires Entra ID P1/P2" }).Count
     
     # Tenant details
     $TenantName = (Get-TenantName)
@@ -3381,6 +3382,18 @@ function Invoke-EmailDraftGeneration {
         $CTA = "We recommend reviewing this list with your department heads to confirm which licenses can be safely reclaimed to reduce your monthly subscription costs (potential savings of £{0:N2}/mo)." -f $TotalMonthlySavings
     }
     
+    $StatusSummaryLines = [System.Collections.Generic.List[string]]::new()
+    if ($NoP1P2 -gt 0) {
+        $StatusSummaryLines.Add("* Purple (Requires Entra ID P1/P2): $NoP1P2 user(s). Account sign-in timestamps require Entra ID P1/P2 licensing.")
+    }
+    $StatusSummaryLines.Add("* Green (Active <= 30 days): $Active user(s). These accounts are logging in regularly. No action required.")
+    $StatusSummaryLines.Add("* Yellow (Warning 30-90 days): $Warning user(s). Moderate inactivity.")
+    $StatusSummaryLines.Add("* Orange (Inactive 90-365 days): $Inactive user(s). High inactivity. Recommended for review.")
+    $StatusSummaryLines.Add("* Red (Critical > 1 year): $Critical user(s). Extremely high inactivity. Strong candidates for license removal.")
+    $StatusSummaryLines.Add("* Gray (Never Logged In): $Never user(s). Accounts that have never registered a login event.")
+    
+    $StatusSummaryText = $StatusSummaryLines -join "`r`n"
+    
     # Formulate email draft
     $EmailText = @"
 Subject: Microsoft 365 License Audit & Optimization Report - $TenantName
@@ -3391,11 +3404,7 @@ Please find attached the latest Microsoft 365 User License Audit report for your
 
 This report provides a breakdown of your active user accounts and their associated Microsoft 365 subscriptions. The spreadsheet is color-coded by login activity to help identify potential licensing optimization opportunities:
 
-* 🟩 Green (Active <= 30 days): $Active user(s). These accounts are logging in regularly. No action required.
-* 🟨 Yellow (Warning 30-90 days): $Warning user(s). Moderate inactivity. 
-* 🟧 Orange (Inactive 90-365 days): $Inactive user(s). High inactivity. Recommended for review.
-* 🟥 Red (Critical > 1 year): $Critical user(s). Extremely high inactivity. Strong candidates for license removal.
-* ⬛ Gray (Never Logged In): $Never user(s). Accounts that have never registered a login event.
+$StatusSummaryText
 
 Important Context & Caveats
 Please note that this audit acts as a rough guide to highlight potential waste. Before disabling or unassigning any licenses, we recommend cross-referencing this list against the following scenarios:
@@ -3410,7 +3419,7 @@ $CTA
 
 Kind regards,
 
-[Your MSP Company Name] Service Desk
+[Your Company Name] Service Desk
 [Contact Information]
 "@
 
