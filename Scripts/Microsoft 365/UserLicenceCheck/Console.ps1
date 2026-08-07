@@ -1235,7 +1235,7 @@ function Show-EmailTemplateDialog {
         
         <!-- Scrollable TextBox -->
         <Border Grid.Row="1" Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="6" Padding="5">
-            <TextBox Name="txtEmailBody" x:Name="txtEmailBody" Background="Transparent" Foreground="#f3f4f6" BorderThickness="0"
+            <TextBox Name="txtEmailBody" Background="Transparent" Foreground="#f3f4f6" BorderThickness="0"
                      TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
                      FontSize="12" FontFamily="Segoe UI" Padding="8"/>
         </Border>
@@ -1247,11 +1247,11 @@ function Show-EmailTemplateDialog {
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             
-            <TextBlock Name="txtStatusMessage" x:Name="txtStatusMessage" Text="" Foreground="#10b981" FontSize="12" VerticalAlignment="Center" FontWeight="SemiBold"/>
+            <TextBlock Name="txtStatusMessage" Text="" Foreground="#10b981" FontSize="12" VerticalAlignment="Center" FontWeight="SemiBold"/>
             
             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button Name="btnCopy" x:Name="btnCopy" Style="{StaticResource BrandDialogBtn}" Content="Copy to Clipboard"/>
-                <Button Name="btnClose" x:Name="btnClose" Style="{StaticResource DialogBtn}" Content="Close"/>
+                <Button Name="btnCopy" Style="{StaticResource BrandDialogBtn}" Content="Copy to Clipboard"/>
+                <Button Name="btnClose" Style="{StaticResource DialogBtn}" Content="Close"/>
             </StackPanel>
         </Grid>
     </Grid>
@@ -1279,45 +1279,25 @@ function Show-EmailTemplateDialog {
         $TxtEmailBody.Text = $EmailText
     }
     
-    $StatusTimer = $null
-    
     # Click Events
     if ($null -ne $BtnCopy) {
         $BtnCopy.Add_Click({
             if ($null -ne $TxtEmailBody) {
                 [System.Windows.Clipboard]::SetText($TxtEmailBody.Text)
             }
-            try {
-                if ($null -ne $TxtStatusMessage) {
-                    $TxtStatusMessage.Text = "Copied to clipboard!"
-                }
-            } catch {}
-            
-            # Async clear message after 2 seconds
-            if ($null -ne $StatusTimer) { $StatusTimer.Stop() }
-            $StatusTimer = New-Object System.Windows.Threading.DispatcherTimer
-            $StatusTimer.Interval = [TimeSpan]::FromSeconds(2)
-            $StatusTimer.Add_Tick({
-                try {
-                    if ($null -ne $TxtStatusMessage) {
-                        $TxtStatusMessage.Text = ""
-                    }
-                } catch {}
-                if ($null -ne $StatusTimer) { $StatusTimer.Stop() }
-            })
-            $StatusTimer.Start()
+            if ($null -ne $TxtStatusMessage) {
+                $TxtStatusMessage.Text = "Copied to clipboard!"
+            }
         })
     }
     
     if ($null -ne $BtnClose) {
         $BtnClose.Add_Click({
-            if ($null -ne $StatusTimer) { $StatusTimer.Stop() }
             $DlgWindow.Close()
         })
     }
     
     $DlgWindow.Add_Closed({
-        if ($null -ne $StatusTimer) { $StatusTimer.Stop() }
         $WpfWindow.Effect = $null
     })
     
