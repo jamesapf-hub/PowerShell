@@ -7,7 +7,15 @@
     licensed Entra ID users, evaluate last login timelines, resolve SKUs, and export results.
 #>
 
-# 1. Force STA (Single Threaded Apartment) Mode for WPF
+# 1. In-Memory Guard for Bundled Package Scripts
+if (-not $PSScriptRoot -or $PSScriptRoot -match "^iex" -or $MyInvocation.MyCommand.Path -like "*iex*") {
+    Write-Host "[ERROR] This console is a packaged bundle requiring local relative files (LicensePrices.csv, LicencedUsersSigninDate.ps1)." -ForegroundColor Red
+    Write-Host "[ERROR] In-memory execution via 'iex (irm ...)' is not supported." -ForegroundColor Red
+    Write-Host "Please download and extract the package locally, then run LaunchConsole.bat or .\Console.ps1." -ForegroundColor Yellow
+    return
+}
+
+# Force STA (Single Threaded Apartment) Mode for WPF
 if ($Host.Runspace.ApartmentState -ne 'STA') {
     Write-Host "Apartment state is not STA. Restarting script in STA mode..." -ForegroundColor Yellow
     $Arguments = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-ApartmentState", "STA", "-File", $MyInvocation.MyCommand.Path)
