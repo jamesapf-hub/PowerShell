@@ -11,6 +11,14 @@
     Date:    260624
 #>
 
+# Safety Guard: Prevent in-memory execution via iex for bundled package scripts
+if (-not $PSScriptRoot -or $PSScriptRoot -match "^iex" -or $MyInvocation.MyCommand.Path -like "*iex*") {
+    Write-Host "[ERROR] This script is a packaged bundle requiring local relative files (LicensePrices.csv)." -ForegroundColor Red
+    Write-Host "[ERROR] In-memory execution via 'iex (irm ...)' is not supported." -ForegroundColor Red
+    Write-Host "Please download and extract the package locally, then run LicencedUsersSigninDate.ps1." -ForegroundColor Yellow
+    return
+}
+
 # Define current date for logs and filenames
 $CurrentDate = (Get-Date).ToString("ddMMyy")
 
