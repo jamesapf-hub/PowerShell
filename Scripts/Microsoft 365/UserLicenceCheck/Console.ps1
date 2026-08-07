@@ -3382,15 +3382,22 @@ function Invoke-EmailDraftGeneration {
         $CTA = "We recommend reviewing this list with your department heads to confirm which licenses can be safely reclaimed to reduce your monthly subscription costs (potential savings of £{0:N2}/mo)." -f $TotalMonthlySavings
     }
     
+    $IconPurple = [char]::ConvertFromUtf32(0x1F7E3)
+    $IconGreen  = [char]::ConvertFromUtf32(0x1F7E2)
+    $IconYellow = [char]::ConvertFromUtf32(0x1F7E1)
+    $IconOrange = [char]::ConvertFromUtf32(0x1F7E0)
+    $IconRed    = [char]::ConvertFromUtf32(0x1F534)
+    $IconGray   = [char]::ConvertFromUtf32(0x26AA)
+    
     $StatusSummaryLines = [System.Collections.Generic.List[string]]::new()
     if ($NoP1P2 -gt 0) {
-        $StatusSummaryLines.Add("* Purple (Requires Entra ID P1/P2): $NoP1P2 user(s). Account sign-in timestamps require Entra ID P1/P2 licensing.")
+        $StatusSummaryLines.Add("* $IconPurple Purple (Requires Entra ID P1/P2): $NoP1P2 user(s). Account sign-in timestamps require Entra ID P1/P2 licensing.")
     }
-    $StatusSummaryLines.Add("* Green (Active <= 30 days): $Active user(s). These accounts are logging in regularly. No action required.")
-    $StatusSummaryLines.Add("* Yellow (Warning 30-90 days): $Warning user(s). Moderate inactivity.")
-    $StatusSummaryLines.Add("* Orange (Inactive 90-365 days): $Inactive user(s). High inactivity. Recommended for review.")
-    $StatusSummaryLines.Add("* Red (Critical > 1 year): $Critical user(s). Extremely high inactivity. Strong candidates for license removal.")
-    $StatusSummaryLines.Add("* Gray (Never Logged In): $Never user(s). Accounts that have never registered a login event.")
+    $StatusSummaryLines.Add("* $IconGreen Green (Active <= 30 days): $Active user(s). These accounts are logging in regularly. No action required.")
+    $StatusSummaryLines.Add("* $IconYellow Yellow (Warning 30-90 days): $Warning user(s). Moderate inactivity.")
+    $StatusSummaryLines.Add("* $IconOrange Orange (Inactive 90-365 days): $Inactive user(s). High inactivity. Recommended for review.")
+    $StatusSummaryLines.Add("* $IconRed Red (Critical > 1 year): $Critical user(s). Extremely high inactivity. Strong candidates for license removal.")
+    $StatusSummaryLines.Add("* $IconGray Gray (Never Logged In): $Never user(s). Accounts that have never registered a login event.")
     
     $StatusSummaryText = $StatusSummaryLines -join "`r`n"
     
