@@ -3382,12 +3382,12 @@ function Invoke-EmailDraftGeneration {
         $CTA = "We recommend reviewing this list with your department heads to confirm which licenses can be safely reclaimed to reduce your monthly subscription costs (potential savings of £{0:N2}/mo)." -f $TotalMonthlySavings
     }
     
-    $IconPurple = [char]::ConvertFromUtf32(0x1F7E3)
-    $IconGreen  = [char]::ConvertFromUtf32(0x1F7E2)
-    $IconYellow = [char]::ConvertFromUtf32(0x1F7E1)
-    $IconOrange = [char]::ConvertFromUtf32(0x1F7E0)
-    $IconRed    = [char]::ConvertFromUtf32(0x1F534)
-    $IconGray   = [char]::ConvertFromUtf32(0x26AA)
+    $IconPurple = [char]::ConvertFromUtf32(0x1F7E6)
+    $IconGreen  = [char]::ConvertFromUtf32(0x1F7E9)
+    $IconYellow = [char]::ConvertFromUtf32(0x1F7E8)
+    $IconOrange = [char]::ConvertFromUtf32(0x1F7E7)
+    $IconRed    = [char]::ConvertFromUtf32(0x1F7E5)
+    $IconGray   = [char]::ConvertFromUtf32(0x2B1B)
     
     $StatusSummaryLines = [System.Collections.Generic.List[string]]::new()
     if ($NoP1P2 -gt 0) {
