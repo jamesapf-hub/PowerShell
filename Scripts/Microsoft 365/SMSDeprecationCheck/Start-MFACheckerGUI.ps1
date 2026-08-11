@@ -197,12 +197,13 @@ function Invoke-MfaMethodAudit {
     # Attempt 1: Direct REST API v1.0 /reports/authenticationMethods/userRegistrationDetails
     try {
         Write-GuiLog "Querying Graph REST API v1.0 /reports/authenticationMethods/userRegistrationDetails..."
-        $uri = "https://graph.microsoft.com/v1.0/reports/authenticationMethods/userRegistrationDetails"
+        $uri = "v1.0/reports/authenticationMethods/userRegistrationDetails"
         $response = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction SilentlyContinue
         if ($response -and $response.value) {
             $regDetails = @($response.value)
             while ($response.'@odata.nextLink') {
-                $response = Invoke-MgGraphRequest -Method GET -Uri $response.'@odata.nextLink' -ErrorAction SilentlyContinue
+                $nextUri = $response.'@odata.nextLink' -replace '^https://graph\.microsoft\.com/', ''
+                $response = Invoke-MgGraphRequest -Method GET -Uri $nextUri -ErrorAction SilentlyContinue
                 if ($response.value) { $regDetails += $response.value }
             }
             Write-GuiLog "REST v1.0 returned $($regDetails.Count) user registration records."
@@ -215,12 +216,13 @@ function Invoke-MfaMethodAudit {
     if (-not $regDetails -or $regDetails.Count -eq 0) {
         try {
             Write-GuiLog "Querying Graph REST API beta /reports/authenticationMethods/userRegistrationDetails..."
-            $uri = "https://graph.microsoft.com/beta/reports/authenticationMethods/userRegistrationDetails"
+            $uri = "beta/reports/authenticationMethods/userRegistrationDetails"
             $response = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction SilentlyContinue
             if ($response -and $response.value) {
                 $regDetails = @($response.value)
                 while ($response.'@odata.nextLink') {
-                    $response = Invoke-MgGraphRequest -Method GET -Uri $response.'@odata.nextLink' -ErrorAction SilentlyContinue
+                    $nextUri = $response.'@odata.nextLink' -replace '^https://graph\.microsoft\.com/', ''
+                    $response = Invoke-MgGraphRequest -Method GET -Uri $nextUri -ErrorAction SilentlyContinue
                     if ($response.value) { $regDetails += $response.value }
                 }
                 Write-GuiLog "REST beta returned $($regDetails.Count) user registration records."
@@ -234,7 +236,7 @@ function Invoke-MfaMethodAudit {
     if (-not $regDetails -or $regDetails.Count -eq 0) {
         try {
             Write-GuiLog "Fallback: Querying user directory accounts from /v1.0/users..."
-            $usersUri = "https://graph.microsoft.com/v1.0/users?`$select=id,userPrincipalName,displayName,userType,accountEnabled&`$top=999"
+            $usersUri = "v1.0/users?`$select=id,userPrincipalName,displayName,userType,accountEnabled&`$top=999"
             $uResp = Invoke-MgGraphRequest -Method GET -Uri $usersUri -ErrorAction SilentlyContinue
             if ($uResp -and $uResp.value) {
                 $rawUsers = $uResp.value
@@ -246,7 +248,7 @@ function Invoke-MfaMethodAudit {
                     if ($idx % 5 -eq 0 -or $idx -eq $rawUsers.Count) {
                         Update-Progress (10 + [int](($idx / $rawUsers.Count) * 40))
                     }
-                    $mUri = "https://graph.microsoft.com/v1.0/users/$($u.id)/authentication/methods"
+                    $mUri = "v1.0/users/$($u.id)/authentication/methods"
                     $mResp = Invoke-MgGraphRequest -Method GET -Uri $mUri -ErrorAction SilentlyContinue
                     $mTypes = @()
                     if ($mResp -and $mResp.value) {
