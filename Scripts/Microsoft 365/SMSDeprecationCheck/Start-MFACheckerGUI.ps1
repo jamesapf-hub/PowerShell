@@ -134,8 +134,24 @@ function Connect-EntraIDGraph {
     Write-GuiLog "Requesting permissions: User.Read.All, UserAuthenticationMethod.Read.All, Reports.Read.All, Directory.Read.All"
 
     try {
+        # Check if already connected with a valid account session
+        $existingContext = Get-MgContext
+        if ($existingContext -and $existingContext.Account) {
+            $global:GraphConnected = $true
+            $global:TenantName = $existingContext.Account
+            Write-GuiLog "Reusing active Graph session for account: $($existingContext.Account)"
+            
+            if ($txtConnStatus) {
+                $txtConnStatus.Dispatcher.Invoke([Action]{
+                    $txtConnStatus.Text = "Connected: $($existingContext.Account)"
+                    $txtConnStatus.Foreground = [System.Windows.Media.Brushes]::LightGreen
+                })
+            }
+            return $true
+        }
+
+        # Clear stale tokens and request all required v1.0 and beta scopes in ONE upfront request
         Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
-        # Directory.Read.All is required for authentication requirements (/beta/users/{id}/authentication/requirements)
         $scopes = @("User.Read.All", "UserAuthenticationMethod.Read.All", "Reports.Read.All", "Directory.Read.All")
         Connect-MgGraph -Scopes $scopes -ContextScope Process -NoWelcome -ErrorAction Stop
 
@@ -178,37 +194,24 @@ function Invoke-MfaMethodAudit {
 
     $regDetails = @()
 
-    # Attempt 1: MgGraph Cmdlet
+    # Attempt 1: Direct REST API v1.0 /reports/authenticationMethods/userRegistrationDetails
     try {
-        if (Get-Command Get-MgReportAuthenticationMethodUserRegistrationDetail -ErrorAction SilentlyContinue) {
-            Write-GuiLog "Querying Graph cmdlet: Get-MgReportAuthenticationMethodUserRegistrationDetail..."
-            $regDetails = @(Get-MgReportAuthenticationMethodUserRegistrationDetail -All -ErrorAction SilentlyContinue)
-            if ($regDetails) { Write-GuiLog "Cmdlet returned $($regDetails.Count) records." }
+        Write-GuiLog "Querying Graph REST API v1.0 /reports/authenticationMethods/userRegistrationDetails..."
+        $uri = "https://graph.microsoft.com/v1.0/reports/authenticationMethods/userRegistrationDetails"
+        $response = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction SilentlyContinue
+        if ($response -and $response.value) {
+            $regDetails = @($response.value)
+            while ($response.'@odata.nextLink') {
+                $response = Invoke-MgGraphRequest -Method GET -Uri $response.'@odata.nextLink' -ErrorAction SilentlyContinue
+                if ($response.value) { $regDetails += $response.value }
+            }
+            Write-GuiLog "REST v1.0 returned $($regDetails.Count) user registration records."
         }
     } catch {
-        Write-GuiLog "Cmdlet query note: $_"
+        Write-GuiLog "REST v1.0 query note: $_"
     }
 
-    # Attempt 2: Direct REST API v1.0
-    if (-not $regDetails -or $regDetails.Count -eq 0) {
-        try {
-            Write-GuiLog "Querying Graph REST API v1.0 /reports/authenticationMethods/userRegistrationDetails..."
-            $uri = "https://graph.microsoft.com/v1.0/reports/authenticationMethods/userRegistrationDetails"
-            $response = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction SilentlyContinue
-            if ($response -and $response.value) {
-                $regDetails = @($response.value)
-                while ($response.'@odata.nextLink') {
-                    $response = Invoke-MgGraphRequest -Method GET -Uri $response.'@odata.nextLink' -ErrorAction SilentlyContinue
-                    if ($response.value) { $regDetails += $response.value }
-                }
-                Write-GuiLog "REST v1.0 returned $($regDetails.Count) records."
-            }
-        } catch {
-            Write-GuiLog "REST v1.0 query note: $_"
-        }
-    }
-
-    # Attempt 3: Direct REST API beta
+    # Attempt 2: Direct REST API beta /reports/authenticationMethods/userRegistrationDetails
     if (-not $regDetails -or $regDetails.Count -eq 0) {
         try {
             Write-GuiLog "Querying Graph REST API beta /reports/authenticationMethods/userRegistrationDetails..."
@@ -220,7 +223,7 @@ function Invoke-MfaMethodAudit {
                     $response = Invoke-MgGraphRequest -Method GET -Uri $response.'@odata.nextLink' -ErrorAction SilentlyContinue
                     if ($response.value) { $regDetails += $response.value }
                 }
-                Write-GuiLog "REST beta returned $($regDetails.Count) records."
+                Write-GuiLog "REST beta returned $($regDetails.Count) user registration records."
             }
         } catch {
             Write-GuiLog "REST beta query note: $_"
@@ -785,14 +788,17 @@ function Start-ScanProcess {
 
 # EVENT HANDLERS
 
-# 1. Connect Button (Single Sign-In Call)
+# 1. Connect Button (Connects and automatically scans/loads user list)
 $btnConnect.Add_Click({
     $btnConnect.IsEnabled = $false
-    Start-ScanProcess
-    $btnConnect.IsEnabled = $true
+    try {
+        Start-ScanProcess
+    } finally {
+        $btnConnect.IsEnabled = $true
+    }
 })
 
-# 2. Scan Button
+# 2. Scan Button (Connects if missing, then executes audit)
 $btnScan.Add_Click({
     Start-ScanProcess
 })
