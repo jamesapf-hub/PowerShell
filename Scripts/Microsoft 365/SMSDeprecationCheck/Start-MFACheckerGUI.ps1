@@ -209,25 +209,6 @@ function Invoke-MfaMethodAudit {
         Write-GuiLog "REST v1.0 query note: $_"
     }
 
-    # Attempt 2: Direct REST API beta /reports/authenticationMethods/userRegistrationDetails
-    if (-not $regDetails -or $regDetails.Count -eq 0) {
-        try {
-            Write-GuiLog "Querying Graph REST API beta /reports/authenticationMethods/userRegistrationDetails..."
-            $uri = "beta/reports/authenticationMethods/userRegistrationDetails"
-            $response = Invoke-MgGraphRequest -Method GET -Uri $uri -ErrorAction SilentlyContinue
-            if ($response -and $response.value) {
-                $regDetails = @($response.value)
-                while ($response.'@odata.nextLink') {
-                    $nextUri = $response.'@odata.nextLink' -replace '^https://graph\.microsoft\.com/', ''
-                    $response = Invoke-MgGraphRequest -Method GET -Uri $nextUri -ErrorAction SilentlyContinue
-                    if ($response.value) { $regDetails += $response.value }
-                }
-                Write-GuiLog "REST beta returned $($regDetails.Count) user registration records."
-            }
-        } catch {
-            Write-GuiLog "REST beta query note: $_"
-        }
-    }
 
     # Attempt 4: Fallback Directory Users query (/v1.0/users)
     if (-not $regDetails -or $regDetails.Count -eq 0) {
