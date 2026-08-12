@@ -148,9 +148,9 @@ function Connect-EntraIDGraph {
         $global:GraphConnected = $false
         $global:TenantName = ""
 
-        # Request all required v1.0 and beta scopes targeting 'organizations' authority for automatic tenant resolution
+        # Request all required v1.0 and beta scopes targeting 'organizations' authority with explicit account selection prompt
         $scopes = @("User.Read.All", "UserAuthenticationMethod.Read.All", "Reports.Read.All", "Directory.Read.All")
-        Connect-MgGraph -Scopes $scopes -TenantId "organizations" -ContextScope Process -NoWelcome -ErrorAction Stop
+        Connect-MgGraph -Scopes $scopes -TenantId "organizations" -Prompt select_account -ContextScope Process -NoWelcome -ErrorAction Stop
 
         $context = Get-MgContext
         if ($context) {
