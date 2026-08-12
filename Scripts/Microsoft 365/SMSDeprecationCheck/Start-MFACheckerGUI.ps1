@@ -143,24 +143,12 @@ function Connect-EntraIDGraph {
     } catch {}
 
     try {
-        # Check if already connected with a valid account session
-        $existingContext = Get-MgContext
-        if ($existingContext -and $existingContext.Account) {
-            $global:GraphConnected = $true
-            $global:TenantName = $existingContext.Account
-            Write-GuiLog "Reusing active Graph session for account: $($existingContext.Account)"
-            
-            if ($txtConnStatus) {
-                $txtConnStatus.Dispatcher.Invoke([Action]{
-                    $txtConnStatus.Text = "Connected: $($existingContext.Account)"
-                    $txtConnStatus.Foreground = [System.Windows.Media.Brushes]::LightGreen
-                })
-            }
-            return $true
-        }
-
-        # Clear stale tokens and request all required v1.0 and beta scopes in ONE upfront request
+        # Force a clean state upfront by disconnecting any existing session
         Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
+        $global:GraphConnected = $false
+        $global:TenantName = ""
+
+        # Request all required v1.0 and beta scopes in ONE upfront request
         $scopes = @("User.Read.All", "UserAuthenticationMethod.Read.All", "Reports.Read.All", "Directory.Read.All")
         Connect-MgGraph -Scopes $scopes -ContextScope Process -NoWelcome -ErrorAction Stop
 
@@ -834,5 +822,16 @@ $txtSearch.Add_TextChanged({
     }
 })
 
-# Show GUI Window
-[void]$window.ShowDialog()
+# Window Closing & Exit Cleanup Handler
+$window.Add_Closed({
+    Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
+    $global:GraphConnected = $false
+})
+
+# Show GUI Window with Cleanup Finally Block
+try {
+    [void]$window.ShowDialog()
+} finally {
+    Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
+    $global:GraphConnected = $false
+}
