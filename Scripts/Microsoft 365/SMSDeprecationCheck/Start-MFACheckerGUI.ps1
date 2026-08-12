@@ -313,8 +313,24 @@ function Invoke-MfaMethodAudit {
         $rawPreferred = if ($user.UserPreferredMethod) { $user.UserPreferredMethod } else { $user.userPreferredMethod }
         $friendlyDefaultMfa = Format-FriendlyMfaMethod -rawMethod $rawPreferred -registeredArray $methods
 
-        # Legacy Per-User MFA State (Defaulted to Disabled as Entra ID uses Conditional Access / Authentication Methods policy)
+        # Legacy Per-User MFA State via Graph Beta endpoint /beta/users/{encodedUpn}/authentication/requirements
         $legacyMfaState = "Disabled"
+        if ($upn) {
+            try {
+                $encodedUpn = [Uri]::EscapeDataString($upn)
+                $reqUri = "beta/users/${encodedUpn}/authentication/requirements"
+                $reqResp = Invoke-MgGraphRequest -Method GET -Uri $reqUri -ErrorAction SilentlyContinue
+                if ($reqResp -and $reqResp.perUserMfaState) {
+                    $st = [string]$reqResp.perUserMfaState
+                    if ($st -ieq "enforced") { $legacyMfaState = "Enforced" }
+                    elseif ($st -ieq "enabled") { $legacyMfaState = "Enabled" }
+                    elseif ($st -ieq "disabled") { $legacyMfaState = "Disabled" }
+                    else { $legacyMfaState = (Get-Culture).TextInfo.ToTitleCase($st) }
+                }
+            } catch {
+                # Fallback to Disabled if error
+            }
+        }
 
         # Determine SMS Default
         $isSmsDefault = ($friendlyDefaultMfa -like "*SMS*" -or $rawPreferred -in @("sms", "mobilePhone", "voiceMobile", "voiceOffice", "phone"))

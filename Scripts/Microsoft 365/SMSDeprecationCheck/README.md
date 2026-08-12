@@ -8,6 +8,7 @@ An interactive PowerShell 7 WPF tool and color-coded Excel report generator desi
 ### Key Features
 * **PowerShell 7 WPF GUI:** Modern dark-theme window providing real-time scanning progress, live tenant connection status, and interactive user filtering.
 * **Microsoft Graph API Audit:** Queries `/reports/authenticationMethods/userRegistrationDetails` to analyze registered methods and default sign-in preferences (`userPreferredMethod`).
+* **Legacy Per-User MFA State Audit:** Queries `/beta/users/{id}/authentication/requirements` to check legacy per-user MFA state (Disabled / Enabled / Enforced).
 * **Risk Classification:**
   * 🔴 **SMS ONLY (High Risk):** Users with only SMS/Phone registered. These users will lose access upon SMS deprecation if secondary methods are not registered.
   * 🟡 **SMS DEFAULT (Medium Risk):** Users with SMS set as default, but who have secondary methods available (such as Microsoft Authenticator or FIDO2).
@@ -25,6 +26,12 @@ Entra ID Scopes Required: `User.Read.All`, `UserAuthenticationMethod.Read.All`, 
 Dependencies: `Microsoft.Graph`, `ImportExcel` (automatically installed for `CurrentUser` if missing)
 
 ## Walkthrough & Usage Guide
+
+> [!NOTE]
+> **Authentication Prompt Expectations:**
+> Due to Microsoft Graph API architecture, **two sign-in prompts are expected** during execution:
+> 1. **Prompt 1 (Initial Connection):** Authenticates the main Microsoft Graph v1.0 session for user registration details.
+> 2. **Prompt 2 (Beta Endpoint):** Authenticates when querying the Graph Beta endpoint (`/beta/users/{id}/authentication/requirements`) to retrieve legacy per-user MFA state (Disabled/Enabled/Enforced).
 
 ### 1. Step-by-Step Instructions
 1. Open PowerShell 7 (`pwsh.exe`) or double-click `launchcontrol.bat`.
