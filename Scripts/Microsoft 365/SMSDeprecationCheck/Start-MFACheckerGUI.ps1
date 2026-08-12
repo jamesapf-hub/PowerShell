@@ -133,14 +133,6 @@ function Connect-EntraIDGraph {
     Write-GuiLog "Initiating single-session Microsoft Graph authentication..."
     Write-GuiLog "Requesting permissions: User.Read.All, UserAuthenticationMethod.Read.All, Reports.Read.All, Directory.Read.All"
 
-    # Disable Windows WAM broker to prevent "Sign into all apps / app only" prompt from clearing MSAL process token cache
-    $env:AZURE_IDENTITY_DISABLE_WAM = "true"
-    $env:MSAL_DISABLE_WAM = "true"
-    try {
-        if ([Microsoft.Graph.PowerShell.Authentication.GraphSession]::Instance -and [Microsoft.Graph.PowerShell.Authentication.GraphSession]::Instance.GraphOption) {
-            [Microsoft.Graph.PowerShell.Authentication.GraphSession]::Instance.GraphOption.DisableLoginByWAM = $true
-        }
-    } catch {}
 
     try {
         # Force a clean state upfront by disconnecting any existing session
