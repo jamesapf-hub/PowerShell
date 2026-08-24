@@ -8,7 +8,6 @@
 .NOTES
     Date Format: UK (DDMMYY)
     Log Path   : $env:SystemDrive\Logs\CleanAdobeOrphanInstallers\CleanAdobeOrphanInstallers_DDMMYY.log
-    test
 #>
 
 [CmdletBinding(SupportsShouldProcess=$true)]
