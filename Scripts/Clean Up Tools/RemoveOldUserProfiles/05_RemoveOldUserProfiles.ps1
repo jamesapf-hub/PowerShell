@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
-    Identifies and removes orphaned AD domain user profiles on a PC.
+    Identifies and removes orphaned Active Directory and Azure AD / Entra ID user profiles on a PC.
 .DESCRIPTION
-    This script scans local user profiles, filters out system, local, and active profiles, and deletes orphaned profiles.
+    This script scans local user profiles, filters out system, local, and active profiles, and deletes orphaned AD & Azure AD profiles.
     Saves a persistent log to the Logs directory and runs in WhatIf (dry-run) mode first.
 .PARAMETER Force
     Runs the cleanup silently without confirmation prompts.
@@ -59,15 +59,15 @@ function Get-UserProfileList {
     $regPath = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList'
     
     Get-ChildItem -Path $regPath -ErrorAction SilentlyContinue |
-        Where-Object { $_.PSChildName -match '^S-1-5-21-' } |
+        Where-Object { $_.PSChildName -match '^S-1-(5-21|12-1)-' } |
         ForEach-Object {
             $sid = $_.PSChildName
             $profilePath = $_.GetValue("ProfileImagePath")
             if (-not [string]::IsNullOrWhiteSpace($profilePath)) {
                 $folderName = Split-Path $profilePath -Leaf
-                $username = "Unknown SID ($folderName)"
+                $username = if ($sid -match '^S-1-12-1-') { "AzureAD\$folderName" } else { "Unknown SID ($folderName)" }
             } else {
-                $username = "Unknown SID ($sid) [Path Missing]"
+                $username = if ($sid -match '^S-1-12-1-') { "AzureAD\$sid [Path Missing]" } else { "Unknown SID ($sid) [Path Missing]" }
             }
             
             try {
@@ -148,11 +148,11 @@ foreach ($profile in $profiles) {
 }
 
 if ($profilesToRemove.Count -eq 0) {
-    Write-Log "No orphaned AD user profiles found." "SUCCESS"
+    Write-Log "No orphaned AD / Azure AD user profiles found." "SUCCESS"
     return
 }
 
-Write-Log "Found $($profilesToRemove.Count) orphaned AD profiles." "WARNING"
+Write-Log "Found $($profilesToRemove.Count) orphaned AD / Azure AD profiles." "WARNING"
 $profilesToRemove | Format-Table UserName, ProfilePath, SizeGB -AutoSize | Out-String | ForEach-Object {
     if (-not [string]::IsNullOrWhiteSpace($_)) {
         Write-Host $_ -ForegroundColor Yellow
