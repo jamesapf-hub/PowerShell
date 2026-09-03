@@ -22,3 +22,5 @@ out/
 dist/
 temp/
 tmp/
+Output/
+**/Output/

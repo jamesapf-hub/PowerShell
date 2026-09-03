@@ -545,33 +545,39 @@ $Xaml = @"
             </Grid>
             
             <!-- PAGE 3: USER DIRECTORY GRID -->
+            <!-- PAGE 3: USER DIRECTORY GRID -->
             <Grid Name="pageDirectory" Visibility="Collapsed">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/> <!-- Filters & Search -->
+                    <RowDefinition Height="Auto"/> <!-- Additive Filters Toolbar -->
                     <RowDefinition Height="*"/>    <!-- Data Grid -->
                     <RowDefinition Height="Auto"/> <!-- Bottom Actions -->
                 </Grid.RowDefinitions>
                 
                 <!-- Filters & Search -->
-                <Grid Grid.Row="0" Margin="0,0,0,15">
+                <Grid Grid.Row="0" Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="250"/>
+                        <ColumnDefinition Width="260"/>
                     </Grid.ColumnDefinitions>
                     
-                    <!-- Filters -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <Button Name="btnFilterAll" Content="All Users" Padding="12,6" Background="#3B82F6" Foreground="White" FontWeight="SemiBold" BorderThickness="0" Margin="0,0,6,0" Tag="all"/>
-                        <Button Name="btnFilterActive" Content="Active (&lt;=30d)" Padding="12,6" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,6,0" Tag="active"/>
-                        <Button Name="btnFilterInactive90d" Content="Inactive (&gt;90d)" Padding="12,6" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,6,0" Tag="inactive90d"/>
-                        <Button Name="btnFilterInactive1yr" Content="Inactive (&gt;1yr)" Padding="12,6" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,6,0" Tag="inactive1yr"/>
-                        <Button Name="btnFilterNever" Content="Never Logged In" Padding="12,6" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Tag="never"/>
-                    </StackPanel>
+                    <!-- Preset Filters -->
+                    <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Name="btnFilterAll" Content="All Users" Padding="10,5" Background="#3B82F6" Foreground="White" FontWeight="SemiBold" BorderThickness="0" Margin="0,0,5,5" Tag="all"/>
+                        <Button Name="btnFilterActive" Content="Active (&lt;=30d)" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="active"/>
+                        <Button Name="btnFilterLicGuests" Content="Licensed + Guests" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="licensed_guests"/>
+                        <Button Name="btnFilterLicensed" Content="Licensed Only" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="licensed"/>
+                        <Button Name="btnFilterGuests" Content="Guests Only" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="guests"/>
+                        <Button Name="btnFilterUnlicensed" Content="Unlicensed" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="unlicensed"/>
+                        <Button Name="btnFilterDisabled" Content="Disabled" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="disabled"/>
+                        <Button Name="btnFilterInactive90d" Content="Inactive (&gt;90d)" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="inactive90d"/>
+                        <Button Name="btnFilterNever" Content="Never Logged In" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="never"/>
+                    </WrapPanel>
                     
                     <!-- Search Box -->
-                    <Grid Grid.Column="1">
+                    <Grid Grid.Column="1" VerticalAlignment="Top">
                         <TextBox Name="txtSearch" Background="#0c0c0d" BorderBrush="#2c2c2e" Foreground="White" Padding="8,6" FontSize="12" SelectionBrush="#3B82F6" CaretBrush="White"/>
-                        <TextBlock Text="Search Display Name/UPN..." Foreground="#555" IsHitTestVisible="False" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11">
+                        <TextBlock Text="Search Name, UPN, SKU..." Foreground="#555" IsHitTestVisible="False" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -585,9 +591,58 @@ $Xaml = @"
                         </TextBlock>
                     </Grid>
                 </Grid>
+
+                <!-- Additive Filter Toolbar -->
+                <Border Grid.Row="1" Background="#161618" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="6" Padding="8,5" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="REFINE:" Foreground="#64748b" FontSize="10" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            
+                            <!-- License Group -->
+                            <TextBlock Text="Lic:" Foreground="#9ca3af" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <Button Name="btnSubLicAll" Content="All" Padding="6,3" FontSize="10" Background="#2563eb" Foreground="White" BorderBrush="#3B82F6" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
+                            <Button Name="btnSubLicYes" Content="Yes" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,3,0" Tag="licensed"/>
+                            <Button Name="btnSubLicNo" Content="No" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,8,0" Tag="unlicensed"/>
+                            
+                            <Border Width="1" Height="14" Background="#2c2c2e" Margin="0,0,8,0" VerticalAlignment="Center"/>
+
+                            <!-- Type Group -->
+                            <TextBlock Text="Type:" Foreground="#9ca3af" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <Button Name="btnSubTypeAll" Content="All" Padding="6,3" FontSize="10" Background="#2563eb" Foreground="White" BorderBrush="#3B82F6" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
+                            <Button Name="btnSubTypeMembers" Content="Members" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,3,0" Tag="members"/>
+                            <Button Name="btnSubTypeGuests" Content="Guests" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,3,0" Tag="guests"/>
+                            <Button Name="btnSubTypeLicGuest" Content="Lic+Guests" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,8,0" Tag="licensed_guests"/>
+
+                            <Border Width="1" Height="14" Background="#2c2c2e" Margin="0,0,8,0" VerticalAlignment="Center"/>
+
+                            <!-- Status Group -->
+                            <TextBlock Text="Status:" Foreground="#9ca3af" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <Button Name="btnSubAccAll" Content="All" Padding="6,3" FontSize="10" Background="#2563eb" Foreground="White" BorderBrush="#3B82F6" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
+                            <Button Name="btnSubAccEnabled" Content="Enabled" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,3,0" Tag="enabled"/>
+                            <Button Name="btnSubAccDisabled" Content="Disabled" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,8,0" Tag="disabled"/>
+
+                            <Border Width="1" Height="14" Background="#2c2c2e" Margin="0,0,8,0" VerticalAlignment="Center"/>
+
+                            <!-- Sign-In Activity Group -->
+                            <TextBlock Text="Sign-In:" Foreground="#9ca3af" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <Button Name="btnSubActAll" Content="All" Padding="6,3" FontSize="10" Background="#2563eb" Foreground="White" BorderBrush="#3B82F6" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
+                            <Button Name="btnSubActActive" Content="&lt;=30d" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,3,0" Tag="active"/>
+                            <Button Name="btnSubActInactive" Content="&gt;90d" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,3,0" Tag="inactive90d"/>
+                            <Button Name="btnSubActNever" Content="Never" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,8,0" Tag="never"/>
+
+                            <Button Name="btnResetFilters" Content="Reset All" Padding="8,3" FontSize="10" Background="#1c1c1e" Foreground="#f87171" BorderBrush="#ef4444" BorderThickness="1" Margin="4,0,0,0"/>
+                        </WrapPanel>
+                        
+                        <TextBlock Name="txtFilterCount" Grid.Column="1" Text="Showing 0 of 0 users" Foreground="#10b981" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </Grid>
+                </Border>
                 
                 <!-- Styled Data Grid -->
-                <Border Grid.Row="1" Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="8" Padding="5">
+                <Border Grid.Row="2" Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="8" Padding="5">
                     <DataGrid Name="gridUsers" AutoGenerateColumns="False" IsReadOnly="True" 
                               Background="#1c1c1e" BorderThickness="0" Foreground="#f3f4f6"
                               RowBackground="#1c1c1e" AlternatingRowBackground="#131313" 
@@ -647,10 +702,23 @@ $Xaml = @"
                         </DataGrid.RowStyle>
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Display Name" Binding="{Binding DisplayName}" Width="1.2*"/>
-                            <DataGridTextColumn Header="User Principal Name (UPN)" Binding="{Binding UserPrincipalName}" Width="1.5*"/>
-                            <DataGridTextColumn Header="Licenses" Binding="{Binding AssignedLicenses}" Width="2*"/>
-                            <DataGridTextColumn Header="Last Sign-In" Binding="{Binding LastSignInDate}" Width="1.2*"/>
-                            <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="130"/>
+                            <DataGridTextColumn Header="User Principal Name (UPN)" Binding="{Binding UserPrincipalName}" Width="1.4*"/>
+                            <DataGridTextColumn Header="Type" Binding="{Binding UserType}" Width="75">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Center"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding UserType}" Value="Guest">
+                                                <Setter Property="Foreground" Value="#38bdf8"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Licenses" Binding="{Binding AssignedLicenses}" Width="1.8*"/>
+                            <DataGridTextColumn Header="Last Sign-In" Binding="{Binding LastSignInDate}" Width="1.1*"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="120"/>
                             <DataGridTextColumn Header="Account Status" Binding="{Binding AccountStatusText}" Width="110">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
@@ -658,16 +726,16 @@ $Xaml = @"
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Wasted Cost" Binding="{Binding WastedCostText}" Width="110"/>
-                            <DataGridTextColumn Header="Monthly Savings" Binding="{Binding MonthlySavingsText}" Width="110"/>
-                            <DataGridTextColumn Header="Recommendation" Binding="{Binding Recommendation}" Width="1.5*"/>
-                            <DataGridTextColumn Header="Verification" Binding="{Binding VerificationText}" Width="130"/>
+                            <DataGridTextColumn Header="Wasted Cost" Binding="{Binding WastedCostText}" Width="95"/>
+                            <DataGridTextColumn Header="Monthly Savings" Binding="{Binding MonthlySavingsText}" Width="95"/>
+                            <DataGridTextColumn Header="Recommendation" Binding="{Binding Recommendation}" Width="1.4*"/>
+                            <DataGridTextColumn Header="Verification" Binding="{Binding VerificationText}" Width="110"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Border>
                 
                 <!-- Bottom Exporters -->
-                <Grid Grid.Row="2" Margin="0,15,0,0">
+                <Grid Grid.Row="3" Margin="0,15,0,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -729,6 +797,11 @@ $Script:SessionMode = ""
 $Script:CurrentData = $null
 $Script:GridRows = $null
 $Script:ActiveFilter = "all"
+$Script:ActivePreset = "all"
+$Script:FilterLicense = "all"
+$Script:FilterAccount = "all"
+$Script:FilterUserType = "all"
+$Script:FilterActivity = "all"
 $Script:SearchQuery = ""
 $Script:SessionSeconds = 0
 $Script:UserRole = ""
@@ -737,24 +810,33 @@ function Get-MockDateString($DaysAgo) {
     return (Get-Date).AddDays(-$DaysAgo).ToString("yyyy-MM-ddTHH:mm:ssZ")
 }
 
-$MockData = @(
-    [PSCustomObject]@{ DisplayName = "Alex Wilber"; UserPrincipalName = "AlexW@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium, Microsoft 365 Copilot"; LastSignInDate = (Get-MockDateString 2); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Adele Vance"; UserPrincipalName = "AdeleV@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium"; LastSignInDate = (Get-MockDateString 15); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Pradeep Gupta"; UserPrincipalName = "PradeepG@contoso.com"; AssignedLicenses = "Power BI Pro, Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 390); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Megan Bowen"; UserPrincipalName = "MeganB@contoso.com"; AssignedLicenses = "Microsoft 365 E3"; LastSignInDate = (Get-MockDateString 105); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Joni Sherman"; UserPrincipalName = "JoniS@contoso.com"; AssignedLicenses = "Microsoft 365 Business Basic"; LastSignInDate = "No interactive sign-in recorded"; AccountEnabled = $false }
-    [PSCustomObject]@{ DisplayName = "Lynne Robbins"; UserPrincipalName = "LynneR@contoso.com"; AssignedLicenses = "Microsoft 365 F3, Exchange Online (Plan 2)"; LastSignInDate = (Get-MockDateString 410); AccountEnabled = $false }
-    [PSCustomObject]@{ DisplayName = "Isaiah Langer"; UserPrincipalName = "IsaiahL@contoso.com"; AssignedLicenses = "Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 95); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Lidia Holloway"; UserPrincipalName = "LidiaH@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium, Power BI Pro"; LastSignInDate = (Get-MockDateString 0); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Grady Archie"; UserPrincipalName = "GradyA@contoso.com"; AssignedLicenses = "Microsoft 365 Business Standard"; LastSignInDate = (Get-MockDateString 195); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Patti Fernandez"; UserPrincipalName = "PattiF@contoso.com"; AssignedLicenses = "Microsoft Teams Exploratory"; LastSignInDate = "No interactive sign-in recorded"; AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Nestor Wilke"; UserPrincipalName = "NestorW@contoso.com"; AssignedLicenses = "Microsoft 365 Copilot, Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 35); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Diego Siciliani"; UserPrincipalName = "DiegoS@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium"; LastSignInDate = (Get-MockDateString 18); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Test Admin Account"; UserPrincipalName = "seriun.test@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium"; LastSignInDate = (Get-MockDateString 5); AccountEnabled = $true }
-    [PSCustomObject]@{ DisplayName = "Demo Admin User"; UserPrincipalName = "jp@contoso.com"; AssignedLicenses = "Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 12); AccountEnabled = $true }
+$Script:MockData = @(
+    [PSCustomObject]@{ DisplayName = "Alex Wilber"; UserPrincipalName = "AlexW@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium, Microsoft 365 Copilot"; LastSignInDate = (Get-MockDateString 2); AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Adele Vance"; UserPrincipalName = "AdeleV@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium"; LastSignInDate = (Get-MockDateString 15); AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Pradeep Gupta"; UserPrincipalName = "PradeepG@contoso.com"; AssignedLicenses = "Power BI Pro, Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 390); AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Megan Bowen"; UserPrincipalName = "MeganB@contoso.com"; AssignedLicenses = "Microsoft 365 E3"; LastSignInDate = (Get-MockDateString 105); AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Joni Sherman"; UserPrincipalName = "JoniS@contoso.com"; AssignedLicenses = "Microsoft 365 Business Basic"; LastSignInDate = "No interactive sign-in recorded"; AccountEnabled = $false; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Lynne Robbins"; UserPrincipalName = "LynneR@contoso.com"; AssignedLicenses = "Microsoft 365 F3, Exchange Online (Plan 2)"; LastSignInDate = (Get-MockDateString 410); AccountEnabled = $false; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Isaiah Langer"; UserPrincipalName = "IsaiahL@contoso.com"; AssignedLicenses = "Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 95); AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Lidia Holloway"; UserPrincipalName = "LidiaH@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium, Power BI Pro"; LastSignInDate = (Get-MockDateString 0); AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Grady Archie"; UserPrincipalName = "GradyA@contoso.com"; AssignedLicenses = "Microsoft 365 Business Standard"; LastSignInDate = (Get-MockDateString 195); AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Patti Fernandez"; UserPrincipalName = "PattiF@contoso.com"; AssignedLicenses = "Microsoft Teams Exploratory"; LastSignInDate = "No interactive sign-in recorded"; AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Nestor Wilke"; UserPrincipalName = "NestorW@contoso.com"; AssignedLicenses = "Microsoft 365 Copilot, Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 35); AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Diego Siciliani"; UserPrincipalName = "DiegoS@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium"; LastSignInDate = (Get-MockDateString 18); AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Test Admin Account"; UserPrincipalName = "seriun.test@contoso.com"; AssignedLicenses = "Microsoft 365 Business Premium"; LastSignInDate = (Get-MockDateString 5); AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Demo Admin User"; UserPrincipalName = "jp@contoso.com"; AssignedLicenses = "Microsoft 365 E5"; LastSignInDate = (Get-MockDateString 12); AccountEnabled = $true; UserType = "Member" }
+    # Unlicensed Members
+    [PSCustomObject]@{ DisplayName = "Sales Shared Mailbox"; UserPrincipalName = "sales@contoso.com"; AssignedLicenses = "None (Unlicensed)"; LastSignInDate = "No interactive sign-in recorded"; AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Conference Room Alpha"; UserPrincipalName = "room.alpha@contoso.com"; AssignedLicenses = "None (Unlicensed)"; LastSignInDate = "No interactive sign-in recorded"; AccountEnabled = $true; UserType = "Member" }
+    [PSCustomObject]@{ DisplayName = "Former Contractor (Disabled)"; UserPrincipalName = "contractor1@contoso.com"; AssignedLicenses = "None (Unlicensed)"; LastSignInDate = (Get-MockDateString 280); AccountEnabled = $false; UserType = "Member" }
+    # Guest Accounts (Unlicensed & Licensed)
+    [PSCustomObject]@{ DisplayName = "David Miller (Vendor Partner)"; UserPrincipalName = "david_miller_fabrikam.com#EXT#@contoso.onmicrosoft.com"; AssignedLicenses = "None (Unlicensed)"; LastSignInDate = (Get-MockDateString 8); AccountEnabled = $true; UserType = "Guest" }
+    [PSCustomObject]@{ DisplayName = "Sarah Jenkins (External Auditor)"; UserPrincipalName = "sarah.j_auditco.com#EXT#@contoso.onmicrosoft.com"; AssignedLicenses = "Microsoft Fabric (Free)"; LastSignInDate = (Get-MockDateString 22); AccountEnabled = $true; UserType = "Guest" }
+    [PSCustomObject]@{ DisplayName = "Elena Rostova (Guest Contractor)"; UserPrincipalName = "elena_freelance.org#EXT#@contoso.onmicrosoft.com"; AssignedLicenses = "None (Unlicensed)"; LastSignInDate = (Get-MockDateString 120); AccountEnabled = $true; UserType = "Guest" }
+    [PSCustomObject]@{ DisplayName = "Inactive Guest Vendor"; UserPrincipalName = "oldguest_partner.com#EXT#@contoso.onmicrosoft.com"; AssignedLicenses = "None (Unlicensed)"; LastSignInDate = "No interactive sign-in recorded"; AccountEnabled = $false; UserType = "Guest" }
 )
 
-$ActivityColors = @{
+$Script:ActivityColors = @{
     "Active (<=30d)"          = "#10b981"
     "Inactive (30-90d)"        = "#eab308"
     "Inactive (90-365d)"       = "#3B82F6"
@@ -783,7 +865,10 @@ Microsoft 365 E3,31.70,47d12459-1159-4ad1-abfa-00e92056813a
 Microsoft 365 F3,6.60,61346032-1554-4736-b876-7d28d697f394
 Microsoft 365 F3,6.60,f7ee79a7-7aec-4ca4-9fb9-34d6b930ad87
 Exchange Online (Plan 2),6.60,19ec0d23-8335-4cbd-94ac-6050e30712fa
-Power BI Pro,8.20,a403ebcc-fae0-4ca2-8c8c-7a907fd6c235
+Microsoft Fabric (Free),0.00,a403ebcc-fae0-4ca2-8c8c-7a907fd6c235
+Power BI (free),0.00,a403ebcc-fae0-4ca2-8c8c-7a907fd6c235
+Power BI Pro,8.20,f8a1db68-be16-40ed-86d5-cb42ce701560
+Power BI Pro,8.20,f8cdef31-a31e-4b4a-93e4-5f571e91255a
 Microsoft 365 Copilot,24.70,639dec6b-bb19-468b-871c-c5c441c4b0cb
 Microsoft 365 Copilot,24.70,ab5128ae-2475-4d95-8c73-33f07d701bfc
 Office 365 E3,22.00,6fd2c87f-b296-42f0-b197-1e91e994b900
@@ -832,6 +917,12 @@ Windows Store for Business,0.00,6470687e-a428-4b7a-bef2-8a291ad947c9
                     $HasMalformed = $true
                     continue
                 }
+                # Fix a403ebcc incorrect mapping to Power BI Pro (Fabric Free is £0.00)
+                if ($line -like "*a403ebcc-fae0-4ca2-8c8c-7a907fd6c235*") {
+                    $CleanLines.Add("Microsoft Fabric (Free),0.00,a403ebcc-fae0-4ca2-8c8c-7a907fd6c235")
+                    $HasMalformed = $true
+                    continue
+                }
                 if ([string]::IsNullOrWhiteSpace($line) -or $line -like ",*") {
                     $HasMalformed = $true
                     continue
@@ -840,6 +931,13 @@ Windows Store for Business,0.00,6470687e-a428-4b7a-bef2-8a291ad947c9
             }
             if ($HasMalformed) {
                 $CleanLines | Out-File -FilePath $PricesFile -Force -Encoding utf8
+            }
+        } catch {}
+
+        try {
+            $CurrentCsv = Get-Content -Path $PricesFile -Raw
+            if ($CurrentCsv -notmatch "f8a1db68-be16-40ed-86d5-cb42ce701560") {
+                Add-Content -Path $PricesFile -Value "`nPower BI Pro,8.20,f8a1db68-be16-40ed-86d5-cb42ce701560" -Encoding utf8
             }
         } catch {}
     }
@@ -878,6 +976,8 @@ Windows Store for Business,0.00,6470687e-a428-4b7a-bef2-8a291ad947c9
             "Microsoft 365 F3"                   = 6.60
             "Exchange Online (Plan 2)"           = 6.60
             "Power BI Pro"                       = 8.20
+            "Microsoft Fabric (Free)"            = 0.00
+            "Power BI (free)"                    = 0.00
             "Microsoft 365 Copilot"              = 24.70
             "Office 365 E3"                      = 22.00
             "Office 365 E5"                      = 37.50
@@ -947,14 +1047,123 @@ function Get-LicenseMonthlyPrice($LicensesString) {
                 }
             }
             if (-not $Matched) {
-                if ($Name -match "E5") { $Sum += 48.10 }
+                if ($Name -match "Free" -or $Name -match "Exploratory" -or $Name -like "None*" -or $Name -match "Trial" -or $Name -match "Store for Business" -or ($Name -match "Basic" -and $Name -match "Teams")) {
+                    $Sum += 0.00
+                } elseif ($Name -match "E5") { $Sum += 48.10 }
                 elseif ($Name -match "E3") { $Sum += 31.70 }
-                elseif ($Name -match "Business") { $Sum += 10.30 }
-                else { $Sum += 10.00 }
+                elseif ($Name -match "Business Premium") { $Sum += 18.10 }
+                elseif ($Name -match "Business Standard") { $Sum += 10.30 }
+                elseif ($Name -match "Business Basic") { $Sum += 4.90 }
+                elseif ($Name -match "F3") { $Sum += 6.60 }
+                elseif ($Name -match "Copilot") { $Sum += 24.70 }
+                else { $Sum += 0.00 }
             }
         }
     }
     return $Sum
+}
+
+function Resolve-SkuName {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Guid,
+        [Parameter(Mandatory=$false)]
+        $AssignedPlans = $null
+    )
+    if ([string]::IsNullOrWhiteSpace($Guid)) { return "None (Unlicensed)" }
+    $g = $Guid.ToString().ToLower().Trim()
+    
+    # 1. Fast memory cache lookup
+    if ($Script:SkuMap -and $Script:SkuMap.ContainsKey($g)) {
+        return $Script:SkuMap[$g]
+    }
+    
+    # 2. Check tenant's Subscribed SKUs (using SkuPartNumber!)
+    if ($Script:TenantSubSkus) {
+        $subMatch = $Script:TenantSubSkus | Where-Object { $_.SkuId -and $_.SkuId.ToString().ToLower() -eq $g } | Select-Object -First 1
+        if ($subMatch) {
+            $pNum = if ($subMatch.SkuPartNumber) { $subMatch.SkuPartNumber.ToString().Trim() } elseif ($subMatch.SkuPartName) { $subMatch.SkuPartName.ToString().Trim() } else { "" }
+            if ($pNum) {
+                if ($Script:SkuMap -and $Script:SkuMap.ContainsKey($pNum.ToLower())) {
+                    $found = $Script:SkuMap[$pNum.ToLower()]
+                    if ($Script:SkuMap) { $Script:SkuMap[$g] = $found }
+                    return $found
+                }
+                if ($Script:SkuCacheByStringId -and $Script:SkuCacheByStringId.ContainsKey($pNum.ToUpper())) {
+                    $found = $Script:SkuCacheByStringId[$pNum.ToUpper()]
+                    if ($Script:SkuMap) { $Script:SkuMap[$g] = $found }
+                    return $found
+                }
+                $clean = ($pNum -replace '_', ' ').Trim()
+                $clean = (Get-Culture).TextInfo.ToTitleCase($clean.ToLower())
+                if ($Script:SkuMap) { $Script:SkuMap[$g] = $clean }
+                return $clean
+            }
+        }
+    }
+    
+    # 3. Check fast global SKU caches (GUID, Service_Plan_Id, String_Id)
+    if ($Script:SkuCacheByGuid -and $Script:SkuCacheByGuid.ContainsKey($g)) {
+        $found = $Script:SkuCacheByGuid[$g]
+        if ($Script:SkuMap) { $Script:SkuMap[$g] = $found }
+        return $found
+    }
+    if ($Script:SkuCacheByPlanId -and $Script:SkuCacheByPlanId.ContainsKey($g)) {
+        $found = $Script:SkuCacheByPlanId[$g]
+        if ($Script:SkuMap) { $Script:SkuMap[$g] = $found }
+        return $found
+    }
+    
+    # 4. Check on-demand in local M365_SKU_Cache.csv
+    $CacheFile = Join-Path "$env:SystemDrive\Logs\UserLicenceCheck" "M365_SKU_Cache.csv"
+    if (Test-Path $CacheFile) {
+        try {
+            $matchedRow = Import-Csv $CacheFile | Where-Object { $_.GUID -eq $g -or $_.Service_Plan_Id -eq $g } | Select-Object -First 1
+            if ($matchedRow) {
+                $name = if ($matchedRow.Product_Display_Name) { $matchedRow.Product_Display_Name } else { $matchedRow.Service_Plans_Included_Friendly_Names }
+                if ($name) {
+                    $name = $name -replace ';', ','
+                    if ($Script:SkuMap) { $Script:SkuMap[$g] = $name }
+                    return $name
+                }
+            }
+        } catch {}
+    }
+    
+    # 5. Live Online Dynamic Query: Query Merill's repo and Microsoft CSV on-the-fly
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $onlineUrl = "https://raw.githubusercontent.com/merill/license/main/license.csv"
+        $onlineCsvText = Invoke-RestMethod -Uri $onlineUrl -TimeoutSec 4 -ErrorAction SilentlyContinue
+        if ($onlineCsvText) {
+            $onlineList = ConvertFrom-Csv -InputObject $onlineCsvText
+            $onlineMatch = $onlineList | Where-Object { $_.GUID -eq $g -or $_.Service_Plan_Id -eq $g } | Select-Object -First 1
+            if ($onlineMatch) {
+                $name = if ($onlineMatch.Product_Display_Name) { $onlineMatch.Product_Display_Name } else { $onlineMatch.Service_Plans_Included_Friendly_Names }
+                if ($name) {
+                    $name = $name -replace ';', ','
+                    if ($Script:SkuMap) { $Script:SkuMap[$g] = $name }
+                    try {
+                        Add-Content -Path $CacheFile -Value "`n$($onlineMatch.Product_Display_Name),$($onlineMatch.String_Id),$($onlineMatch.GUID),$($onlineMatch.Service_Plan_Name),$($onlineMatch.Service_Plan_Id),$($onlineMatch.Service_Plans_Included_Friendly_Names)" -Encoding utf8
+                    } catch {}
+                    return $name
+                }
+            }
+        }
+    } catch {}
+    
+    # 6. Fallback: User AssignedPlans service analysis
+    if ($AssignedPlans) {
+        $activePlans = $AssignedPlans | Where-Object { $_.CapabilityStatus -eq "Enabled" } | Select-Object -ExpandProperty Service -Unique
+        if ($activePlans -and $activePlans.Count -gt 0) {
+            $summary = ($activePlans | Select-Object -First 2) -join " / "
+            $inferred = "Custom Plan ($summary)"
+            if ($Script:SkuMap) { $Script:SkuMap[$g] = $inferred }
+            return $inferred
+        }
+    }
+    
+    return "Unknown SKU ($g)"
 }
 
 function Update-UI {
@@ -1342,13 +1551,13 @@ function Invoke-AuditReport {
             [PSCustomObject]@{ SkuPartName = "Microsoft 365 E5"; SkuId = "078d10ee-6995-4851-8043-334f610f49b3"; ActiveUnits = 10; ConsumedUnits = 8; UnassignedUnits = 2; UnassignedBrush = $GreenBrush; WastedBrush = $RedBrush; MonthlyPrice = 48.10; MonthlyPriceText = "£48.10"; WastedCost = 96.20; WastedCostText = "£96.20"; AssignedText = "8 of 10" }
             [PSCustomObject]@{ SkuPartName = "Microsoft 365 Business Premium"; SkuId = "cbdc14ab-d96c-4c30-b9f4-6ada7cdc1d46"; ActiveUnits = 25; ConsumedUnits = 20; UnassignedUnits = 5; UnassignedBrush = $GreenBrush; WastedBrush = $RedBrush; MonthlyPrice = 18.10; MonthlyPriceText = "£18.10"; WastedCost = 90.50; WastedCostText = "£90.50"; AssignedText = "20 of 25" }
             [PSCustomObject]@{ SkuPartName = "Microsoft 365 Copilot"; SkuId = "639dec6b-bb19-468b-871c-c5c441c4b0cb"; ActiveUnits = 5; ConsumedUnits = 5; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 24.70; MonthlyPriceText = "£24.70"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "5 of 5" }
-            [PSCustomObject]@{ SkuPartName = "Power BI Pro"; SkuId = "a403ebcc-fae0-4ca2-8c8c-7a907fd6c235"; ActiveUnits = 10; ConsumedUnits = 10; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 8.20; MonthlyPriceText = "£8.20"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "10 of 10" }
+            [PSCustomObject]@{ SkuPartName = "Power BI Pro"; SkuId = "f8a1db68-be16-40ed-86d5-cb42ce701560"; ActiveUnits = 10; ConsumedUnits = 10; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 8.20; MonthlyPriceText = "£8.20"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "10 of 10" }
             [PSCustomObject]@{ SkuPartName = "Microsoft 365 Business Standard"; SkuId = "f245ecc8-75af-4f8e-b61f-27d8114de5f3"; ActiveUnits = 15; ConsumedUnits = 15; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 10.30; MonthlyPriceText = "£10.30"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "15 of 15" }
             [PSCustomObject]@{ SkuPartName = "Microsoft 365 Business Basic"; SkuId = "bd251394-b1ed-487b-a1aa-ee198c62c938"; ActiveUnits = 30; ConsumedUnits = 30; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 4.90; MonthlyPriceText = "£4.90"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "30 of 30" }
             [PSCustomObject]@{ SkuPartName = "Office 365 E3"; SkuId = "6fd2c87f-b296-42f0-b197-1e91e994b900"; ActiveUnits = 12; ConsumedUnits = 12; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 22.00; MonthlyPriceText = "£22.00"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "12 of 12" }
             [PSCustomObject]@{ SkuPartName = "Microsoft Teams Exploratory"; SkuId = "710779e8-3d4a-4c88-adb9-386c958d1fdf"; ActiveUnits = 50; ConsumedUnits = 50; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 0.00; MonthlyPriceText = "£0.00"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "50 of 50" }
         )
-        $Users = $MockData
+        $Users = $Script:MockData
         Process-UserData $Users
         Log-ToTerminal "Report generation complete. Successfully processed $($Users.Count) sandbox users." "Success"
     } else {
@@ -1360,7 +1569,9 @@ function Invoke-AuditReport {
             # Sku fallback dictionary
             $LocalSkuDict = @{
                 "ab5128ae-2475-4d95-8c73-33f07d701bfc" = "Microsoft 365 Copilot"
-                "a403ebcc-fae0-4ca2-8c8c-7a907fd6c235" = "Power BI Pro"
+                "a403ebcc-fae0-4ca2-8c8c-7a907fd6c235" = "Microsoft Fabric (Free)"
+                "f8a1db68-be16-40ed-86d5-cb42ce701560" = "Power BI Pro"
+                "f8cdef31-a31e-4b4a-93e4-5f571e91255a" = "Power BI Pro"
                 "639dec6b-bb19-468b-871c-c5c441c4b0cb" = "Microsoft 365 Copilot"
                 "6470687e-a428-4b7a-bef2-8a291ad947c9" = "Windows Store for Business"
                 "19ec0d23-8335-4cbd-94ac-6050e30712fa" = "Exchange Online (Plan 2)"
@@ -1391,11 +1602,13 @@ function Invoke-AuditReport {
                 "POWERAPPS_DEV"            = "Microsoft Power Apps for Developer"
                 "TEAMS_ROOM_BASIC"         = "Microsoft Teams Rooms Basic"
                 "TEAMS_ROOM_PRO"           = "Microsoft Teams Rooms Pro"
+                "POWER_BI_STANDARD"        = "Microsoft Fabric (Free)"
+                "POWER_BI_PRO"             = "Power BI Pro"
             }
             
-            $SkuMap = @{}
+            $Script:SkuMap = @{}
             foreach ($key in $LocalSkuDict.Keys) {
-                $SkuMap[$key.ToLower()] = $LocalSkuDict[$key]
+                $Script:SkuMap[$key.ToLower()] = $LocalSkuDict[$key]
             }
             
             # Pre-populate friendly names from LicensePrices.csv
@@ -1405,10 +1618,80 @@ function Invoke-AuditReport {
                     $PricesCsv = Import-Csv $PricesFile
                     foreach ($row in $PricesCsv) {
                         if ($row.SkuId -and $row.Product) {
-                            $SkuMap[$row.SkuId.ToString().ToLower()] = $row.Product
+                            $Script:SkuMap[$row.SkuId.ToString().ToLower()] = $row.Product
                         }
                     }
                 } catch {}
+            }
+
+            # Pre-load Global SKU Database FIRST so tenant SKUs and users resolve against 2,900+ official products
+            $LogDir = "$env:SystemDrive\Logs\UserLicenceCheck"
+            $CacheFile = Join-Path $LogDir "M365_SKU_Cache.csv"
+            $CacheLoaded = $false
+            $Script:SkuCacheByGuid = @{}
+            $Script:SkuCacheByPlanId = @{}
+            $Script:SkuCacheByStringId = @{}
+
+            if (Test-Path $CacheFile) {
+                $LastMod = (Get-Item $CacheFile).LastWriteTime
+                if ($LastMod -gt (Get-Date).AddDays(-7)) {
+                    Log-ToTerminal "Loading global SKU catalog from local cache..." "Info"
+                    Update-UI
+                    try {
+                        Import-Csv $CacheFile | ForEach-Object {
+                            if ($_.GUID -and $_.Product_Display_Name) {
+                                $g = $_.GUID.ToString().ToLower().Trim()
+                                $pName = $_.Product_Display_Name -replace ';', ','
+                                $Script:SkuCacheByGuid[$g] = $pName
+                                if (-not $Script:SkuMap.ContainsKey($g)) { $Script:SkuMap[$g] = $pName }
+                            }
+                            if ($_.Service_Plan_Id) {
+                                $spId = $_.Service_Plan_Id.ToString().ToLower().Trim()
+                                $spName = if ($_.Service_Plans_Included_Friendly_Names) { $_.Service_Plans_Included_Friendly_Names } else { $_.Product_Display_Name }
+                                $Script:SkuCacheByPlanId[$spId] = $spName -replace ';', ','
+                            }
+                            if ($_.String_Id -and $_.Product_Display_Name) {
+                                $sId = $_.String_Id.ToString().ToUpper().Trim()
+                                $Script:SkuCacheByStringId[$sId] = $_.Product_Display_Name -replace ';', ','
+                            }
+                        }
+                        $CacheLoaded = $true
+                    } catch {}
+                }
+            }
+
+            if (-not $CacheLoaded) {
+                Log-ToTerminal "Fetching latest global SKU mapping database online..." "Info"
+                Update-UI
+                try {
+                    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                    $CsvText = Invoke-RestMethod -Uri "https://raw.githubusercontent.com/merill/license/main/license.csv" -TimeoutSec 10
+                    $OnlineSkus = ConvertFrom-Csv -InputObject $CsvText
+                    foreach ($Sku in $OnlineSkus) {
+                        if ($Sku.GUID -and $Sku.Product_Display_Name) {
+                            $g = $Sku.GUID.ToString().ToLower().Trim()
+                            $pName = $Sku.Product_Display_Name -replace ';', ','
+                            $Script:SkuCacheByGuid[$g] = $pName
+                            if (-not $Script:SkuMap.ContainsKey($g)) { $Script:SkuMap[$g] = $pName }
+                        }
+                        if ($Sku.Service_Plan_Id) {
+                            $spId = $Sku.Service_Plan_Id.ToString().ToLower().Trim()
+                            $spName = if ($Sku.Service_Plans_Included_Friendly_Names) { $Sku.Service_Plans_Included_Friendly_Names } else { $Sku.Product_Display_Name }
+                            $Script:SkuCacheByPlanId[$spId] = $spName -replace ';', ','
+                        }
+                        if ($Sku.String_Id -and $Sku.Product_Display_Name) {
+                            $sId = $Sku.String_Id.ToString().ToUpper().Trim()
+                            $Script:SkuCacheByStringId[$sId] = $Sku.Product_Display_Name -replace ';', ','
+                        }
+                    }
+                    if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
+                    $CsvText | Out-File -FilePath $CacheFile -Force -Encoding utf8
+                    Log-ToTerminal "Successfully updated global SKU cache database." "Success"
+                    Update-UI
+                } catch {
+                    Log-ToTerminal "Could not reach online SKU repository. Using local default fallbacks." "Warning"
+                    Update-UI
+                }
             }
             
             $Script:TotalPoolWaste = 0.00
@@ -1418,29 +1701,33 @@ function Invoke-AuditReport {
             # Fetch local tenant subbed SKUs and compute unassigned units
             try {
                 $SubSkus = Get-MgSubscribedSku -All
+                $Script:TenantSubSkus = $SubSkus
                 foreach ($sku in $SubSkus) {
-                    $GuidStr = $sku.SkuId.ToString().ToLower()
-                    if ($sku.SkuId -and $sku.SkuPartName -and -not $SkuMap.ContainsKey($GuidStr)) { 
-                        $SkuMap[$GuidStr] = $sku.SkuPartName -replace ';', ','
+                    $GuidStr = $sku.SkuId.ToString().ToLower().Trim()
+                    $PartNumber = if ($sku.SkuPartNumber) { $sku.SkuPartNumber.ToString().Trim() } elseif ($sku.SkuPartName) { $sku.SkuPartName.ToString().Trim() } else { "" }
+                    
+                    # Resolve SKU Name using GUID mapping, then PartNumber string mapping, then Global Cache, then formatted PartNumber
+                    $SkuName = if ($Script:SkuMap.ContainsKey($GuidStr)) { 
+                        $Script:SkuMap[$GuidStr] 
+                    } elseif ($PartNumber -and $Script:SkuMap.ContainsKey($PartNumber.ToLower())) { 
+                        $Script:SkuMap[$PartNumber.ToLower()] 
+                    } elseif ($PartNumber -and $Script:SkuCacheByStringId.ContainsKey($PartNumber.ToUpper())) {
+                        $Script:SkuCacheByStringId[$PartNumber.ToUpper()]
+                    } elseif ($PartNumber) {
+                        $clean = ($PartNumber -replace '_', ' ').Trim()
+                        (Get-Culture).TextInfo.ToTitleCase($clean.ToLower())
+                    } else { 
+                        "Unknown SKU ($GuidStr)" 
+                    }
+                    
+                    # Register into SkuMap for both GUID and PartNumber
+                    $Script:SkuMap[$GuidStr] = $SkuName
+                    if ($PartNumber) {
+                        $Script:SkuMap[$PartNumber.ToLower()] = $SkuName
                     }
                     
                     $ActiveUnits = if ($sku.PrepaidUnits -and $sku.PrepaidUnits.Enabled) { $sku.PrepaidUnits.Enabled } else { 0 }
                     $Unassigned = $ActiveUnits - $sku.ConsumedUnits
-                    
-                    # Resolve SKU Name using GUID mapping, then SkuPartName override mapping, then raw part name
-                    $SkuName = if ($SkuMap.ContainsKey($GuidStr)) { 
-                        $SkuMap[$GuidStr] 
-                    } elseif ($sku.SkuPartName -and $SkuMap.ContainsKey($sku.SkuPartName)) { 
-                        $SkuMap[$sku.SkuPartName] 
-                    } else { 
-                        $sku.SkuPartName -replace ';', ',' 
-                    }
-                    
-                    # Fallback for empty names
-                    if ([string]::IsNullOrWhiteSpace($SkuName)) {
-                        $SkuName = "Unknown SKU ($GuidStr)"
-                    }
-                    
                     $UnitPrice = Get-LicenseMonthlyPrice $SkuName
                     
                     # If this SKU is missing from the CSV database, estimate and append it
@@ -1450,7 +1737,7 @@ function Invoke-AuditReport {
                                 Add-Content -Path $PricesFile -Value "`n$SkuName,$UnitPrice,$GuidStr" -Encoding utf8
                                 $Script:SkuPrices[$GuidStr] = $UnitPrice
                                 $Script:SkuPrices[$SkuName] = $UnitPrice
-                                Log-ToTerminal "Discovered new SKU '$SkuName' ($GuidStr). Added to LicensePrices.csv with estimate £{0:N2}." -f $UnitPrice
+                                Log-ToTerminal "Discovered tenant SKU '$SkuName' ($GuidStr). Added to LicensePrices.csv with estimate £{0:N2}." -f $UnitPrice
                             } catch {}
                         }
                     }
@@ -1497,65 +1784,16 @@ function Invoke-AuditReport {
                 Update-UI
             }
             
-            # Check SKU cache or fetch online
-            $LogDir = "$env:SystemDrive\Logs\UserLicenceCheck"
-            $CacheFile = Join-Path $LogDir "M365_SKU_Cache.csv"
-            $CacheLoaded = $false
-            
-            if (Test-Path $CacheFile) {
-                $LastMod = (Get-Item $CacheFile).LastWriteTime
-                if ($LastMod -gt (Get-Date).AddDays(-7)) {
-                    Log-ToTerminal "Loading global SKU map from local cache..." "Info"
-                    Update-UI
-                    try {
-                        Import-Csv $CacheFile | ForEach-Object {
-                            if ($_.GUID -and $_.Product_Display_Name) {
-                                $Guid = $_.GUID.ToString().ToLower()
-                                if (-not $SkuMap.ContainsKey($Guid)) {
-                                    $SkuMap[$Guid] = $_.Product_Display_Name -replace ';', ','
-                                }
-                            }
-                        }
-                        $CacheLoaded = $true
-                    } catch {}
-                }
-            }
-            
-            if (-not $CacheLoaded) {
-                Log-ToTerminal "Fetching latest global SKU mapping database online..." "Info"
-                Update-UI
-                try {
-                    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                    $CsvText = Invoke-RestMethod -Uri "https://raw.githubusercontent.com/merill/license/main/license.csv" -TimeoutSec 10
-                    $OnlineSkus = ConvertFrom-Csv -InputObject $CsvText
-                    foreach ($Sku in $OnlineSkus) {
-                        if ($Sku.GUID -and $Sku.Product_Display_Name) {
-                            $Guid = $Sku.GUID.ToString().ToLower()
-                            if (-not $SkuMap.ContainsKey($Guid)) {
-                                $SkuMap[$Guid] = $Sku.Product_Display_Name -replace ';', ','
-                            }
-                        }
-                    }
-                    if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
-                    $CsvText | Out-File -FilePath $CacheFile -Force -Encoding utf8
-                    Log-ToTerminal "Successfully updated local SKU cache database." "Success"
-                    Update-UI
-                } catch {
-                    Log-ToTerminal "Could not reach online SKU repository. Using local default fallbacks only." "Warning"
-                    Update-UI
-                }
-            }
-            
-            Log-ToTerminal "Retrieving licensed users from Microsoft Graph..." "Info"
+            Log-ToTerminal "Retrieving directory users (Licensed, Unlicensed, Guests, Enabled & Disabled)..." "Info"
             Update-UI
             
-            $LicensedUsers = $null
+            $AllFetchedUsers = $null
             $HasSignInActivity = $true
 
             try {
-                # Attempt 1: Query with SignInActivity (requires Entra ID P1/P2)
-                $UserProperties = @('Id', 'DisplayName', 'UserPrincipalName', 'AssignedLicenses', 'SignInActivity', 'AccountEnabled')
-                $LicensedUsers = Get-MgUser -Filter "assignedLicenses/`$count ne 0" -ConsistencyLevel eventual -CountVariable LicensedCount -All -Property $UserProperties -ErrorAction Stop
+                # Attempt 1: Query all users with SignInActivity (requires Entra ID P1/P2)
+                $UserProperties = @('Id', 'DisplayName', 'UserPrincipalName', 'AssignedLicenses', 'AssignedPlans', 'SignInActivity', 'AccountEnabled', 'UserType', 'Mail')
+                $AllFetchedUsers = Get-MgUser -All -Property $UserProperties -ErrorAction Stop
             } catch {
                 if ($_ -match "Authentication_RequestFromNonPremiumTenantOrB2CTenant" -or $_ -match "premium license" -or $_ -match "403" -or $_ -match "SignInActivity") {
                     Log-ToTerminal "Notice: Tenant does not have Entra ID P1/P2 Premium license. Proceeding without sign-in dates..." "Warning"
@@ -1563,44 +1801,59 @@ function Invoke-AuditReport {
                     $HasSignInActivity = $false
                     try {
                         # Attempt 2: Query without SignInActivity
-                        $UserPropertiesBasic = @('Id', 'DisplayName', 'UserPrincipalName', 'AssignedLicenses', 'AccountEnabled')
-                        $LicensedUsers = Get-MgUser -Filter "assignedLicenses/`$count ne 0" -ConsistencyLevel eventual -CountVariable LicensedCount -All -Property $UserPropertiesBasic -ErrorAction Stop
+                        $UserPropertiesBasic = @('Id', 'DisplayName', 'UserPrincipalName', 'AssignedLicenses', 'AssignedPlans', 'AccountEnabled', 'UserType', 'Mail')
+                        $AllFetchedUsers = Get-MgUser -All -Property $UserPropertiesBasic -ErrorAction Stop
                     } catch {
-                        Log-ToTerminal "Advanced filter query failed. Falling back to retrieving all tenant users..." "Warning"
-                        Update-UI
-                        $AllUsers = Get-MgUser -All -Property Id, DisplayName, UserPrincipalName, AssignedLicenses, AccountEnabled -ErrorAction Stop
-                        $LicensedUsers = $AllUsers | Where-Object { $_.AssignedLicenses -and $_.AssignedLicenses.Count -gt 0 }
+                        throw $_
                     }
                 } else {
-                    Log-ToTerminal "Advanced filter query failed ($($_)). Retrying standard user query..." "Warning"
+                    Log-ToTerminal "Advanced user query failed ($($_)). Retrying standard query..." "Warning"
                     Update-UI
                     $HasSignInActivity = $false
                     try {
-                        $AllUsers = Get-MgUser -All -Property Id, DisplayName, UserPrincipalName, AssignedLicenses, AccountEnabled -ErrorAction Stop
-                        $LicensedUsers = $AllUsers | Where-Object { $_.AssignedLicenses -and $_.AssignedLicenses.Count -gt 0 }
+                        $UserPropertiesBasic = @('Id', 'DisplayName', 'UserPrincipalName', 'AssignedLicenses', 'AssignedPlans', 'AccountEnabled', 'UserType', 'Mail')
+                        $AllFetchedUsers = Get-MgUser -All -Property $UserPropertiesBasic -ErrorAction Stop
                     } catch {
                         throw $_
                     }
                 }
             }
             
-            $UserCount = if ($LicensedUsers) { $LicensedUsers.Count } else { 0 }
-            Log-ToTerminal "Fetched $UserCount licensed users from Graph. Resolving details..." "Info"
+            $UserCount = if ($AllFetchedUsers) { $AllFetchedUsers.Count } else { 0 }
+            Log-ToTerminal "Fetched $UserCount directory users from Graph. Resolving licenses, user types, and telemetry..." "Info"
             Update-UI
             
             $Users = [System.Collections.Generic.List[PSCustomObject]]::new()
-            foreach ($u in $LicensedUsers) {
-                $Lics = foreach ($l in $u.AssignedLicenses) {
-                    $Guid = $l.SkuId.ToString().ToLower()
-                    if ($SkuMap.ContainsKey($Guid)) {
-                        $SkuMap[$Guid]
-                    } else {
-                        "Unknown SKU ($Guid)"
+            foreach ($u in $AllFetchedUsers) {
+                $Lics = @()
+                if ($u.AssignedLicenses -and $u.AssignedLicenses.Count -gt 0) {
+                    $Lics = foreach ($l in $u.AssignedLicenses) {
+                        Resolve-SkuName $l.SkuId $u.AssignedPlans
                     }
                 }
-                $LicString = $Lics -join ", "
+                $LicString = if ($Lics.Count -gt 0) { $Lics -join ", " } else { "None (Unlicensed)" }
+                $IsLicensed = ($Lics.Count -gt 0)
+
+                # Determine UserType (Member or Guest)
+                $UserType = if ($u.UserType) {
+                    $u.UserType
+                } elseif ($u.UserPrincipalName -like "*#EXT#*" -or ($u.Mail -and $u.Mail -like "*#EXT#*")) {
+                    "Guest"
+                } else {
+                    "Member"
+                }
+                $IsGuest = ($UserType -eq "Guest")
                 
-                $LastSignIn = if ($HasSignInActivity -and $u.SignInActivity) { $u.SignInActivity.LastSuccessfulSignInDateTime } else { $null }
+                $LastSignIn = if ($HasSignInActivity -and $u.SignInActivity) {
+                    if ($u.SignInActivity.LastSuccessfulSignInDateTime) {
+                        $u.SignInActivity.LastSuccessfulSignInDateTime
+                    } elseif ($u.SignInActivity.LastSignInDateTime) {
+                        $u.SignInActivity.LastSignInDateTime
+                    } else {
+                        $null
+                    }
+                } else { $null }
+
                 if (-not $LastSignIn) {
                     if (-not $HasSignInActivity) {
                         $LastSignIn = "Requires Entra ID P1/P2"
@@ -1613,13 +1866,16 @@ function Invoke-AuditReport {
                     DisplayName       = $u.DisplayName
                     UserPrincipalName = $u.UserPrincipalName
                     AssignedLicenses  = $LicString
+                    IsLicensed        = $IsLicensed
+                    UserType          = $UserType
+                    IsGuest           = $IsGuest
                     LastSignInDate    = $LastSignIn
                     AccountEnabled    = $u.AccountEnabled
                 })
             }
             
             Process-UserData $Users
-            Log-ToTerminal "Report generation complete. Successfully processed $($Users.Count) active licensed users." "Success"
+            Log-ToTerminal "Report generation complete. Successfully processed $($Users.Count) tenant users (members, guests, active, and disabled)." "Success"
         } catch {
             Log-ToTerminal "Audit run failed: $_" "Error"
             [System.Windows.MessageBox]::Show("Audit Failed:`n$_", "Error", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error)
@@ -1886,10 +2142,10 @@ function Process-UserData($Users) {
             $ActivityMap[$Category] = 1
         }
         
-        if ($user.AssignedLicenses) {
+        if ($user.AssignedLicenses -and $user.AssignedLicenses -ne "None (Unlicensed)") {
             $user.AssignedLicenses.Split(',') | ForEach-Object {
                 $lic = $_.Trim()
-                if ($lic) {
+                if ($lic -and $lic -ne "None (Unlicensed)") {
                     $LicenseMap[$lic]++
                 }
             }
@@ -1910,25 +2166,36 @@ function Process-UserData($Users) {
 
         $WastedCost = 0.00
         $MonthlySavings = 0.00
-        if ($Days -gt 180 -and $Days -ne [double]::PositiveInfinity -and $Days -ne -1) {
-            $InactiveDays = $Days
-            $Months = $InactiveDays / 30
-            $MonthlyPrice = Get-LicenseMonthlyPrice $user.AssignedLicenses
-            $WastedCost = $MonthlyPrice * $Months
-            $MonthlySavings = $MonthlyPrice
-        } elseif ($Days -eq [double]::PositiveInfinity) {
-            $InactiveDays = 365
-            $Months = $InactiveDays / 30
-            $MonthlyPrice = Get-LicenseMonthlyPrice $user.AssignedLicenses
-            $WastedCost = $MonthlyPrice * $Months
-            $MonthlySavings = $MonthlyPrice
+        if ($user.AssignedLicenses -and $user.AssignedLicenses -ne "None (Unlicensed)") {
+            if ($Days -gt 180 -and $Days -ne [double]::PositiveInfinity -and $Days -ne -1) {
+                $InactiveDays = $Days
+                $Months = $InactiveDays / 30
+                $MonthlyPrice = Get-LicenseMonthlyPrice $user.AssignedLicenses
+                $WastedCost = $MonthlyPrice * $Months
+                $MonthlySavings = $MonthlyPrice
+            } elseif ($Days -eq [double]::PositiveInfinity) {
+                $InactiveDays = 365
+                $Months = $InactiveDays / 30
+                $MonthlyPrice = Get-LicenseMonthlyPrice $user.AssignedLicenses
+                $WastedCost = $MonthlyPrice * $Months
+                $MonthlySavings = $MonthlyPrice
+            }
         }
         $WastedCostText = "£{0:N2}" -f $WastedCost
         $MonthlySavingsText = "£{0:N2}" -f $MonthlySavings
         
-        # Downgrade Recommendation Engine
+        # Downgrade / Reclamation Recommendation Engine
         $Recommendation = "-"
-        if ($user.AssignedLicenses) {
+        if (-not $Enabled -and $user.AssignedLicenses -and $user.AssignedLicenses -ne "None (Unlicensed)") {
+            $MonthlyPrice = Get-LicenseMonthlyPrice $user.AssignedLicenses
+            if ($MonthlyPrice -gt 0) {
+                $Recommendation = "Reclaim: Account disabled with active license (Save £{0:N2}/mo)" -f $MonthlyPrice
+                $MonthlySavings = $MonthlyPrice
+                $WastedCost = if ($Days -gt 0 -and $Days -ne [double]::PositiveInfinity -and $Days -ne -1) { $MonthlyPrice * ($Days / 30) } else { $MonthlyPrice * 6 }
+                $WastedCostText = "£{0:N2}" -f $WastedCost
+                $MonthlySavingsText = "£{0:N2}" -f $MonthlySavings
+            }
+        } elseif ($user.AssignedLicenses -and $user.AssignedLicenses -ne "None (Unlicensed)") {
             $LicsArray = $user.AssignedLicenses.Split(',') | ForEach-Object { $_.Trim() }
             $MonthlyPrice = Get-LicenseMonthlyPrice $user.AssignedLicenses
             
@@ -2023,9 +2290,17 @@ function Process-UserData($Users) {
             }
         }
 
+        $UserTypeVal = if ($user.UserType) { $user.UserType } elseif ($user.UserPrincipalName -like "*#EXT#*") { "Guest" } else { "Member" }
+        $IsGuestVal = ($UserTypeVal -eq "Guest")
+        $IsLicensedVal = ($user.AssignedLicenses -and $user.AssignedLicenses -ne "None (Unlicensed)")
+
         $DataGridRows.Add([PSCustomObject]@{
             DisplayName        = $user.DisplayName
             UserPrincipalName  = $user.UserPrincipalName
+            UserType           = $UserTypeVal
+            IsGuest            = $IsGuestVal
+            IsLicensed         = $IsLicensedVal
+            AccountEnabled     = $Enabled
             AssignedLicenses   = $user.AssignedLicenses
             LastSignInDate     = (Format-LastSignIn $user.LastSignInDate)
             StatusText         = $StatusText
@@ -2072,7 +2347,7 @@ function Process-UserData($Users) {
     $wpf_panelActivityChart.Children.Clear()
     foreach ($Key in $ActivityMap.Keys) {
         $Val = $ActivityMap[$Key]
-        $Color = $ActivityColors[$Key]
+        $Color = $Script:ActivityColors[$Key]
         AddActivityBarChartRow $wpf_panelActivityChart $Key $Val $Total $Color
     }
     
@@ -2089,32 +2364,65 @@ function Filter-DataGrid {
     
     $Filtered = [System.Collections.Generic.List[PSCustomObject]]::new()
     foreach ($row in $Script:GridRows) {
-        $SearchMatch = $true
+        # 1. Search Box Match (Matches DisplayName, UPN, AssignedLicenses, or UserType)
         if (-not [string]::IsNullOrWhiteSpace($Script:SearchQuery)) {
-            $SearchMatch = ($row.DisplayName -like "*$Script:SearchQuery*") -or ($row.UserPrincipalName -like "*$Script:SearchQuery*")
-        }
-        if (-not $SearchMatch) { continue }
-        
-        $FilterMatch = $false
-        if ($Script:ActiveFilter -eq "all") {
-            $FilterMatch = $true
-        } elseif ($Script:ActiveFilter -eq "active") {
-            $FilterMatch = ($row.StatusCategory -eq "Active (<=30d)")
-        } elseif ($Script:ActiveFilter -eq "inactive90d") {
-            $FilterMatch = ($row.DaysSince -ge 90 -and $row.DaysSince -ne -1)
-        } elseif ($Script:ActiveFilter -eq "inactive1yr") {
-            $FilterMatch = ($row.StatusCategory -eq "Inactive (>1yr)")
-        } elseif ($Script:ActiveFilter -eq "never") {
-            $FilterMatch = ($row.StatusCategory -eq "Never Logged In")
+            $Q = $Script:SearchQuery.ToLower()
+            $MatchName = $row.DisplayName -and $row.DisplayName.ToLower().Contains($Q)
+            $MatchUPN = $row.UserPrincipalName -and $row.UserPrincipalName.ToLower().Contains($Q)
+            $MatchLic = $row.AssignedLicenses -and $row.AssignedLicenses.ToLower().Contains($Q)
+            $MatchType = $row.UserType -and $row.UserType.ToLower().Contains($Q)
+            if (-not ($MatchName -or $MatchUPN -or $MatchLic -or $MatchType)) {
+                continue
+            }
         }
         
-        if ($FilterMatch) {
-            $Filtered.Add($row)
+        # 2. Preset Filter Match
+        $PresetMatch = switch ($Script:ActivePreset) {
+            "all"              { $true }
+            "active"           { $row.StatusCategory -eq "Active (<=30d)" }
+            "licensed_guests"  { $row.IsLicensed -or $row.IsGuest }
+            "licensed"         { $row.IsLicensed }
+            "guests"           { $row.IsGuest }
+            "unlicensed"       { -not $row.IsLicensed }
+            "disabled"         { -not $row.AccountEnabled }
+            "inactive90d"      { $row.DaysSince -ge 90 -and $row.DaysSince -ne -1 }
+            "inactive1yr"      { $row.StatusCategory -eq "Inactive (>1yr)" }
+            "never"            { $row.StatusCategory -eq "Never Logged In" }
+            "custom"           { $true }
+            default            { $true }
         }
+        if (-not $PresetMatch) { continue }
+        
+        # 3. Additive Sub-Filter Refinements
+        # License: all | licensed | unlicensed
+        if ($Script:FilterLicense -eq "licensed" -and -not $row.IsLicensed) { continue }
+        if ($Script:FilterLicense -eq "unlicensed" -and $row.IsLicensed) { continue }
+
+        # User Type: all | members | guests | licensed_guests
+        if ($Script:FilterUserType -eq "members" -and $row.IsGuest) { continue }
+        if ($Script:FilterUserType -eq "guests" -and -not $row.IsGuest) { continue }
+        if ($Script:FilterUserType -eq "licensed_guests" -and -not ($row.IsLicensed -or $row.IsGuest)) { continue }
+
+        # Account Status: all | enabled | disabled
+        if ($Script:FilterAccount -eq "enabled" -and -not $row.AccountEnabled) { continue }
+        if ($Script:FilterAccount -eq "disabled" -and $row.AccountEnabled) { continue }
+
+        # Sign-In Activity: all | active | inactive90d | never
+        if ($Script:FilterActivity -eq "active" -and $row.StatusCategory -ne "Active (<=30d)") { continue }
+        if ($Script:FilterActivity -eq "inactive90d" -and -not ($row.DaysSince -ge 90 -and $row.DaysSince -ne -1)) { continue }
+        if ($Script:FilterActivity -eq "never" -and $row.StatusCategory -ne "Never Logged In") { continue }
+
+        $Filtered.Add($row)
     }
     
     $wpf_gridUsers.ItemsSource = $null
     $wpf_gridUsers.ItemsSource = $Filtered
+
+    # Update live count indicator
+    $TotalCount = if ($Script:GridRows) { $Script:GridRows.Count } else { 0 }
+    if ($wpf_txtFilterCount) {
+        $wpf_txtFilterCount.Text = "Showing $($Filtered.Count) of $TotalCount users"
+    }
 }
 
 # 10. Navigations & Tab Switchers
@@ -2456,10 +2764,15 @@ $wpf_btnBrowseCSV.Add_Click({
                         $AccEnabled = $false
                     }
                 }
+                # Look for UserType in CSV
+                $TypeProp = $Headers | Where-Object { $_ -eq "UserType" -or $_ -eq "User Type" -or $_ -eq "Account Type" -or $_ -eq "Type" } | Select-Object -First 1
+                $UserType = if ($TypeProp -and $row.$TypeProp) { $row.$TypeProp } elseif ($row.$UPN_Prop -like "*#EXT#*") { "Guest" } else { "Member" }
+
                 $Users.Add([PSCustomObject]@{
                     DisplayName       = $row.$DN_Prop
                     UserPrincipalName = $row.$UPN_Prop
                     AssignedLicenses  = $row.$Lic_Prop
+                    UserType          = $UserType
                     LastSignInDate    = $row.$Date_Prop
                     AccountEnabled    = $AccEnabled
                 })
@@ -2574,44 +2887,260 @@ $wpf_txtSearch.Add_TextChanged({
 })
 
 # Directory Filter Selection Changes
-$FilterButtons = @($wpf_btnFilterAll, $wpf_btnFilterActive, $wpf_btnFilterInactive90d, $wpf_btnFilterInactive1yr, $wpf_btnFilterNever)
-function Set-FilterButtonActive($ActiveButton) {
-    foreach ($btn in $FilterButtons) {
-        $btn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1c1c1e")
-        $btn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
-        $btn.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
-        $btn.BorderThickness = 1
+$Script:PresetButtons = @(
+    $wpf_btnFilterAll, 
+    $wpf_btnFilterActive, 
+    $wpf_btnFilterLicGuests, 
+    $wpf_btnFilterLicensed, 
+    $wpf_btnFilterGuests, 
+    $wpf_btnFilterUnlicensed, 
+    $wpf_btnFilterDisabled, 
+    $wpf_btnFilterInactive90d, 
+    $wpf_btnFilterNever
+)
+
+function Set-PresetButtonActive($ActiveButton) {
+    foreach ($btn in $Script:PresetButtons) {
+        if ($null -ne $btn) {
+            $btn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1c1c1e")
+            $btn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
+            $btn.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
+            $btn.BorderThickness = 1
+        }
     }
-    $ActiveButton.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
-    $ActiveButton.Foreground = [System.Windows.Media.Brushes]::White
-    $ActiveButton.BorderThickness = 0
+    if ($null -ne $ActiveButton) {
+        $ActiveButton.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
+        $ActiveButton.Foreground = [System.Windows.Media.Brushes]::White
+        $ActiveButton.BorderThickness = 0
+    }
 }
 
-$wpf_btnFilterAll.Add_Click({
-    $Script:ActiveFilter = "all"
-    Set-FilterButtonActive $wpf_btnFilterAll
+$Script:SubLicButtons = @($wpf_btnSubLicAll, $wpf_btnSubLicYes, $wpf_btnSubLicNo)
+$Script:SubTypeButtons = @($wpf_btnSubTypeAll, $wpf_btnSubTypeMembers, $wpf_btnSubTypeGuests, $wpf_btnSubTypeLicGuest)
+$Script:SubAccButtons = @($wpf_btnSubAccAll, $wpf_btnSubAccEnabled, $wpf_btnSubAccDisabled)
+$Script:SubActButtons = @($wpf_btnSubActAll, $wpf_btnSubActActive, $wpf_btnSubActInactive, $wpf_btnSubActNever)
+
+function Set-SubButtonGroupActive($ButtonGroup, $ActiveBtn) {
+    foreach ($btn in $ButtonGroup) {
+        if ($null -ne $btn) {
+            $btn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1c1c1e")
+            $btn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
+            $btn.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
+            $btn.BorderThickness = 1
+        }
+    }
+    if ($null -ne $ActiveBtn) {
+        $ActiveBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2563eb")
+        $ActiveBtn.Foreground = [System.Windows.Media.Brushes]::White
+        $ActiveBtn.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
+        $ActiveBtn.BorderThickness = 1
+    }
+}
+
+function Reset-AllDirectoryFilters {
+    $Script:ActivePreset = "all"
+    $Script:FilterLicense = "all"
+    $Script:FilterAccount = "all"
+    $Script:FilterUserType = "all"
+    $Script:FilterActivity = "all"
+    $Script:SearchQuery = ""
+    if ($wpf_txtSearch) { $wpf_txtSearch.Text = "" }
+    
+    Set-PresetButtonActive $wpf_btnFilterAll
+    Set-SubButtonGroupActive $Script:SubLicButtons $wpf_btnSubLicAll
+    Set-SubButtonGroupActive $Script:SubTypeButtons $wpf_btnSubTypeAll
+    Set-SubButtonGroupActive $Script:SubAccButtons $wpf_btnSubAccAll
+    Set-SubButtonGroupActive $Script:SubActButtons $wpf_btnSubActAll
     Filter-DataGrid
-})
-$wpf_btnFilterActive.Add_Click({
-    $Script:ActiveFilter = "active"
-    Set-FilterButtonActive $wpf_btnFilterActive
-    Filter-DataGrid
-})
-$wpf_btnFilterInactive90d.Add_Click({
-    $Script:ActiveFilter = "inactive90d"
-    Set-FilterButtonActive $wpf_btnFilterInactive90d
-    Filter-DataGrid
-})
-$wpf_btnFilterInactive1yr.Add_Click({
-    $Script:ActiveFilter = "inactive1yr"
-    Set-FilterButtonActive $wpf_btnFilterInactive1yr
-    Filter-DataGrid
-})
-$wpf_btnFilterNever.Add_Click({
-    $Script:ActiveFilter = "never"
-    Set-FilterButtonActive $wpf_btnFilterNever
-    Filter-DataGrid
-})
+}
+
+# Preset Button Handlers
+if ($wpf_btnFilterAll) {
+    $wpf_btnFilterAll.Add_Click({
+        Reset-AllDirectoryFilters
+    })
+}
+
+if ($wpf_btnFilterActive) {
+    $wpf_btnFilterActive.Add_Click({
+        $Script:ActivePreset = "active"
+        Set-PresetButtonActive $wpf_btnFilterActive
+        Set-SubButtonGroupActive $Script:SubActButtons $wpf_btnSubActActive
+        Filter-DataGrid
+    })
+}
+
+if ($wpf_btnFilterLicGuests) {
+    $wpf_btnFilterLicGuests.Add_Click({
+        $Script:ActivePreset = "licensed_guests"
+        Set-PresetButtonActive $wpf_btnFilterLicGuests
+        Set-SubButtonGroupActive $Script:SubTypeButtons $wpf_btnSubTypeLicGuest
+        Filter-DataGrid
+    })
+}
+
+if ($wpf_btnFilterLicensed) {
+    $wpf_btnFilterLicensed.Add_Click({
+        $Script:ActivePreset = "licensed"
+        Set-PresetButtonActive $wpf_btnFilterLicensed
+        Set-SubButtonGroupActive $Script:SubLicButtons $wpf_btnSubLicYes
+        Filter-DataGrid
+    })
+}
+
+if ($wpf_btnFilterGuests) {
+    $wpf_btnFilterGuests.Add_Click({
+        $Script:ActivePreset = "guests"
+        Set-PresetButtonActive $wpf_btnFilterGuests
+        Set-SubButtonGroupActive $Script:SubTypeButtons $wpf_btnSubTypeGuests
+        Filter-DataGrid
+    })
+}
+
+if ($wpf_btnFilterUnlicensed) {
+    $wpf_btnFilterUnlicensed.Add_Click({
+        $Script:ActivePreset = "unlicensed"
+        Set-PresetButtonActive $wpf_btnFilterUnlicensed
+        Set-SubButtonGroupActive $Script:SubLicButtons $wpf_btnSubLicNo
+        Filter-DataGrid
+    })
+}
+
+if ($wpf_btnFilterDisabled) {
+    $wpf_btnFilterDisabled.Add_Click({
+        $Script:ActivePreset = "disabled"
+        Set-PresetButtonActive $wpf_btnFilterDisabled
+        Set-SubButtonGroupActive $Script:SubAccButtons $wpf_btnSubAccDisabled
+        Filter-DataGrid
+    })
+}
+
+if ($wpf_btnFilterInactive90d) {
+    $wpf_btnFilterInactive90d.Add_Click({
+        $Script:ActivePreset = "inactive90d"
+        Set-PresetButtonActive $wpf_btnFilterInactive90d
+        Set-SubButtonGroupActive $Script:SubActButtons $wpf_btnSubActInactive
+        Filter-DataGrid
+    })
+}
+
+if ($wpf_btnFilterNever) {
+    $wpf_btnFilterNever.Add_Click({
+        $Script:ActivePreset = "never"
+        Set-PresetButtonActive $wpf_btnFilterNever
+        Set-SubButtonGroupActive $Script:SubActButtons $wpf_btnSubActNever
+        Filter-DataGrid
+    })
+}
+
+# Sub-Filter Additive Handlers
+if ($wpf_btnSubLicAll) {
+    $wpf_btnSubLicAll.Add_Click({
+        $Script:FilterLicense = "all"
+        Set-SubButtonGroupActive $Script:SubLicButtons $wpf_btnSubLicAll
+        Filter-DataGrid
+    })
+}
+if ($wpf_btnSubLicYes) {
+    $wpf_btnSubLicYes.Add_Click({
+        $Script:FilterLicense = "licensed"
+        Set-SubButtonGroupActive $Script:SubLicButtons $wpf_btnSubLicYes
+        Filter-DataGrid
+    })
+}
+if ($wpf_btnSubLicNo) {
+    $wpf_btnSubLicNo.Add_Click({
+        $Script:FilterLicense = "unlicensed"
+        Set-SubButtonGroupActive $Script:SubLicButtons $wpf_btnSubLicNo
+        Filter-DataGrid
+    })
+}
+
+if ($wpf_btnSubTypeAll) {
+    $wpf_btnSubTypeAll.Add_Click({
+        $Script:FilterUserType = "all"
+        Set-SubButtonGroupActive $Script:SubTypeButtons $wpf_btnSubTypeAll
+        Filter-DataGrid
+    })
+}
+if ($wpf_btnSubTypeMembers) {
+    $wpf_btnSubTypeMembers.Add_Click({
+        $Script:FilterUserType = "members"
+        Set-SubButtonGroupActive $Script:SubTypeButtons $wpf_btnSubTypeMembers
+        Filter-DataGrid
+    })
+}
+if ($wpf_btnSubTypeGuests) {
+    $wpf_btnSubTypeGuests.Add_Click({
+        $Script:FilterUserType = "guests"
+        Set-SubButtonGroupActive $Script:SubTypeButtons $wpf_btnSubTypeGuests
+        Filter-DataGrid
+    })
+}
+if ($wpf_btnSubTypeLicGuest) {
+    $wpf_btnSubTypeLicGuest.Add_Click({
+        $Script:FilterUserType = "licensed_guests"
+        Set-SubButtonGroupActive $Script:SubTypeButtons $wpf_btnSubTypeLicGuest
+        Filter-DataGrid
+    })
+}
+
+if ($wpf_btnSubAccAll) {
+    $wpf_btnSubAccAll.Add_Click({
+        $Script:FilterAccount = "all"
+        Set-SubButtonGroupActive $Script:SubAccButtons $wpf_btnSubAccAll
+        Filter-DataGrid
+    })
+}
+if ($wpf_btnSubAccEnabled) {
+    $wpf_btnSubAccEnabled.Add_Click({
+        $Script:FilterAccount = "enabled"
+        Set-SubButtonGroupActive $Script:SubAccButtons $wpf_btnSubAccEnabled
+        Filter-DataGrid
+    })
+}
+if ($wpf_btnSubAccDisabled) {
+    $wpf_btnSubAccDisabled.Add_Click({
+        $Script:FilterAccount = "disabled"
+        Set-SubButtonGroupActive $Script:SubAccButtons $wpf_btnSubAccDisabled
+        Filter-DataGrid
+    })
+}
+
+if ($wpf_btnSubActAll) {
+    $wpf_btnSubActAll.Add_Click({
+        $Script:FilterActivity = "all"
+        Set-SubButtonGroupActive $Script:SubActButtons $wpf_btnSubActAll
+        Filter-DataGrid
+    })
+}
+if ($wpf_btnSubActActive) {
+    $wpf_btnSubActActive.Add_Click({
+        $Script:FilterActivity = "active"
+        Set-SubButtonGroupActive $Script:SubActButtons $wpf_btnSubActActive
+        Filter-DataGrid
+    })
+}
+if ($wpf_btnSubActInactive) {
+    $wpf_btnSubActInactive.Add_Click({
+        $Script:FilterActivity = "inactive90d"
+        Set-SubButtonGroupActive $Script:SubActButtons $wpf_btnSubActInactive
+        Filter-DataGrid
+    })
+}
+if ($wpf_btnSubActNever) {
+    $wpf_btnSubActNever.Add_Click({
+        $Script:FilterActivity = "never"
+        Set-SubButtonGroupActive $Script:SubActButtons $wpf_btnSubActNever
+        Filter-DataGrid
+    })
+}
+
+if ($wpf_btnResetFilters) {
+    $wpf_btnResetFilters.Add_Click({
+        Reset-AllDirectoryFilters
+    })
+}
 
 # Exporting: Helper functions for Export Actions
 function Invoke-CSVExport {
@@ -2643,6 +3172,7 @@ function Invoke-CSVExport {
                 [PSCustomObject]@{
                     "Display Name"        = $row.DisplayName
                     "User Principal Name" = $row.UserPrincipalName
+                    "User Type"           = $row.UserType
                     "Assigned Licenses"   = $row.AssignedLicenses
                     "Last Sign-In Date"   = $row.LastSignInDate
                     "Status"              = $row.StatusText
@@ -2653,6 +3183,7 @@ function Invoke-CSVExport {
                 [PSCustomObject]@{
                     "Display Name"              = $row.DisplayName
                     "User Principal Name"       = $row.UserPrincipalName
+                    "User Type"                 = $row.UserType
                     "Assigned Licenses"         = $row.AssignedLicenses
                     "Last Sign-In Date"         = $row.LastSignInDate
                     "Status"                    = $row.StatusText
@@ -2748,6 +3279,7 @@ function Invoke-ExcelExport {
                 [PSCustomObject]@{
                     "Display Name"        = $row.DisplayName
                     "User Principal Name" = $row.UserPrincipalName
+                    "User Type"           = $row.UserType
                     "Assigned Licenses"   = $row.AssignedLicenses
                     "Last Sign-In Date"   = $row.LastSignInDate
                     "Status"              = $row.StatusText
@@ -2758,6 +3290,7 @@ function Invoke-ExcelExport {
                 [PSCustomObject]@{
                     "Display Name"              = $row.DisplayName
                     "User Principal Name"       = $row.UserPrincipalName
+                    "User Type"                 = $row.UserType
                     "Assigned Licenses"         = $row.AssignedLicenses
                     "Last Sign-In Date"         = $row.LastSignInDate
                     "Status"                    = $row.StatusText
@@ -3045,6 +3578,7 @@ function Invoke-PDFExport {
             <tr>
                 <td>$($row.DisplayName)</td>
                 <td style="font-family: monospace; font-size: 11px;">$($row.UserPrincipalName)</td>
+                <td style="text-align: center; font-size: 11px; font-weight: 500;">$($row.UserType)</td>
                 <td style="font-size: 11px;">$($row.AssignedLicenses)</td>
                 <td>$($row.LastSignInDate)</td>
                 <td style="text-align: center;"><span style="padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; $StatusStyle">$($row.StatusText)</span></td>
@@ -3320,6 +3854,7 @@ function Invoke-PDFExport {
             <tr>
                 <th>Display Name</th>
                 <th>User Principal Name</th>
+                <th style="text-align: center;">Type</th>
                 <th>Assigned Licenses</th>
                 <th>Last Sign-In Date</th>
                 <th>Status</th>
@@ -3368,13 +3903,50 @@ function Invoke-EmailDraftGeneration {
         return
     }
     
-    # Calculate counts
-    $Active = ($Script:GridRows | Where-Object { $_.StatusCategory -eq "Active (<=30d)" }).Count
-    $Warning = ($Script:GridRows | Where-Object { $_.StatusCategory -eq "Inactive (30-90d)" }).Count
-    $Inactive = ($Script:GridRows | Where-Object { $_.StatusCategory -eq "Inactive (90-365d)" }).Count
-    $Critical = ($Script:GridRows | Where-Object { $_.StatusCategory -eq "Inactive (>1yr)" }).Count
-    $Never = ($Script:GridRows | Where-Object { $_.StatusCategory -eq "Never Logged In" }).Count
-    $NoP1P2 = ($Script:GridRows | Where-Object { $_.StatusCategory -eq "Requires Entra ID P1/P2" }).Count
+    # Helper to detect if a specific license is a free / non-commercial tier
+    $IsFreeLicense = {
+        param([string]$licName)
+        if ([string]::IsNullOrWhiteSpace($licName) -or $licName -eq "None (Unlicensed)") { return $true }
+        $n = $licName.Trim()
+        if ($n -match "Free" -or $n -match "Exploratory" -or $n -match "Trial" -or $n -match "Developer" -or $n -match "Dev" -or $n -match "Store for Business" -or $n -match "Service Business" -or $n -match "Fabric" -or $n -match "Eval") {
+            return $true
+        }
+        $price = Get-LicenseMonthlyPrice $n
+        return ($price -le 0.00)
+    }
+
+    # Helper to detect accounts holding paid commercial subscriptions (strictly excluding ALL free/trial/exploratory tiers)
+    $IsPaidLicenseRow = {
+        param($row)
+        if (-not $row.AssignedLicenses -or $row.AssignedLicenses -eq "None (Unlicensed)") { return $false }
+        $paidPlans = $row.AssignedLicenses.Split(',') | ForEach-Object { $_.Trim() } | Where-Object {
+            $_ -and (-not (& $IsFreeLicense $_))
+        }
+        return ($paidPlans.Count -gt 0)
+    }
+
+    # Calculate counts strictly based on paid commercial licensing
+    $TotalAudited = $Script:GridRows.Count
+    $PaidLicensedRows = $Script:GridRows | Where-Object { & $IsPaidLicenseRow $_ }
+    $PaidLicensedCount = $PaidLicensedRows.Count
+    $GuestCount = ($Script:GridRows | Where-Object { $_.IsGuest }).Count
+    $DisabledCount = ($Script:GridRows | Where-Object { -not $_.AccountEnabled }).Count
+    $DisabledWithPaidLic = ($PaidLicensedRows | Where-Object { -not $_.AccountEnabled }).Count
+
+    # Inactivity metrics evaluated on paid licensed accounts for genuine licensing optimization
+    $Active = ($PaidLicensedRows | Where-Object { $_.StatusCategory -eq "Active (<=30d)" }).Count
+    $Warning = ($PaidLicensedRows | Where-Object { $_.StatusCategory -eq "Inactive (30-90d)" }).Count
+    $Inactive = ($PaidLicensedRows | Where-Object { $_.StatusCategory -eq "Inactive (90-365d)" }).Count
+    $Critical = ($PaidLicensedRows | Where-Object { $_.StatusCategory -eq "Inactive (>1yr)" }).Count
+    $Never = ($PaidLicensedRows | Where-Object { $_.StatusCategory -eq "Never Logged In" }).Count
+    $NoP1P2 = ($PaidLicensedRows | Where-Object { $_.StatusCategory -eq "Requires Entra ID P1/P2" }).Count
+
+    # Count accounts that hold ONLY free/complimentary licenses
+    $FreeOnlyAccountsCount = ($Script:GridRows | Where-Object { 
+        $_.AssignedLicenses -and 
+        $_.AssignedLicenses -ne "None (Unlicensed)" -and 
+        (-not (& $IsPaidLicenseRow $_))
+    }).Count
     
     # Tenant details
     $TenantName = (Get-TenantName)
@@ -3382,16 +3954,27 @@ function Invoke-EmailDraftGeneration {
         $TenantName = "[Tenant Name]"
     }
     
-    # Dynamic savings call-to-action
+    # Dynamic savings call-to-action & tone based on user role
+    $IsServiceDesk = ($Script:UserRole -eq "ServiceDesk")
     $CTA = ""
-    if ($Script:UserRole -eq "ServiceDesk") {
-        $CTA = "We recommend reviewing this list with your department heads to confirm which licenses can be safely reclaimed."
+    $SubjectLine = ""
+    $IntroText = ""
+    $CaveatIntro = ""
+    
+    if ($IsServiceDesk) {
+        $SubjectLine = "Subject: Microsoft 365 User License & Inactivity Audit - $TenantName"
+        $IntroText = "This report provides a breakdown of your directory user accounts (licensed members, unlicensed accounts, and external guests) and their associated Microsoft 365 subscriptions. The spreadsheet is color-coded by login activity to help identify inactive or dormant user accounts:"
+        $CaveatIntro = "Please note that this audit acts as a technical guide to highlight inactive user accounts across your directory. Before disabling or unassigning any licenses, we recommend cross-referencing this list against the following scenarios:"
+        $CTA = "We recommend reviewing this list with your department heads to confirm which licenses can be safely unassigned or reallocated."
     } else {
-        # Calculate monthly savings
+        # Calculate monthly savings for Sales / Business role
         $TotalMonthlySavings = 0.00
         foreach ($row in $Script:GridRows) {
             $TotalMonthlySavings += $row.MonthlySavings
         }
+        $SubjectLine = "Subject: Microsoft 365 License Audit & Optimization Report - $TenantName"
+        $IntroText = "This report provides a breakdown of your directory user accounts (licensed members, unlicensed accounts, and external guests) and their associated Microsoft 365 subscriptions. The spreadsheet is color-coded by login activity to help identify potential licensing optimization opportunities:"
+        $CaveatIntro = "Please note that this audit acts as a rough guide to highlight potential waste. Before disabling or unassigning any licenses, we recommend cross-referencing this list against the following scenarios:"
         $CTA = "We recommend reviewing this list with your department heads to confirm which licenses can be safely reclaimed to reduce your monthly subscription costs (potential savings of £{0:N2}/mo)." -f $TotalMonthlySavings
     }
     
@@ -3403,31 +3986,66 @@ function Invoke-EmailDraftGeneration {
     $IconGray   = [char]::ConvertFromUtf32(0x2B1B)
     
     $StatusSummaryLines = [System.Collections.Generic.List[string]]::new()
+    $StatusSummaryLines.Add("* Tenant Directory Summary: $TotalAudited total users audited ($PaidLicensedCount paid licensed accounts, $GuestCount guest accounts, $DisabledCount disabled accounts).")
+    
+    # Active paid subscriptions breakdown (strictly excluding all free licenses)
+    $ProductCounts = [System.Collections.Generic.Dictionary[string, int]]::new()
+    foreach ($row in $PaidLicensedRows) {
+        $row.AssignedLicenses.Split(',') | ForEach-Object {
+            $p = $_.Trim()
+            if ($p -and (-not (& $IsFreeLicense $p))) {
+                if ($ProductCounts.ContainsKey($p)) {
+                    $ProductCounts[$p]++
+                } else {
+                    $ProductCounts[$p] = 1
+                }
+            }
+        }
+    }
+    if ($ProductCounts.Count -gt 0) {
+        $StatusSummaryLines.Add("* Active Paid Subscriptions Breakdown:")
+        foreach ($k in ($ProductCounts.Keys | Sort-Object)) {
+            $StatusSummaryLines.Add("  - ${k}: $($ProductCounts[$k]) assigned")
+        }
+    }
+
+    if ($FreeOnlyAccountsCount -gt 0) {
+        if ($IsServiceDesk) {
+            $StatusSummaryLines.Add("* Complimentary Tiers: $FreeOnlyAccountsCount account(s) hold only free/exploratory licenses and are excluded from the paid license counts.")
+        } else {
+            $StatusSummaryLines.Add("* Complimentary Tiers: $FreeOnlyAccountsCount account(s) hold only free/exploratory licenses (£0.00/mo) and are excluded from the paid license counts.")
+        }
+    }
+
+    if ($DisabledWithPaidLic -gt 0) {
+        $StatusSummaryLines.Add("* [ACTION REQUIRED] $DisabledWithPaidLic disabled/blocked account(s) currently retain active paid subscriptions.")
+    }
     if ($NoP1P2 -gt 0) {
         $StatusSummaryLines.Add("* $IconPurple Purple (Requires Entra ID P1/P2): $NoP1P2 user(s). Account sign-in timestamps require Entra ID P1/P2 licensing.")
     }
-    $StatusSummaryLines.Add("* $IconGreen Green (Active <= 30 days): $Active user(s). These accounts are logging in regularly. No action required.")
+    $StatusSummaryLines.Add("* $IconGreen Green (Active <= 30 days): $Active user(s). Logging in regularly. No action required.")
     $StatusSummaryLines.Add("* $IconYellow Yellow (Warning 30-90 days): $Warning user(s). Moderate inactivity.")
     $StatusSummaryLines.Add("* $IconOrange Orange (Inactive 90-365 days): $Inactive user(s). High inactivity. Recommended for review.")
-    $StatusSummaryLines.Add("* $IconRed Red (Critical > 1 year): $Critical user(s). Extremely high inactivity. Strong candidates for license removal.")
-    $StatusSummaryLines.Add("* $IconGray Gray (Never Logged In): $Never user(s). Accounts that have never registered a login event.")
+    $CandidateText = if ($IsServiceDesk) { "Strong candidates for license unassignment." } else { "Strong candidates for license removal." }
+    $StatusSummaryLines.Add("* $IconRed Red (Critical > 1 year): $Critical user(s). Extremely high inactivity. $CandidateText")
+    $StatusSummaryLines.Add("* $IconGray Gray (Never Logged In): $Never user(s). Accounts that have never registered an interactive login.")
     
     $StatusSummaryText = $StatusSummaryLines -join "`r`n"
     
     # Formulate email draft
     $EmailText = @"
-Subject: Microsoft 365 License Audit & Optimization Report - $TenantName
+$SubjectLine
 
 Dear [Director Name],
 
 Please find attached the latest Microsoft 365 User License Audit report for your tenant. 
 
-This report provides a breakdown of your active user accounts and their associated Microsoft 365 subscriptions. The spreadsheet is color-coded by login activity to help identify potential licensing optimization opportunities:
+$IntroText
 
 $StatusSummaryText
 
 Important Context & Caveats
-Please note that this audit acts as a rough guide to highlight potential waste. Before disabling or unassigning any licenses, we recommend cross-referencing this list against the following scenarios:
+$CaveatIntro
 1.  Delegated Access: Some accounts (e.g., shared mailboxes or role accounts) are accessed purely via delegation by other users, which means the mailbox is active but the underlying account registers no direct logins. In some cases, but not all, this means the license can be freed up.
 2.  Extended Leave: Users currently on maternity, paternity, or long-term sick leave will show as inactive, but their accounts and licenses must remain active during their absence.
 3.  New Starters: Accounts set up for new staff members who never actually joined the business.
