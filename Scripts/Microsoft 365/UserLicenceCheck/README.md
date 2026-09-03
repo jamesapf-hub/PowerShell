@@ -1,13 +1,17 @@
 # User License Check Guide
 
 ## Overview
-The `Console.ps1` script launches a modern, dark-themed (Kinetic Command) administration dashboard. It queries Microsoft Graph to fetch all licensed tenant users, dynamically resolves product subscription identifiers (SKU IDs), calculates inactive user periods, and provides tools to search, filter, and export data directly from your desktop.
+The `Console.ps1` script launches a modern, dark-themed (Kinetic Command) administration dashboard. It queries Microsoft Graph to fetch **all tenant users** (licensed and unlicensed, members and external guests, enabled and disabled accounts), extracts last sign-in telemetry, maps subscription identifiers (SKU IDs), and provides dynamic multi-filter controls and exporters directly from your desktop.
 
 ### Key Features
+* **Full Tenant Directory Auditing:** Discovers every directory object—including unlicensed shared/service mailboxes, disabled accounts retaining paid licenses, and external partner guests.
+* **Instant Filter Presets & Multi-Filtering:** Switch between one-click presets (e.g. *Active <=30d*, *Licensed + Guests*, *Unlicensed*, *Disabled*, *Guests Only*) or combine additive filters for License, Type, Account Status, and Activity.
+* **Dynamic Global SKU Discovery & Self-Healing:** Resolves subscriptions against 2,900+ official Microsoft cloud products, tenant-subscribed part numbers, and service plans, properly mapping self-service free tiers (such as Microsoft Fabric Free / Power BI Free at £0.00) without false Power BI Pro alarms.
 * **ActiveSync Status Inspection:** Retrieves all mobile devices associated with a mailbox, showing Device Model, OS, Client Type, Access State, and Quarantine reason.
-* **Cost Savings Analysis:** Dynamically calculates accumulated wasted license spend and projects recurring monthly savings for inactive accounts.
+* **Cost Savings & Waste Reclamation:** Flags inactive accounts and highlights disabled users still holding active paid licenses with automated monthly savings projections.
 * **Interactive Visualization:** Displays interactive charts showing license distributions and user inactivity timelines, along with a live telemetry execution log.
 * **Advanced Exclusion Filter:** Prompts to filter/exclude test or admin verification accounts during report export.
+* **Automated CLI Filtering:** `LicencedUsersSigninDate.ps1` supports the `-Filter` parameter (`All`, `Active`, `Licensed`, `LicensedAndGuests`, `Guests`, `Unlicensed`, `Disabled`, `Inactive90d`, `Never`) for headless automation.
 
 > [!NOTE]
 > **Log File Location:** `C:\Logs\UserLicenceCheck\LicensedUsers_RunLog_DDMMYY.log` (or `%SystemDrive%\Logs\UserLicenceCheck\LicensedUsers_RunLog_DDMMYY.log`)
@@ -71,10 +75,24 @@ To inspect specific user accounts, select the **User Directory** tab from the to
 
 ![M365 Admin Console User Directory Screen](images/m365_console_directory_screen.png)
 
-#### Navigation Options:
-1. **Filter Categories:** Quickly filter the directory by **Active (<=30d)**, **Inactive (>90d)**, **Inactive (>1yr)**, or **Never Logged In** buttons.
-2. **Search Box:** Type display names or UPNs to filter the table instantly in memory.
-3. **Audit Grid:** Highlights rows with distinct colors (green for active, orange for warnings, red for critical) to provide instant visual context.
+#### Navigation & Filtering Options:
+1. **Quick Presets (Top Row):** Instantly isolate common working sets:
+   - **All Users:** Full directory overview.
+   - **Active (<=30d):** Users with recent interactive sign-in activity.
+   - **Lic + Guests:** Combines all licensed accounts with all external guest users.
+   - **Licensed Only:** Accounts with one or more Microsoft 365 / Entra ID licenses.
+   - **Guests Only:** External partner/guest accounts (`UserType: Guest` or `#EXT#` UPNs).
+   - **Unlicensed:** Accounts with zero assigned licenses (shared mailboxes, room resources, unassigned accounts).
+   - **Disabled Accounts:** Blocked/disabled directory accounts, highlighting any with lingering paid licenses.
+   - **Inactive (90d+) & Never:** High-priority candidates for license reclamation.
+2. **Additive Multi-Filter Toolbar (Second Row):** Fine-tune results by combining sub-filters:
+   - **License:** All / Licensed / Unlicensed
+   - **User Type:** All / Members / Guests / Lic + Guests
+   - **Account Status:** All / Enabled / Disabled
+   - **Activity:** All / Active / Inactive 90d+ / Never
+   - **Reset Filters:** Restores full directory view.
+3. **Search Box & Live Counter:** Type display names, UPNs, user types, or license names to filter in real time. The live counter reports matching counts (e.g. `Showing 18 of 21 users`).
+4. **Audit Grid:** Highlights interactive sign-in freshness (green for active, orange for warnings, red for critical, purple for missing P1/P2) and renders external guests with cyan badges (`#06b6d4`).
 
 ## Fast Execute
 > [!TIP]
