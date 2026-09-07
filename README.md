@@ -8,6 +8,7 @@ Welcome to your central repository for all PowerShell scripts. This repository i
 *   [Templates/ScriptTemplate.ps1](Templates/ScriptTemplate.ps1) - A starter template for writing new scripts with built-in logging and error handling.
 *   [PSScriptAnalyzerSettings.psd1](PSScriptAnalyzerSettings.psd1) - Best-practice static analysis rules for script formatting and quality.
 *   `Scripts/` - Folder where you can add your custom, standalone scripts.
+    *   [Scripts/Intune/TeamsBackground/TeamsBackgroundPackager.ps1](Scripts/Intune/TeamsBackground/TeamsBackgroundPackager.ps1) - Microsoft Teams Custom Background Win32 App Packager for Intune.
     *   [Scripts/Networking/PSDiscovery/Get-SwitchPortInfo.ps1](Scripts/Networking/PSDiscovery/Get-SwitchPortInfo.ps1) - Automates capturing and parsing CDP/LLDP switch port packets with logging.
 
 ## Getting Started
