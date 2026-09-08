@@ -29,14 +29,16 @@ $global:MfaAuditResults = [System.Collections.Generic.List[PSObject]]::new()
 # 2. HELPER FUNCTIONS
 # ==========================================
 function Write-GuiLog ($msg) {
+    $timestamp = (Get-Date).ToString('HH:mm:ss')
+    Write-Host "[$timestamp] $msg"
     if ($txtLog) {
-        $txtLog.Dispatcher.Invoke([Action]{
-            $txtLog.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $msg`n")
-            $txtLog.ScrollToEnd()
-        }, [System.Windows.Threading.DispatcherPriority]::Background)
-        [System.Windows.Forms.Application]::DoEvents()
-    } else {
-        Write-Host "[$((Get-Date).ToString('HH:mm:ss'))] $msg"
+        try {
+            $txtLog.Dispatcher.Invoke([Action]{
+                $txtLog.AppendText("[$timestamp] $msg`n")
+                $txtLog.ScrollToEnd()
+            }, [System.Windows.Threading.DispatcherPriority]::Background)
+            [System.Windows.Forms.Application]::DoEvents()
+        } catch {}
     }
 }
 
@@ -105,25 +107,72 @@ function Format-FriendlyMfaMethod ($rawMethod, $registeredArray) {
 # 3. MODULE LOADER & DEPENDENCY CHECK
 # ==========================================
 function Assert-RequiredModules {
-    Write-GuiLog "Checking required PowerShell modules..."
+    Write-GuiLog "Checking required PowerShell modules and dependencies..."
+    
+    # Enable TLS 1.2 for PSGallery access across all PowerShell versions
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    } catch {}
+
+    # Check NuGet PackageProvider (required on clean Windows / PowerShell setups to install modules)
+    try {
+        $nugetVersion = Get-PackageProvider -ListAvailable -Name NuGet -ErrorAction SilentlyContinue | 
+            Where-Object { $_.Version -ge [version]"2.8.5.201" }
+        if (-not $nugetVersion) {
+            Write-GuiLog "NuGet provider missing or outdated. Installing NuGet provider for CurrentUser..."
+            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser -ErrorAction SilentlyContinue | Out-Null
+        }
+    } catch {
+        Write-GuiLog "NuGet provider note: $_"
+    }
+
+    # Ensure PSGallery repository is trusted to prevent interactive blocking prompts
+    try {
+        $psg = Get-PSRepository -Name "PSGallery" -ErrorAction SilentlyContinue
+        if ($psg -and $psg.InstallationPolicy -ne "Trusted") {
+            Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted -ErrorAction SilentlyContinue
+        }
+    } catch {}
+
+    # 1. Check ImportExcel
     if (-not (Get-Module -ListAvailable -Name ImportExcel)) {
-        Write-GuiLog "ImportExcel module missing. Attempting automatic installation for CurrentUser..."
+        Write-GuiLog "ImportExcel module missing. Attempting automatic installation from PSGallery..."
         try {
-            Install-Module -Name ImportExcel -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
-            Write-GuiLog "ImportExcel module successfully installed!"
+            Install-Module -Name ImportExcel -Scope CurrentUser -Repository PSGallery -Force -AllowClobber -ErrorAction Stop
+            Import-Module ImportExcel -ErrorAction SilentlyContinue
+            Write-GuiLog "ImportExcel module successfully installed and imported!"
         } catch {
-            Write-GuiLog "WARNING: Failed to auto-install ImportExcel. Excel export will fall back to CSV if ImportExcel is unavailable."
+            Write-GuiLog "WARNING: Failed to auto-install ImportExcel ($_). Excel export will fall back to CSV."
         }
     } else {
+        try {
+            Import-Module ImportExcel -ErrorAction SilentlyContinue
+        } catch {}
         Write-GuiLog "ImportExcel module ready."
     }
 
+    # 2. Check Microsoft.Graph.Authentication (or full Microsoft.Graph)
     $graphAvailable = (Get-Module -ListAvailable -Name Microsoft.Graph.Authentication) -or (Get-Module -ListAvailable -Name Microsoft.Graph)
     if (-not $graphAvailable) {
-        Write-GuiLog "WARNING: Microsoft.Graph modules not found. Ensure Microsoft.Graph is installed (`Install-Module Microsoft.Graph -Scope CurrentUser`)."
+        Write-GuiLog "Microsoft Graph modules not found. Installing Microsoft.Graph.Authentication for CurrentUser..."
+        Write-GuiLog "(This is a fast, lightweight package containing Connect-MgGraph and Invoke-MgGraphRequest)"
+        try {
+            Install-Module -Name Microsoft.Graph.Authentication -Scope CurrentUser -Repository PSGallery -Force -AllowClobber -ErrorAction Stop
+            Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
+            Write-GuiLog "Microsoft.Graph.Authentication module successfully installed and imported!"
+        } catch {
+            Write-GuiLog "ERROR: Failed to auto-install Microsoft.Graph.Authentication: $_"
+            Write-GuiLog "To install manually, run: Install-Module Microsoft.Graph.Authentication -Scope CurrentUser"
+            return $false
+        }
     } else {
-        Write-GuiLog "Microsoft.Graph module ready."
+        try {
+            Import-Module Microsoft.Graph.Authentication -ErrorAction SilentlyContinue
+        } catch {}
+        Write-GuiLog "Microsoft Graph module ready."
     }
+
+    return $true
 }
 
 # ==========================================
@@ -131,8 +180,23 @@ function Assert-RequiredModules {
 # ==========================================
 function Connect-EntraIDGraph {
     Write-GuiLog "Initiating single-session Microsoft Graph authentication..."
-    Write-GuiLog "Requesting permissions: User.Read.All, UserAuthenticationMethod.Read.All, Reports.Read.All, Directory.Read.All"
+    Write-GuiLog "Requesting permissions: User.Read.All, UserAuthenticationMethod.Read.All, Reports.Read.All, AuditLog.Read.All, Directory.Read.All"
 
+    # Safety check: Ensure Connect-MgGraph is available before invoking
+    if (-not (Get-Command Connect-MgGraph -ErrorAction SilentlyContinue)) {
+        Write-GuiLog "Connect-MgGraph cmdlet not loaded in session. Verifying modules..."
+        $modReady = Assert-RequiredModules
+        if (-not $modReady -or -not (Get-Command Connect-MgGraph -ErrorAction SilentlyContinue)) {
+            Write-GuiLog "ERROR: Connect-MgGraph is still unavailable. Please run: Install-Module Microsoft.Graph.Authentication -Scope CurrentUser"
+            if ($txtConnStatus) {
+                $txtConnStatus.Dispatcher.Invoke([Action]{
+                    $txtConnStatus.Text = "Missing Modules"
+                    $txtConnStatus.Foreground = [System.Windows.Media.Brushes]::Tomato
+                })
+            }
+            return $false
+        }
+    }
 
     try {
         # Force a clean state upfront by disconnecting any existing session
@@ -141,7 +205,7 @@ function Connect-EntraIDGraph {
         $global:TenantName = ""
 
         # Request all required v1.0 and beta scopes targeting 'organizations' authority for automatic tenant resolution
-        $scopes = @("User.Read.All", "UserAuthenticationMethod.Read.All", "Reports.Read.All", "Directory.Read.All")
+        $scopes = @("User.Read.All", "UserAuthenticationMethod.Read.All", "Reports.Read.All", "AuditLog.Read.All", "Directory.Read.All")
         Connect-MgGraph -Scopes $scopes -TenantId "organizations" -ContextScope Process -NoWelcome -ErrorAction Stop
 
         $context = Get-MgContext
@@ -199,6 +263,9 @@ function Invoke-MfaMethodAudit {
         }
     } catch {
         Write-GuiLog "REST v1.0 query note: $_"
+        if ("$_" -like "*AuditLog.Read.All*") {
+            Write-GuiLog "NOTICE: AuditLog.Read.All permission is required for fast bulk reporting. Reconnect to grant consent."
+        }
     }
 
 
@@ -734,8 +801,27 @@ $defaultPath = [System.IO.Path]::Combine([System.Environment]::GetFolderPath("De
 $txtExportPath.Text = $defaultPath
 
 # Initial Log
-$txtLog.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] Entra ID MFA SMS Deprecation Checker initialized.`n")
-Assert-RequiredModules
+Write-GuiLog "Entra ID MFA SMS Deprecation Checker initialized."
+
+# Run module and dependency verification when the GUI window renders
+$window.Add_Loaded({
+    $btnConnect.IsEnabled = $false
+    $btnScan.IsEnabled = $false
+    $txtConnStatus.Text = "Checking Prerequisites..."
+    $txtConnStatus.Foreground = [System.Windows.Media.Brushes]::Khaki
+    
+    $modulesOk = Assert-RequiredModules
+    
+    $btnConnect.IsEnabled = $true
+    $btnScan.IsEnabled = $true
+    if ($modulesOk) {
+        $txtConnStatus.Text = "Not Connected"
+        $txtConnStatus.Foreground = [System.Windows.Media.Brushes]::Tomato
+    } else {
+        $txtConnStatus.Text = "Prerequisites Missing"
+        $txtConnStatus.Foreground = [System.Windows.Media.Brushes]::Tomato
+    }
+})
 
 # Helper to run scan process reliably with live UI updates
 function Start-ScanProcess {

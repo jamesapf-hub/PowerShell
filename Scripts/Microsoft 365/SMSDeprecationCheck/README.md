@@ -22,8 +22,8 @@ An interactive PowerShell 7 WPF tool and color-coded Excel report generator desi
 OS Support: Windows 10 / 11 or Windows Server 2019 / 2022
 PowerShell: PowerShell Core 7+ (`pwsh.exe`)
 Permissions: Global Reader, Reports Reader, or Authentication Administrator
-Entra ID Scopes Required: `User.Read.All`, `UserAuthenticationMethod.Read.All`, `Reports.Read.All`, `Directory.Read.All`
-Dependencies: `Microsoft.Graph`, `ImportExcel` (automatically installed for `CurrentUser` if missing)
+Entra ID Scopes Required: `User.Read.All`, `UserAuthenticationMethod.Read.All`, `Reports.Read.All`, `AuditLog.Read.All`, `Directory.Read.All`
+Dependencies: `Microsoft.Graph.Authentication` (or `Microsoft.Graph`), `ImportExcel` (automatically installed for `CurrentUser` from PSGallery if missing)
 
 ## Walkthrough & Usage Guide
 

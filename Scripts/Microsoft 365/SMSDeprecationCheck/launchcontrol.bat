@@ -1,8 +1,10 @@
 @echo off
 title Entra ID MFA SMS Deprecation Checker Launcher
 echo ======================================================================
-echo Launching Entra ID MFA SMS Deprecation Checker (PowerShell 7)
+echo Launching Entra ID MFA SMS Deprecation Checker
 echo ======================================================================
+echo [INFO] Prerequisite modules (Microsoft Graph, ImportExcel) are
+echo        automatically verified and installed on first launch.
 echo.
 
 where pwsh >nul 2>nul
