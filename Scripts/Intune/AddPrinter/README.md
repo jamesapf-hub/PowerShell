@@ -11,7 +11,7 @@ The **Intune Printer Packager** is a PowerShell WPF-based graphical interface th
 * **Zero Coding Required**: Staging folder setup, script compilation, and configuration file editing are handled automatically.
 * **Fail-Fast Validations**: Pre-verification of printer IP addresses and driver names prevents deployment errors.
 * **Automatic Outputs**: Compiles the `.intunewin` app, extracts the `.ps1` custom detection script, and writes a `.txt` configuration summary directly to your output directory.
-* **Zero Setup Overhead**: Automatically downloads the official `IntuneWinAppUtil.exe` binary directly from Microsoft's GitHub repository if it is not present in the script directory.
+* **Zero Setup Overhead**: Automatically detects `IntuneWinAppUtil.exe` across local folders, AppData cache, and PATH, with automatic background download from Microsoft's official GitHub repository if missing.
 * **Silent PCA Bypass**: Automatically stops and restores the Program Compatibility Assistant service (`PcaSvc`) during installation to prevent legacy driver co-installer prompts (such as Kyocera compatibility warning dialogs) from hanging the silent Intune deployment.
 
 
