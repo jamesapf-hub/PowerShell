@@ -19,6 +19,99 @@ param(
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
+# Function to locate or automatically download IntuneWinAppUtil.exe
+function Get-IntuneWinAppUtilPath {
+    param([System.Windows.Forms.Label]$StatusLabel = $null)
+
+    $candidatePaths = @()
+
+    # 1. Check script directory or tools subfolder (local clone / batch launcher)
+    if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+        $candidatePaths += (Join-Path $PSScriptRoot "IntuneWinAppUtil.exe")
+        $candidatePaths += (Join-Path $PSScriptRoot "tools\IntuneWinAppUtil.exe")
+    }
+
+    # 2. Check user's local application data and persistent tool cache
+    $localAppDataDir = Join-Path $env:LOCALAPPDATA "Microsoft\IntuneWinAppUtil"
+    $customAppDataDir = Join-Path $env:LOCALAPPDATA "IntuneDesktopBackground"
+    $printerAppDataDir = Join-Path $env:LOCALAPPDATA "IntunePrinterPackager"
+    $candidatePaths += (Join-Path $localAppDataDir "IntuneWinAppUtil.exe")
+    $candidatePaths += (Join-Path $customAppDataDir "IntuneWinAppUtil.exe")
+    $candidatePaths += (Join-Path $printerAppDataDir "IntuneWinAppUtil.exe")
+    $candidatePaths += (Join-Path $env:TEMP "IntuneWinAppUtil.exe")
+
+    # 3. Check user downloads
+    $userDownloads = Join-Path ([System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)) "Downloads"
+    $candidatePaths += (Join-Path $userDownloads "IntuneWinAppUtil.exe")
+
+    # 4. Check known sibling repository directories if in dev environment
+    if ($env:USERPROFILE) {
+        $candidatePaths += (Join-Path $env:USERPROFILE "OneDrive - Seriun\Documents\GitHub\PowerShell\Scripts\Intune\AddPrinter\IntuneWinAppUtil.exe")
+        $candidatePaths += (Join-Path $env:USERPROFILE "OneDrive - Seriun\Documents\GitHub\PowerShell\Scripts\Intune\DesktopOverlay\IntuneWinAppUtil.exe")
+        $candidatePaths += (Join-Path $env:USERPROFILE "OneDrive - Seriun\Documents\GitHub\PowerShell\Scripts\Intune\TeamsBackground\tools\IntuneWinAppUtil.exe")
+    }
+
+    # 5. Check system PATH
+    $cmd = Get-Command "IntuneWinAppUtil.exe" -ErrorAction SilentlyContinue
+    if ($cmd -and [string]::IsNullOrWhiteSpace($cmd.Source) -eq $false -and (Test-Path -Path $cmd.Source -PathType Leaf)) {
+        return $cmd.Source
+    }
+
+    # 6. Check existing candidate paths
+    foreach ($cand in $candidatePaths) {
+        if (-not [string]::IsNullOrWhiteSpace($cand) -and (Test-Path -Path $cand -PathType Leaf)) {
+            try {
+                if ((Get-Item $cand).Length -gt 10000) {
+                    return $cand
+                }
+            } catch {}
+        }
+    }
+
+    # 7. Tool not found locally; determine persistent target download directory
+    $downloadTargetDir = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot) -and (Test-Path -Path $PSScriptRoot)) {
+        $PSScriptRoot
+    } else {
+        $customAppDataDir
+    }
+
+    if (-not (Test-Path -Path $downloadTargetDir)) {
+        New-Item -ItemType Directory -Path $downloadTargetDir -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+    $targetExePath = Join-Path $downloadTargetDir "IntuneWinAppUtil.exe"
+
+    # Prompt user to confirm auto-download
+    $msg = "Microsoft Win32 Content Prep Tool (IntuneWinAppUtil.exe) was not found.`n`nWould you like to automatically download it from Microsoft's official GitHub repository?"
+    $confirm = [System.Windows.Forms.MessageBox]::Show($msg, "Packer Tool Missing", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
+
+    if ($confirm -eq [System.Windows.Forms.DialogResult]::Yes) {
+        if ($StatusLabel) {
+            $StatusLabel.Text = "Downloading IntuneWinAppUtil.exe..."
+            $StatusLabel.Refresh()
+        }
+        try {
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+            $downloadUrl = "https://raw.githubusercontent.com/microsoft/Microsoft-Win32-Content-Prep-Tool/master/IntuneWinAppUtil.exe"
+
+            [System.Windows.Forms.Cursor]::Current = [System.Windows.Forms.Cursors]::WaitCursor
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $targetExePath -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop
+            [System.Windows.Forms.Cursor]::Current = [System.Windows.Forms.Cursors]::Default
+
+            if (Test-Path -Path $targetExePath -PathType Leaf) {
+                return $targetExePath
+            } else {
+                throw "Downloaded file was not found on disk."
+            }
+        } catch {
+            [System.Windows.Forms.Cursor]::Current = [System.Windows.Forms.Cursors]::Default
+            [System.Windows.Forms.MessageBox]::Show("Failed to download IntuneWinAppUtil.exe:`n`n$_`n`nPlease download it manually and place it in: $downloadTargetDir", "Download Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
+            return $null
+        }
+    } else {
+        return $null
+    }
+}
+
 # --- UI Configuration ---
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Intune Desktop Background Packager"
@@ -269,9 +362,13 @@ $txtOutputDir.Location = New-Object System.Drawing.Point(20, 30)
 $txtOutputDir.Size = New-Object System.Drawing.Size(410, 25)
 $txtOutputDir.Font = $textFont
 
-$currentScriptDir = $PSScriptRoot
-if ([string]::IsNullOrEmpty($currentScriptDir)) { $currentScriptDir = (Get-Location).Path }
-$txtOutputDir.Text = Join-Path $currentScriptDir "Output"
+# Autofill default output folder to script directory if running locally, or Downloads if running in-memory
+$defaultOutput = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot) -and (Test-Path -Path $PSScriptRoot)) {
+    Join-Path $PSScriptRoot "Output"
+} else {
+    Join-Path ([System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)) "Downloads\DesktopBackground_Output"
+}
+$txtOutputDir.Text = $defaultOutput
 
 $grpOutput.Controls.Add($txtOutputDir)
 
@@ -374,24 +471,22 @@ $btnGenerate.Add_Click({
         }
 
         # 2. Check/Download IntuneWinAppUtil.exe
-        $scriptDir = $PSScriptRoot
-        if ([string]::IsNullOrEmpty($scriptDir)) { $scriptDir = (Get-Location).Path }
-        
-        $intuneTool = Join-Path $scriptDir "IntuneWinAppUtil.exe"
-        if (-not (Test-Path $intuneTool)) {
-            $lblStatus.Text = "Downloading IntuneWinAppUtil.exe..."
-            $lblStatus.Refresh()
-            $toolUrl = "https://raw.githubusercontent.com/microsoft/Microsoft-Win32-Content-Prep-Tool/master/IntuneWinAppUtil.exe"
-            Invoke-WebRequest -Uri $toolUrl -OutFile $intuneTool -UseBasicParsing
-            if (-not (Test-Path $intuneTool)) {
-                throw "Failed to download IntuneWinAppUtil.exe. Please download it manually and place it in the same folder."
-            }
+        $packerExe = Get-IntuneWinAppUtilPath -StatusLabel $lblStatus
+        if ([string]::IsNullOrWhiteSpace($packerExe) -or (-not (Test-Path -Path $packerExe -PathType Leaf))) {
+            $lblStatus.Text = "Build aborted: IntuneWinAppUtil.exe is required."
+            $lblStatus.ForeColor = [System.Drawing.Color]::Red
+            return
         }
 
         # 3. Setup Staging Directory
         $lblStatus.Text = "Setting up staging directory..."
         $lblStatus.Refresh()
-        $stagingDir = Join-Path $scriptDir "Staging_IntuneBackground_Temp"
+        $stagingBase = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot) -and (Test-Path -Path $PSScriptRoot)) {
+            $PSScriptRoot
+        } else {
+            $env:TEMP
+        }
+        $stagingDir = Join-Path $stagingBase "Staging_IntuneBackground_$([guid]::NewGuid().ToString().Substring(0,8))"
         if (Test-Path $stagingDir) { Remove-Item $stagingDir -Recurse -Force }
         New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
 
@@ -885,8 +980,7 @@ Stop-Transcript
         # Ensure output directory exists
         if (!(Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
         
-        $toolPath = Join-Path $scriptDir "IntuneWinAppUtil.exe"
-        $process = Start-Process -FilePath $toolPath -ArgumentList "-c `"$stagingDir`"", "-s `"Install.ps1`"", "-o `"$outDir`"", "-q" -NoNewWindow -PassThru -Wait
+        $process = Start-Process -FilePath $packerExe -ArgumentList "-c `"$stagingDir`"", "-s `"Install.ps1`"", "-o `"$outDir`"", "-q" -NoNewWindow -PassThru -Wait
         
         if ($process.ExitCode -ne 0) {
             throw "IntuneWinAppUtil failed to package the application. Exit code: $($process.ExitCode)"
@@ -1001,6 +1095,7 @@ Enforce script signature check: No
         [System.Windows.Forms.MessageBox]::Show("Packaging Complete! Check the output directory for your $newWimName, DetectionScript.ps1, and InstallCommands.txt.", "Success", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
     } catch {
+        if ($stagingDir -and (Test-Path $stagingDir)) { Remove-Item $stagingDir -Recurse -Force -ErrorAction SilentlyContinue }
         $lblStatus.Text = "Error: $($_.Exception.Message)"
         $lblStatus.ForeColor = [System.Drawing.Color]::Red
         [System.Windows.Forms.MessageBox]::Show("An error occurred: $($_.Exception.Message)", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)

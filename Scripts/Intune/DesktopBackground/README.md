@@ -9,7 +9,7 @@ It handles local files or remote image URLs, automatically downloads the Microso
 *   **Intuitive WinForms GUI:** Easily select and configure Desktop Background and Lock Screen management parameters.
 *   **Staggered Download Mode:** Built-in sleep randomizer (staggering) for remote image URL deployments to prevent rate-limiting when thousands of corporate endpoints download branding assets simultaneously.
 *   **Active Desktop Enforcements:** Prevents end-users from changing wallpaper or lock screens after deployment.
-*   **Automated Packaging:** Dynamically stage required files and automatically pack the bundle using the Microsoft Content Prep tool.
+*   **Automated Packaging:** Dynamically stages required files and automatically packs the bundle using the Microsoft Content Prep tool (`IntuneWinAppUtil.exe`), automatically detecting or downloading it across local folders, AppData cache, and PATH.
 *   **Auto-generated Assets:** Generates custom detection scripts (`DetectionScript.ps1`) and instructions (`InstallCommands.txt`) ready for the Intune Web Portal.
 
 > [!NOTE]
@@ -25,7 +25,7 @@ Dependencies: Windows Forms assemblies (built-in) and active internet connection
 
 ### 1. Step-by-Step Instructions
 1. Open an elevated PowerShell prompt (Run as Administrator).
-2. Run `Create-IntuneBackgroundApp.ps1`.
+2. Run `Create-IntuneBackgroundApp.ps1` (or use the one-liner Fast Execute snippet below).
 3. In the GUI form:
    - Configure **Desktop Background** settings (Local file or dynamic URL).
    - Configure **Lock Screen** settings (same as desktop, a separate local file, or a separate URL).
@@ -39,7 +39,7 @@ Dependencies: Windows Forms assemblies (built-in) and active internet connection
 6. Upload the `.intunewin` package to Intune and configure it using the parameters generated in `InstallCommands.txt` and the detection logic in `DetectionScript.ps1`.
 
 ### 2. Logging & Outputs
-Staging files and execution logs are generated temporarily inside the script's root staging folder and cleaned up after compilation.
+Staging files and execution logs are generated temporarily inside an isolated temp staging folder and cleaned up after compilation.
 Installation and update history on endpoints are saved to:
 *   `C:\Logs\DesktopBackground\Install.txt`
 *   `C:\Logs\DesktopBackground\ApplyBackground.txt`
@@ -47,8 +47,7 @@ Installation and update history on endpoints are saved to:
 
 ## Fast Execute
 > [!TIP]
-> **Run locally in PowerShell (as Administrator):**
-> Execute the packager utility GUI locally on your workstation:
+> **Short Branded URL (phnx.it):**
 > ```powershell
-> powershell.exe -ExecutionPolicy Bypass -File .\Create-IntuneBackgroundApp.ps1
+> irm phnx.it/INTUNBG | iex
 > ```
