@@ -3,7 +3,7 @@
     Interactive GUI tool to package TCP/IP printers as Microsoft Intune Win32 Apps (.intunewin).
 .NOTES
     Requires Microsoft's IntuneWinAppUtil.exe in the same directory.
-    Version: 1.4
+    Version: 1.4.1
     Last Updated: 2026-09-10
 #>
 
@@ -13,7 +13,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
 $xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Intune Printer Packager Tool v1.4" Height="680" Width="520"
+        Title="Intune Printer Packager Tool v1.4.1" Height="680" Width="520"
         ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
         Background="#18181B">
     <Window.Resources>
@@ -110,7 +110,7 @@ $xaml = @'
 
         <!-- Header Block -->
         <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="Intune Printer Packager v1.4" FontSize="24" FontWeight="Bold" Foreground="#3B82F6" FontFamily="Segoe UI"/>
+            <TextBlock Text="Intune Printer Packager v1.4.1" FontSize="24" FontWeight="Bold" Foreground="#3B82F6" FontFamily="Segoe UI"/>
             <TextBlock Text="Package TCP/IP printers as Intune Win32 Apps in seconds" FontSize="12" Foreground="#A1A1AA" FontFamily="Segoe UI" Margin="0,4,0,0"/>
             <Separator Height="1" Background="#27272A" Margin="0,10,0,0"/>
         </StackPanel>
@@ -215,7 +215,7 @@ function Update-Log ($message, $color = "#10B981") {
     $converter = New-Object System.Windows.Media.BrushConverter
     $txtStatus.Foreground = $converter.ConvertFromString($color)
     $scrollConsole.ScrollToEnd()
-    [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Background, [Action]{})
+    $null = [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Background, [Action]{})
 }
 
 # Function to locate or automatically download IntuneWinAppUtil.exe
@@ -287,7 +287,7 @@ function Get-IntuneWinAppUtilPath {
             Update-Log "Downloading from official Microsoft GitHub to: $targetExePath"
 
             [System.Windows.Input.Mouse]::OverrideCursor = [System.Windows.Input.Cursors]::Wait
-            [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Background, [Action]{})
+            $null = [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Background, [Action]{})
 
             Invoke-WebRequest -Uri $downloadUrl -OutFile $targetExePath -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop
 
@@ -390,7 +390,13 @@ $btnBuild.Add_Click({
     }
 
     # Check for IntuneWinAppUtil.exe
-    $packerExe = Get-IntuneWinAppUtilPath
+    $rawPacker = Get-IntuneWinAppUtilPath
+    $packerExe = if ($rawPacker -is [System.Array]) {
+        ($rawPacker | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 1)
+    } else {
+        $rawPacker
+    }
+    $packerExe = [string]$packerExe
     if ([string]::IsNullOrWhiteSpace($packerExe) -or (-not (Test-Path -Path $packerExe -PathType Leaf))) {
         Update-Log "Build aborted. Microsoft IntuneWinAppUtil.exe is required to compile .intunewin packages." "#EF4444"
         return
@@ -650,7 +656,7 @@ $btnBuild.Add_Click({
     5. Configures default printer settings (e.g., Duplex, Mono).
 .NOTES
     Run under the SYSTEM context (Intune Win32 App Install Behavior: System).
-    Version: 1.4
+    Version: 1.4.1
 .EXAMPLE
     powershell.exe -ExecutionPolicy Bypass -File .\Install-Printer.ps1
 #>
@@ -857,7 +863,7 @@ Stop-Transcript
     Reads printers.csv, removes the associated printers, deletes standard TCP/IP printer ports, and removes the printer driver registration from the driver store.
 .NOTES
     This script must run in the SYSTEM (administrator) context (e.g., deployed as a System-level uninstall app in Intune).
-    Version: 1.4
+    Version: 1.4.1
 .EXAMPLE
     powershell.exe -ExecutionPolicy Bypass -File .\Uninstall-Printer.ps1
 #>
@@ -957,7 +963,7 @@ Name,DriverName,PortName,Comment,Location
     Checks the registry path first (instant & reliable under SYSTEM context), then falls back to Get-Printer with a short retry loop to handle print spooler latency.
 .NOTES
     Runs in SYSTEM context as an Intune custom detection script.
-    Version: 1.4
+    Version: 1.4.1
 #>
 $printers = @(
     '__PRINTER_NAME__'
@@ -1019,8 +1025,13 @@ else {
         $stdoutFile = [System.IO.Path]::GetTempFileName()
         $stderrFile = [System.IO.Path]::GetTempFileName()
 
+        if ($packerExe -is [System.Array]) {
+            $packerExe = ($packerExe | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 1)
+        }
+        $packerExeStr = [string]$packerExe
+
         # Start the process redirecting to files
-        $process = Start-Process -FilePath $packerExe -ArgumentList ($processArgs -join " ") -NoNewWindow -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
+        $process = Start-Process -FilePath $packerExeStr -ArgumentList ($processArgs -join " ") -NoNewWindow -PassThru -RedirectStandardOutput $stdoutFile -RedirectStandardError $stderrFile
 
         # Access the handle to force cache population (known .NET process handle caching quirk)
         $null = $process.Handle
@@ -1040,7 +1051,7 @@ else {
             }
 
             # Run WPF dispatcher queue to keep GUI responsive and prevent freezing
-            [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Background, [Action]{})
+            $null = [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Background, [Action]{})
             Start-Sleep -Milliseconds 250
         }
 
@@ -1116,7 +1127,7 @@ else {
 #!/bin/bash
 # ======================================================================
 # macOS Printer Installation Script
-# Generated by Intune Printer Packager v1.4
+# Generated by Intune Printer Packager v1.4.1
 # ======================================================================
 
 # Variables
