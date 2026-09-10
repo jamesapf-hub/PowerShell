@@ -3,8 +3,8 @@
     Interactive GUI tool to package TCP/IP printers as Microsoft Intune Win32 Apps (.intunewin).
 .NOTES
     Requires Microsoft's IntuneWinAppUtil.exe in the same directory.
-    Version: 1.3
-    Last Updated: 2026-06-25
+    Version: 1.4
+    Last Updated: 2026-09-10
 #>
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
@@ -13,7 +13,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
 $xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Intune Printer Packager Tool v1.3" Height="680" Width="520"
+        Title="Intune Printer Packager Tool v1.4" Height="680" Width="520"
         ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
         Background="#18181B">
     <Window.Resources>
@@ -110,7 +110,7 @@ $xaml = @'
 
         <!-- Header Block -->
         <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="Intune Printer Packager v1.3" FontSize="24" FontWeight="Bold" Foreground="#3B82F6" FontFamily="Segoe UI"/>
+            <TextBlock Text="Intune Printer Packager v1.4" FontSize="24" FontWeight="Bold" Foreground="#3B82F6" FontFamily="Segoe UI"/>
             <TextBlock Text="Package TCP/IP printers as Intune Win32 Apps in seconds" FontSize="12" Foreground="#A1A1AA" FontFamily="Segoe UI" Margin="0,4,0,0"/>
             <Separator Height="1" Background="#27272A" Margin="0,10,0,0"/>
         </StackPanel>
@@ -197,8 +197,13 @@ $btnBuild        = $Form.FindName("btnBuild")
 $txtStatus       = $Form.FindName("txtStatus")
 $scrollConsole   = $Form.FindName("scrollConsole")
 
-# Autofill default output folder to the script directory if it runs locally
-$txtOutputPath.Text = $PSScriptRoot
+# Autofill default output folder to the script directory if it runs locally, or Downloads if running in-memory
+$defaultOutput = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot) -and (Test-Path -Path $PSScriptRoot)) {
+    $PSScriptRoot
+} else {
+    Join-Path ([System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)) "Downloads"
+}
+$txtOutputPath.Text = $defaultOutput
 
 # Helper to update console log UI responsively
 function Update-Log ($message, $color = "#10B981") {
@@ -211,6 +216,112 @@ function Update-Log ($message, $color = "#10B981") {
     $txtStatus.Foreground = $converter.ConvertFromString($color)
     $scrollConsole.ScrollToEnd()
     [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Background, [Action]{})
+}
+
+# Function to locate or automatically download IntuneWinAppUtil.exe
+function Get-IntuneWinAppUtilPath {
+    $candidatePaths = @()
+
+    # 1. Check script directory or tools subfolder (local clone / batch launcher)
+    if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+        $candidatePaths += (Join-Path $PSScriptRoot "IntuneWinAppUtil.exe")
+        $candidatePaths += (Join-Path $PSScriptRoot "tools\IntuneWinAppUtil.exe")
+    }
+
+    # 2. Check user's local application data and persistent tool cache
+    $localAppDataDir = Join-Path $env:LOCALAPPDATA "Microsoft\IntuneWinAppUtil"
+    $customAppDataDir = Join-Path $env:LOCALAPPDATA "IntunePrinterPackager"
+    $candidatePaths += (Join-Path $localAppDataDir "IntuneWinAppUtil.exe")
+    $candidatePaths += (Join-Path $customAppDataDir "IntuneWinAppUtil.exe")
+    $candidatePaths += (Join-Path $env:TEMP "IntuneWinAppUtil.exe")
+
+    # 3. Check user downloads
+    $userDownloads = Join-Path ([System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)) "Downloads"
+    $candidatePaths += (Join-Path $userDownloads "IntuneWinAppUtil.exe")
+
+    # 4. Check known sibling repository directories if in dev environment
+    if ($env:USERPROFILE) {
+        $candidatePaths += (Join-Path $env:USERPROFILE "OneDrive - Seriun\Documents\GitHub\PowerShell\Scripts\Intune\DesktopOverlay\IntuneWinAppUtil.exe")
+        $candidatePaths += (Join-Path $env:USERPROFILE "OneDrive - Seriun\Documents\GitHub\PowerShell\Scripts\Intune\TeamsBackground\tools\IntuneWinAppUtil.exe")
+    }
+
+    # 5. Check system PATH
+    $cmd = Get-Command "IntuneWinAppUtil.exe" -ErrorAction SilentlyContinue
+    if ($cmd -and [string]::IsNullOrWhiteSpace($cmd.Source) -eq $false -and (Test-Path -Path $cmd.Source -PathType Leaf)) {
+        return $cmd.Source
+    }
+
+    # 6. Check existing candidate paths
+    foreach ($cand in $candidatePaths) {
+        if (-not [string]::IsNullOrWhiteSpace($cand) -and (Test-Path -Path $cand -PathType Leaf)) {
+            try {
+                if ((Get-Item $cand).Length -gt 10000) {
+                    Update-Log "Found Win32 Content Prep Tool at: $cand"
+                    return $cand
+                }
+            } catch {}
+        }
+    }
+
+    # 7. Tool not found locally; determine persistent target download directory
+    $downloadTargetDir = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot) -and (Test-Path -Path $PSScriptRoot)) {
+        $PSScriptRoot
+    } else {
+        $customAppDataDir
+    }
+
+    if (-not (Test-Path -Path $downloadTargetDir)) {
+        New-Item -ItemType Directory -Path $downloadTargetDir -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+    $targetExePath = Join-Path $downloadTargetDir "IntuneWinAppUtil.exe"
+
+    # Prompt user to confirm auto-download
+    $msg = "Microsoft Win32 Content Prep Tool (IntuneWinAppUtil.exe) was not found.`n`nWould you like to automatically download it from Microsoft's official GitHub repository?"
+    $confirm = [System.Windows.MessageBox]::Show($msg, "Packer Tool Missing", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Question)
+
+    if ($confirm -eq [System.Windows.MessageBoxResult]::Yes) {
+        Update-Log "IntuneWinAppUtil.exe is missing. Attempting official download..."
+        try {
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+            $downloadUrl = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/raw/master/IntuneWinAppUtil.exe"
+            Update-Log "Downloading from official Microsoft GitHub to: $targetExePath"
+
+            [System.Windows.Input.Mouse]::OverrideCursor = [System.Windows.Input.Cursors]::Wait
+            [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Background, [Action]{})
+
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $targetExePath -UseBasicParsing -TimeoutSec 30 -ErrorAction Stop
+
+            [System.Windows.Input.Mouse]::OverrideCursor = $null
+
+            if ((Test-Path -Path $targetExePath -PathType Leaf) -and ((Get-Item $targetExePath).Length -gt 10000)) {
+                Update-Log "Download complete! IntuneWinAppUtil.exe is now ready." "#10B981"
+                return $targetExePath
+            } else {
+                throw "Downloaded file is invalid or zero bytes."
+            }
+        } catch {
+            [System.Windows.Input.Mouse]::OverrideCursor = $null
+            Update-Log "Failed to download packer tool: $_" "#EF4444"
+        }
+    }
+
+    # If auto-download declined or failed, offer manual file browser
+    $browseMsg = "Would you like to browse and locate IntuneWinAppUtil.exe manually on your computer?"
+    $browseConfirm = [System.Windows.MessageBox]::Show($browseMsg, "Locate IntuneWinAppUtil.exe", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Information)
+    if ($browseConfirm -eq [System.Windows.MessageBoxResult]::Yes) {
+        $dlg = New-Object System.Windows.Forms.OpenFileDialog
+        $dlg.Title = "Locate IntuneWinAppUtil.exe"
+        $dlg.Filter = "Executable Files (*.exe)|*.exe"
+        $dlg.FileName = "IntuneWinAppUtil.exe"
+        if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            if (-not [string]::IsNullOrWhiteSpace($dlg.FileName) -and (Test-Path -Path $dlg.FileName -PathType Leaf)) {
+                Update-Log "Using IntuneWinAppUtil.exe: $($dlg.FileName)"
+                return $dlg.FileName
+            }
+        }
+    }
+
+    return $null
 }
 
 # Browser event for driver folder
@@ -261,7 +372,7 @@ $btnBuild.Add_Click({
         return
     }
 
-    if (-not (Test-Path $driverPath) -or [string]::IsNullOrWhiteSpace($driverPath)) {
+    if ([string]::IsNullOrWhiteSpace($driverPath) -or (-not (Test-Path -Path $driverPath))) {
         [System.Windows.MessageBox]::Show("Please select a valid driver directory.", "Validation Error", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
         return
     }
@@ -273,44 +384,16 @@ $btnBuild.Add_Click({
         return
     }
 
-    if (-not (Test-Path $outputPath) -or [string]::IsNullOrWhiteSpace($outputPath)) {
+    if ([string]::IsNullOrWhiteSpace($outputPath) -or (-not (Test-Path -Path $outputPath))) {
         [System.Windows.MessageBox]::Show("Please select a valid output directory.", "Validation Error", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
         return
     }
 
     # Check for IntuneWinAppUtil.exe
-    $packerExe = Join-Path $PSScriptRoot "IntuneWinAppUtil.exe"
-    if (-not (Test-Path $packerExe)) {
-        $msg = "Microsoft Win32 Content Prep Tool (IntuneWinAppUtil.exe) was not found in the script directory.`n`nWould you like to automatically download it from Microsoft's official GitHub repository?"
-        $confirm = [System.Windows.MessageBox]::Show($msg, "Packer Tool Missing", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Question)
-        
-        if ($confirm -eq [System.Windows.MessageBoxResult]::Yes) {
-            Update-Log "IntuneWinAppUtil.exe is missing. Attempting official download..."
-            try {
-                # Force TLS 1.2 which is required by GitHub
-                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-                
-                $downloadUrl = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/raw/master/IntuneWinAppUtil.exe"
-                Update-Log "Downloading from official Microsoft GitHub..."
-                
-                # Show wait cursor during download
-                [System.Windows.Input.Mouse]::OverrideCursor = [System.Windows.Input.Cursors]::Wait
-                [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Background, [Action]{})
-                
-                Invoke-WebRequest -Uri $downloadUrl -OutFile $packerExe -UseBasicParsing -ErrorAction Stop
-                
-                [System.Windows.Input.Mouse]::OverrideCursor = $null
-                Update-Log "Download complete! IntuneWinAppUtil.exe is now ready." "#10B981"
-            } catch {
-                [System.Windows.Input.Mouse]::OverrideCursor = $null
-                Update-Log "Failed to download packer tool: $_" "#EF4444"
-                [System.Windows.MessageBox]::Show("Failed to download IntuneWinAppUtil.exe:`n`n$_`n`nPlease download it manually and place it in: $PSScriptRoot", "Download Error", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
-                return
-            }
-        } else {
-            Update-Log "Build aborted. IntuneWinAppUtil.exe is required." "#EF4444"
-            return
-        }
+    $packerExe = Get-IntuneWinAppUtilPath
+    if ([string]::IsNullOrWhiteSpace($packerExe) -or (-not (Test-Path -Path $packerExe -PathType Leaf))) {
+        Update-Log "Build aborted. Microsoft IntuneWinAppUtil.exe is required to compile .intunewin packages." "#EF4444"
+        return
     }
 
     # Verify that the input Driver Name matches one of the models defined in the INF files
@@ -567,7 +650,7 @@ $btnBuild.Add_Click({
     5. Configures default printer settings (e.g., Duplex, Mono).
 .NOTES
     Run under the SYSTEM context (Intune Win32 App Install Behavior: System).
-    Version: 1.3
+    Version: 1.4
 .EXAMPLE
     powershell.exe -ExecutionPolicy Bypass -File .\Install-Printer.ps1
 #>
@@ -774,7 +857,7 @@ Stop-Transcript
     Reads printers.csv, removes the associated printers, deletes standard TCP/IP printer ports, and removes the printer driver registration from the driver store.
 .NOTES
     This script must run in the SYSTEM (administrator) context (e.g., deployed as a System-level uninstall app in Intune).
-    Version: 1.3
+    Version: 1.4
 .EXAMPLE
     powershell.exe -ExecutionPolicy Bypass -File .\Uninstall-Printer.ps1
 #>
@@ -874,7 +957,7 @@ Name,DriverName,PortName,Comment,Location
     Checks the registry path first (instant & reliable under SYSTEM context), then falls back to Get-Printer with a short retry loop to handle print spooler latency.
 .NOTES
     Runs in SYSTEM context as an Intune custom detection script.
-    Version: 1.3
+    Version: 1.4
 #>
 $printers = @(
     '__PRINTER_NAME__'
@@ -928,7 +1011,8 @@ else {
         $processArgs = @(
             "-c", "`"$tempFolder`"",
             "-s", "Install-Printer.ps1",
-            "-o", "`"$printerOutputDir`""
+            "-o", "`"$printerOutputDir`"",
+            "-q"
         )
         
         # Create temp files for standard output and error redirection
@@ -1009,7 +1093,14 @@ else {
                 Remove-Item -Path $targetOutputFile -Force
             }
             Rename-Item -Path $defaultOutputFile -NewName $finalFileName -Force
-            
+        } elseif (-not (Test-Path $targetOutputFile)) {
+            $generated = Get-ChildItem -Path $printerOutputDir -Filter "*.intunewin" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            if ($generated) {
+                Move-Item -Path $generated.FullName -Destination $targetOutputFile -Force
+            }
+        }
+
+        if (Test-Path $targetOutputFile) {
             # Export Detection.ps1 to the output folder
             $exportedDetectionFile = Join-Path $printerOutputDir "$($sanitized)_Detection.ps1"
             if (Test-Path (Join-Path $tempFolder "Detection.ps1")) {
@@ -1025,7 +1116,7 @@ else {
 #!/bin/bash
 # ======================================================================
 # macOS Printer Installation Script
-# Generated by Intune Printer Packager v1.3
+# Generated by Intune Printer Packager v1.4
 # ======================================================================
 
 # Variables
@@ -1255,7 +1346,7 @@ Step 2: Deploy Installation Script
             Update-Log $successMsg "#10B981"
             [System.Windows.MessageBox]::Show("Successfully generated IntuneWin package, instructions, detection, and macOS script!`n`nFile: $finalFileName`nLocation: $printerOutputDir", "Success", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
         } else {
-            throw "The expected packaging file 'Install-Printer.intunewin' was not found in the output directory."
+            throw "The expected packaging file '$finalFileName' was not found in the output directory."
         }
 
     } catch {
