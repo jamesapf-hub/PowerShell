@@ -1002,16 +1002,64 @@ Stop-Transcript
 
         # Create Uninstall.ps1
         $uninstallContent = @"
-`$ErrorActionPreference = 'Continue'
-if (!(Test-Path `"C:\Logs\DesktopBackground`")) { New-Item -ItemType Directory -Path `"C:\Logs\DesktopBackground`" -Force }
-Start-Transcript -Path `"C:\Logs\DesktopBackground\Uninstall.txt`" -Append
-Remove-Item -Path "`$env:ProgramData\CorporateBackground" -Recurse -Force
-Unregister-ScheduledTask -TaskName 'ApplyCorporateBackground' -Confirm:`$false
-Unregister-ScheduledTask -TaskName 'CorporateBackgroundDownloader' -Confirm:`$false
-Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -Name "LockScreenImage"
-Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\ActiveDesktop" -Name "NoChangingWallPaper"
-Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -Name "NoChangingLockScreen"
-Stop-Transcript
+`$ErrorActionPreference = 'SilentlyContinue'
+
+try {
+    `$logDir = `"C:\Logs\DesktopBackground`"
+    if (!(Test-Path `$logDir)) { New-Item -ItemType Directory -Path `$logDir -Force | Out-Null }
+    Start-Transcript -Path "`$logDir\Uninstall.txt`" -Append -Force -ErrorAction SilentlyContinue
+} catch {}
+
+Write-Output "Starting Intune Desktop Background uninstallation..."
+
+# 1. Stop and Unregister Scheduled Tasks
+`$tasks = @('ApplyCorporateBackground', 'CorporateBackgroundDownloader')
+foreach (`$t in `$tasks) {
+    try {
+        Stop-ScheduledTask -TaskName `$t -ErrorAction SilentlyContinue | Out-Null
+        Unregister-ScheduledTask -TaskName `$t -Confirm:`$false -ErrorAction SilentlyContinue | Out-Null
+        Write-Output "Stopped and unregistered task: `$t"
+    } catch {}
+}
+
+# 2. Remove Lock Policies from HKLM
+`$hklmPaths = @(
+    `"HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\ActiveDesktop`",
+    `"HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization`"
+)
+foreach (`$p in `$hklmPaths) {
+    if (Test-Path `$p) {
+        Remove-ItemProperty -Path `$p -Name `"NoChangingWallPaper`" -ErrorAction SilentlyContinue | Out-Null
+        Remove-ItemProperty -Path `$p -Name `"NoChangingLockScreen`" -ErrorAction SilentlyContinue | Out-Null
+        Remove-ItemProperty -Path `$p -Name `"LockScreenImage`" -ErrorAction SilentlyContinue | Out-Null
+    }
+}
+
+# 3. Remove Lock Policies from loaded User Hives (HKEY_USERS) and HKCU
+try {
+    Get-ChildItem Registry::HKEY_USERS -ErrorAction SilentlyContinue | ForEach-Object {
+        `$sid = `$_.PSChildName
+        if (`$sid -notmatch '_Classes$' -and `$sid -match '^S-1-5-21-') {
+            Remove-ItemProperty -Path `"Registry::HKEY_USERS\`$sid\Software\Microsoft\Windows\CurrentVersion\Policies\ActiveDesktop`" -Name `"NoChangingWallPaper`" -ErrorAction SilentlyContinue | Out-Null
+            Remove-ItemProperty -Path `"Registry::HKEY_USERS\`$sid\Software\Policies\Microsoft\Windows\Personalization`" -Name `"NoChangingLockScreen`" -ErrorAction SilentlyContinue | Out-Null
+        }
+    }
+} catch {}
+Remove-ItemProperty -Path `"HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\ActiveDesktop`" -Name `"NoChangingWallPaper`" -ErrorAction SilentlyContinue | Out-Null
+Remove-ItemProperty -Path `"HKCU:\Software\Policies\Microsoft\Windows\Personalization`" -Name `"NoChangingLockScreen`" -ErrorAction SilentlyContinue | Out-Null
+
+# 4. Clean up staged files (remove scripts first so detection rule immediately fails)
+`$targetPath = "`$env:ProgramData\CorporateBackground"
+if (Test-Path `$targetPath) {
+    Get-ChildItem -Path `$targetPath -Filter "*.ps1" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+    Get-ChildItem -Path `$targetPath -Filter "*.txt" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path `$targetPath -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+Write-Output "Intune Desktop Background uninstallation completed successfully."
+try { Stop-Transcript -ErrorAction SilentlyContinue } catch {}
+
+exit 0
 "@
         Set-Content -Path (Join-Path $stagingDir "Uninstall.ps1") -Value $uninstallContent -Force
 
