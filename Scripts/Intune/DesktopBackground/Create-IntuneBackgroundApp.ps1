@@ -602,6 +602,9 @@ Stop-Transcript
 if (!(Test-Path `$targetPath)) { New-Item -ItemType Directory -Path `$targetPath -Force }
 if (!(Test-Path `"C:\Logs\DesktopBackground`")) { New-Item -ItemType Directory -Path `"C:\Logs\DesktopBackground`" -Force }
 Start-Transcript -Path `"C:\Logs\DesktopBackground\Install.txt`" -Force
+
+# Write version marker for Intune detection and update triggers
+Set-Content -Path "`$targetPath\version.txt" -Value "$cleanVersion" -Force
 "@
             if ($setDesktop) {
                 $installContent += @"
