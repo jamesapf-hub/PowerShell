@@ -140,7 +140,7 @@ $grpSource = New-Object System.Windows.Forms.GroupBox
 $grpSource.Text = "Desktop Background"
 $grpSource.Font = $labelFont
 $grpSource.Location = New-Object System.Drawing.Point(20, 70)
-$grpSource.Size = New-Object System.Drawing.Size(540, 175)
+$grpSource.Size = New-Object System.Drawing.Size(540, 205)
 $form.Controls.Add($grpSource)
 
 # Enable Desktop Background Checkbox
@@ -187,10 +187,27 @@ $txtUrl.Font = $textFont
 $txtUrl.Enabled = $false
 $grpSource.Controls.Add($txtUrl)
 
+# Wallpaper Style Selection (Fill, Fit, Stretch, Center, Span, Tile)
+$lblWallpaperStyle = New-Object System.Windows.Forms.Label
+$lblWallpaperStyle.Text = "Wallpaper Style:"
+$lblWallpaperStyle.Location = New-Object System.Drawing.Point(20, 133)
+$lblWallpaperStyle.AutoSize = $true
+$lblWallpaperStyle.Font = $textFont
+$grpSource.Controls.Add($lblWallpaperStyle)
+
+$cmbWallpaperStyle = New-Object System.Windows.Forms.ComboBox
+$cmbWallpaperStyle.Location = New-Object System.Drawing.Point(230, 130)
+$cmbWallpaperStyle.Size = New-Object System.Drawing.Size(140, 25)
+$cmbWallpaperStyle.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+$cmbWallpaperStyle.Font = $textFont
+[void]$cmbWallpaperStyle.Items.AddRange(@("Fill", "Fit", "Stretch", "Center", "Span", "Tile"))
+$cmbWallpaperStyle.SelectedIndex = 0
+$grpSource.Controls.Add($cmbWallpaperStyle)
+
 # Prevent Changing Checkbox
 $chkLockBackground = New-Object System.Windows.Forms.CheckBox
 $chkLockBackground.Text = "Prevent users from changing the Desktop Background"
-$chkLockBackground.Location = New-Object System.Drawing.Point(20, 135)
+$chkLockBackground.Location = New-Object System.Drawing.Point(20, 168)
 $chkLockBackground.AutoSize = $true
 $grpSource.Controls.Add($chkLockBackground)
 
@@ -207,6 +224,8 @@ $chkSetDesktop.Add_CheckedChanged({
     $enabled = $chkSetDesktop.Checked
     $radLocal.Enabled = $enabled
     $radUrl.Enabled = $enabled
+    $lblWallpaperStyle.Enabled = $enabled
+    $cmbWallpaperStyle.Enabled = $enabled
     $chkLockBackground.Enabled = $enabled
     
     if ($enabled) {
@@ -243,7 +262,7 @@ $btnBrowseLocal.Add_Click({
 $grpLockScreen = New-Object System.Windows.Forms.GroupBox
 $grpLockScreen.Text = "Lock Screen"
 $grpLockScreen.Font = $labelFont
-$grpLockScreen.Location = New-Object System.Drawing.Point(20, 260)
+$grpLockScreen.Location = New-Object System.Drawing.Point(20, 290)
 $grpLockScreen.Size = New-Object System.Drawing.Size(540, 185)
 $form.Controls.Add($grpLockScreen)
 
@@ -347,13 +366,13 @@ $btnBrowseLockLocal.Add_Click({
 })
 
 # Adjust Form Size and Output Group Box Location
-$form.Size = New-Object System.Drawing.Size(600, 680)
+$form.Size = New-Object System.Drawing.Size(600, 715)
 
 # Group Box: Output
 $grpOutput = New-Object System.Windows.Forms.GroupBox
 $grpOutput.Text = "Output Directory"
 $grpOutput.Font = $labelFont
-$grpOutput.Location = New-Object System.Drawing.Point(20, 460)
+$grpOutput.Location = New-Object System.Drawing.Point(20, 490)
 $grpOutput.Size = New-Object System.Drawing.Size(540, 70)
 $form.Controls.Add($grpOutput)
 
@@ -389,7 +408,7 @@ $btnBrowseOutput.Add_Click({
 
 # Status Label
 $lblStatus = New-Object System.Windows.Forms.Label
-$lblStatus.Location = New-Object System.Drawing.Point(20, 540)
+$lblStatus.Location = New-Object System.Drawing.Point(20, 570)
 $lblStatus.Size = New-Object System.Drawing.Size(540, 40)
 $lblStatus.Font = $textFont
 $lblStatus.ForeColor = [System.Drawing.Color]::DimGray
@@ -403,7 +422,7 @@ $btnGenerate.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawi
 $btnGenerate.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 212)
 $btnGenerate.ForeColor = [System.Drawing.Color]::White
 $btnGenerate.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$btnGenerate.Location = New-Object System.Drawing.Point(360, 580)
+$btnGenerate.Location = New-Object System.Drawing.Point(360, 615)
 $btnGenerate.Size = New-Object System.Drawing.Size(200, 40)
 $form.Controls.Add($btnGenerate)
 
@@ -420,6 +439,18 @@ $btnGenerate.Add_Click({
         $lockIsLocalDiff = $radLockLocal.Checked
         $lockIsUrlDiff = $radLockUrl.Checked
         $lockIsDiff = $lockIsLocalDiff -or $lockIsUrlDiff
+
+        # Wallpaper Style Mapping
+        $selectedStyle = if ($cmbWallpaperStyle.SelectedItem) { $cmbWallpaperStyle.SelectedItem.ToString() } else { "Fill" }
+        switch ($selectedStyle) {
+            "Fill"    { $wallpaperStyleVal = "10"; $tileWallpaperVal = "0" }
+            "Fit"     { $wallpaperStyleVal = "6";  $tileWallpaperVal = "0" }
+            "Stretch" { $wallpaperStyleVal = "2";  $tileWallpaperVal = "0" }
+            "Center"  { $wallpaperStyleVal = "0";  $tileWallpaperVal = "0" }
+            "Tile"    { $wallpaperStyleVal = "0";  $tileWallpaperVal = "1" }
+            "Span"    { $wallpaperStyleVal = "22"; $tileWallpaperVal = "0" }
+            default   { $wallpaperStyleVal = "10"; $tileWallpaperVal = "0" }
+        }
 
         if (!$setDesktop -and !$setLockScreen) {
             [System.Windows.Forms.MessageBox]::Show("You must configure at least one option: Desktop Background or Lock Screen.", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
@@ -522,6 +553,11 @@ $btnGenerate.Add_Click({
 if (!(Test-Path `"C:\Logs\DesktopBackground`")) { New-Item -ItemType Directory -Path `"C:\Logs\DesktopBackground`" -Force }
 Start-Transcript -Path `"C:\Logs\DesktopBackground\ApplyBackground.txt`" -Append
 `$destDesktop = "`$env:ProgramData\CorporateBackground\desktop_$fileName"
+
+# Set Wallpaper Position / Style in user registry ($selectedStyle)
+`$desktopReg = `"HKCU:\Control Panel\Desktop`"
+Set-ItemProperty -Path `$desktopReg -Name `"WallpaperStyle`" -Value "$wallpaperStyleVal" -Force
+Set-ItemProperty -Path `$desktopReg -Name `"TileWallpaper`" -Value "$tileWallpaperVal" -Force
 
 Add-Type -TypeDefinition @'
 using System;
@@ -813,6 +849,11 @@ if (!(Test-Path `"C:\Logs\DesktopBackground`")) { New-Item -ItemType Directory -
 Start-Transcript -Path `"C:\Logs\DesktopBackground\ApplyBackground.txt`" -Append
 `$destDesktop = "$destDesktopPath"
 
+# Set Wallpaper Position / Style in user registry ($selectedStyle)
+`$desktopReg = `"HKCU:\Control Panel\Desktop`"
+Set-ItemProperty -Path `$desktopReg -Name `"WallpaperStyle`" -Value "$wallpaperStyleVal" -Force
+Set-ItemProperty -Path `$desktopReg -Name `"TileWallpaper`" -Value "$tileWallpaperVal" -Force
+
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
@@ -1061,7 +1102,7 @@ if ((Test-Path "`$targetPath\DownloadBackgrounds.ps1") -and (Get-ScheduledTask -
 
 1. App Information
 Name: Corporate Desktop and Lock Screen Background
-Description: Sets the desktop background and optionally the lock screen, automatically applying to all users. Logs are written to C:\Logs\DesktopBackground for troubleshooting.
+Description: Sets the desktop background (Wallpaper Style: $selectedStyle) and optionally the lock screen, automatically applying to all users. Logs are written to C:\Logs\DesktopBackground for troubleshooting.
 Publisher: IT Department
 
 2. Program

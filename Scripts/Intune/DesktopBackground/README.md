@@ -9,6 +9,7 @@ It handles local files or remote image URLs, automatically downloads the Microso
 *   **Intuitive WinForms GUI:** Easily select and configure Desktop Background and Lock Screen management parameters.
 *   **Staggered Download Mode:** Built-in sleep randomizer (staggering) for remote image URL deployments to prevent rate-limiting when thousands of corporate endpoints download branding assets simultaneously.
 *   **Active Desktop Enforcements:** Prevents end-users from changing wallpaper or lock screens after deployment.
+*   **Custom Wallpaper Positioning:** Choose between Fill, Fit, Stretch, Center, Span, or Tile with automated user registry enforcement.
 *   **Automated Packaging:** Dynamically stages required files and automatically packs the bundle using the Microsoft Content Prep tool (`IntuneWinAppUtil.exe`), automatically detecting or downloading it across local folders, AppData cache, and PATH.
 *   **Auto-generated Assets:** Generates custom detection scripts (`DetectionScript.ps1`) and instructions (`InstallCommands.txt`) ready for the Intune Web Portal.
 
@@ -28,6 +29,7 @@ Dependencies: Windows Forms assemblies (built-in) and active internet connection
 2. Run `Create-IntuneBackgroundApp.ps1` (or use the one-liner Fast Execute snippet below).
 3. In the GUI form:
    - Configure **Desktop Background** settings (Local file or dynamic URL).
+   - Select **Wallpaper Style** (Fill, Fit, Stretch, Center, Span, or Tile).
    - Configure **Lock Screen** settings (same as desktop, a separate local file, or a separate URL).
    - Check options to lock/prevent users from modifying wallpapers.
    - Specify the target **Output Directory** for the packaged assets.
