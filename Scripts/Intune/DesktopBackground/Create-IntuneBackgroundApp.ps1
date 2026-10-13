@@ -135,6 +135,21 @@ $lblTitle.AutoSize = $true
 $lblTitle.ForeColor = [System.Drawing.Color]::FromArgb(0, 120, 212)
 $form.Controls.Add($lblTitle)
 
+# Package Version
+$lblVersion = New-Object System.Windows.Forms.Label
+$lblVersion.Text = "Package Version:"
+$lblVersion.Font = $labelFont
+$lblVersion.Location = New-Object System.Drawing.Point(365, 25)
+$lblVersion.AutoSize = $true
+$form.Controls.Add($lblVersion)
+
+$txtVersion = New-Object System.Windows.Forms.TextBox
+$txtVersion.Text = "2.0"
+$txtVersion.Font = $textFont
+$txtVersion.Location = New-Object System.Drawing.Point(475, 23)
+$txtVersion.Size = New-Object System.Drawing.Size(85, 25)
+$form.Controls.Add($txtVersion)
+
 # Group Box: Source Type
 $grpSource = New-Object System.Windows.Forms.GroupBox
 $grpSource.Text = "Desktop Background"
@@ -439,6 +454,12 @@ $btnGenerate.Add_Click({
         $lockIsLocalDiff = $radLockLocal.Checked
         $lockIsUrlDiff = $radLockUrl.Checked
         $lockIsDiff = $lockIsLocalDiff -or $lockIsUrlDiff
+
+        # Package Version
+        $rawVersion = $txtVersion.Text.Trim()
+        $cleanVersion = ($rawVersion -replace '[^a-zA-Z0-9\.\-]', '')
+        if ([string]::IsNullOrWhiteSpace($cleanVersion)) { $cleanVersion = "2.0" }
+        $versionTag = if ($cleanVersion -match '^[vV]') { $cleanVersion } else { "v$cleanVersion" }
 
         # Wallpaper Style Mapping
         $selectedStyle = if ($cmbWallpaperStyle.SelectedItem) { $cmbWallpaperStyle.SelectedItem.ToString() } else { "Fill" }
@@ -877,6 +898,9 @@ if (!(Test-Path `$targetPath)) { New-Item -ItemType Directory -Path `$targetPath
 if (!(Test-Path `"C:\Logs\DesktopBackground`")) { New-Item -ItemType Directory -Path `"C:\Logs\DesktopBackground`" -Force }
 Start-Transcript -Path `"C:\Logs\DesktopBackground\Install.txt`" -Force
 
+# Write version marker for Intune detection and update triggers
+Set-Content -Path "`$targetPath\version.txt" -Value "$cleanVersion" -Force
+
 # Performing initial downloads...
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 "@
@@ -1075,9 +1099,9 @@ exit 0
             throw "IntuneWinAppUtil failed to package the application. Exit code: $($process.ExitCode)"
         }
 
-        # Rename output .intunewin file to DesktopBackground_DDMMYY.intunewin
+        # Rename output .intunewin file to DesktopBackground_v<version>_DDMMYY.intunewin
         $dateStr = Get-Date -Format "ddMMyy"
-        $newWimName = "DesktopBackground_$dateStr.intunewin"
+        $newWimName = "DesktopBackground_${versionTag}_$dateStr.intunewin"
         $wimPath = Join-Path $outDir "Install.intunewin"
         $newWimPath = Join-Path $outDir $newWimName
         
@@ -1110,7 +1134,9 @@ exit 0
             if ($setDesktop) {
                 $detectionContent = @"
 `$targetPath = "`$env:ProgramData\CorporateBackground"
-if ((Test-Path "`$targetPath\ApplyBackground.ps1") -and (Get-ScheduledTask -TaskName 'ApplyCorporateBackground' -ErrorAction SilentlyContinue)) {
+`$versionFile = "`$targetPath\version.txt"
+`$versionMatch = (Test-Path `$versionFile) -and ((Get-Content `$versionFile -Raw -ErrorAction SilentlyContinue).Trim() -eq "$cleanVersion")
+if ((Test-Path "`$targetPath\ApplyBackground.ps1") -and (Get-ScheduledTask -TaskName 'ApplyCorporateBackground' -ErrorAction SilentlyContinue) -and `$versionMatch) {
     Write-Output "Detected"
     exit 0
 } else {
@@ -1121,8 +1147,10 @@ if ((Test-Path "`$targetPath\ApplyBackground.ps1") -and (Get-ScheduledTask -Task
                 # Lock Screen Only (Local)
                 $detectionContent = @"
 `$targetPath = "`$env:ProgramData\CorporateBackground"
+`$versionFile = "`$targetPath\version.txt"
+`$versionMatch = (Test-Path `$versionFile) -and ((Get-Content `$versionFile -Raw -ErrorAction SilentlyContinue).Trim() -eq "$cleanVersion")
 `$regVal = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Personalization" -Name "LockScreenImage" -ErrorAction SilentlyContinue).LockScreenImage
-if (`$regVal -and (Test-Path `$regVal)) {
+if (`$regVal -and (Test-Path `$regVal) -and `$versionMatch) {
     Write-Output "Detected"
     exit 0
 } else {
@@ -1134,7 +1162,9 @@ if (`$regVal -and (Test-Path `$regVal)) {
             # URL (Desktop or Lock Screen or Both)
             $detectionContent = @"
 `$targetPath = "`$env:ProgramData\CorporateBackground"
-if ((Test-Path "`$targetPath\DownloadBackgrounds.ps1") -and (Get-ScheduledTask -TaskName 'CorporateBackgroundDownloader' -ErrorAction SilentlyContinue)) {
+`$versionFile = "`$targetPath\version.txt"
+`$versionMatch = (Test-Path `$versionFile) -and ((Get-Content `$versionFile -Raw -ErrorAction SilentlyContinue).Trim() -eq "$cleanVersion")
+if ((Test-Path "`$targetPath\DownloadBackgrounds.ps1") -and (Get-ScheduledTask -TaskName 'CorporateBackgroundDownloader' -ErrorAction SilentlyContinue) -and `$versionMatch) {
     Write-Output "Detected"
     exit 0
 } else {
@@ -1149,8 +1179,9 @@ if ((Test-Path "`$targetPath\DownloadBackgrounds.ps1") -and (Get-ScheduledTask -
 === Intune Win32 App Deployment Configuration ===
 
 1. App Information
-Name: Corporate Desktop and Lock Screen Background
+Name: Corporate Desktop and Lock Screen Background ($versionTag)
 Description: Sets the desktop background (Wallpaper Style: $selectedStyle) and optionally the lock screen, automatically applying to all users. Logs are written to C:\Logs\DesktopBackground for troubleshooting.
+Version: $cleanVersion
 Publisher: IT Department
 
 2. Program
@@ -1172,6 +1203,8 @@ Rules format: Use a custom detection script
 Script file: Upload the DetectionScript.ps1 file generated in this folder.
 Run script as 32-bit processes on 64-bit clients: No
 Enforce script signature check: No
+
+*Note for updating existing Intune apps: When replacing your .intunewin package to push a new image or changes to existing devices, always upload the new DetectionScript.ps1 as well. Intune will compare the version tag ($cleanVersion), detect that existing devices need an update, and deploy the new package seamlessly.*
 "@
         $commandsFile = Join-Path $outDir "InstallCommands.txt"
         Set-Content -Path $commandsFile -Value $commandsContent -Force
