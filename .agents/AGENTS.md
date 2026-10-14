@@ -50,7 +50,10 @@ Scripts must be filed under the appropriate category directory in `Scripts/`:
    - `.PARAMETER`: Documentation for each parameter.
    - `.EXAMPLE`: Working command-line examples.
    - `.NOTES`: Author, date, version, and logging information.
-2. **WPF / GUI STA Threading**: Any script that uses WPF (`PresentationFramework`) must check its apartment state on launch. If not in Single-Threaded Apartment (`STA`) mode, it must automatically re-launch itself in STA mode:
+2. **Parameterization & RMM Environment Support**:
+   - Use `[CmdletBinding()]` and a structured `param()` block rather than hardcoded top-of-file placeholder strings.
+   - Where applicable for RMM/Intune deployment scripts, support fallback to environment variables (e.g. `$env:DATTO_PLATFORM`, `$env:DATTO_SITE_ID`) and validate installer exit codes (`Start-Process -Wait -PassThru`).
+3. **WPF / GUI STA Threading**: Any script that uses WPF (`PresentationFramework`) must check its apartment state on launch. If not in Single-Threaded Apartment (`STA`) mode, it must automatically re-launch itself in STA mode:
    ```powershell
    if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
        $scriptPath = if ($PSScriptRoot) { Join-Path $PSScriptRoot $MyInvocation.MyCommand.Name } else { $PSCommandPath }
@@ -58,10 +61,10 @@ Scripts must be filed under the appropriate category directory in `Scripts/`:
        exit
    }
    ```
-3. **Standardized Logging**:
-   - For background / automation scripts: Import and use `Modules/Logging/Logging.psm1` (writes to `C:\Logs` with `Write-ScriptLog`).
+4. **Standardized Logging**:
+   - For background / automation scripts: Import and use `Modules/Logging/Logging.psm1` (writes to `C:\Logs` with `Write-ScriptLog`) or write structured UK-timestamped logs (`dd/MM/yy HH:mm:ss`) to `C:\Logs\<ToolName>\`.
    - For standalone Win32 / Intune packagers: Write timestamped diagnostic logs to `C:\Log\<AppName>\` (`Install.log`, `Detection.log`, `Uninstall.log`, `Packager.log`). Standardize fallback to `%LOCALAPPDATA%\Log\<AppName>\` if `C:\Log` cannot be created by standard users.
-4. **PSScriptAnalyzer Compliance**: Code must pass linting defined in `PSScriptAnalyzerSettings.psd1`:
+5. **PSScriptAnalyzer Compliance**: Code must pass linting defined in `PSScriptAnalyzerSettings.psd1`:
    - Use approved PowerShell verbs (`Get-`, `Set-`, `Install-`, `Remove-`, `New-`, etc.).
    - Use singular nouns for custom functions.
    - Avoid cmdlet aliases (use `Get-ChildItem` instead of `ls`/`dir`, `Copy-Item` instead of `cp`/`copy`).
@@ -143,7 +146,7 @@ Every tool directory must contain a comprehensive `README.md` following this exa
 
 ---
 
-## 6. Repository Catalog & Cryptographic Baselining
+## 6. Repository Catalog, Metadata & Cryptographic Baselining
 
-1. **Update Repository Catalog**: Whenever a new script is added, register it in `PowerShell/README.md` under the repository directory structure or category description.
-2. **Mandatory Baseline Synchronization**: Whenever an agent creates, modifies, or refactors scripts in `PowerShell`, the agent MUST execute `npm run sync:baselines` in the `Helper` repository. This calculates SHA-256 digests and synchronizes Cloudflare D1 so the script immediately displays as `Verified` in the portal without manual user intervention.
+1. **Update Repository Catalog**: Whenever a new script is added or renamed, register it in `PowerShell/README.md` under the repository directory structure and category list.
+2. **Mandatory Baseline & Metadata Synchronization**: Whenever an agent creates, modifies, or refactors scripts or `README.md` files in `PowerShell`, the agent MUST execute `npm run sync:baselines` in the `Helper` repository (`c:\Users\james\OneDrive\Documents\GitHub\Helper`). This automatically regenerates `PowerShell/metadata.json` (used by the Helper Portal for dynamic folder/script descriptions) AND computes normalized SHA-256 digests to synchronize Cloudflare D1 `script_baselines` so the script immediately displays as `Verified` in the portal.

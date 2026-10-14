@@ -1,6 +1,6 @@
 {
   "repository": "PowerShell",
-  "generatedAt": "2026-10-14T21:04:22.477Z",
+  "generatedAt": "2026-10-14T21:18:15.267Z",
   "folders": {
     "docs": {
       "name": "docs",
@@ -780,7 +780,7 @@
       "name": "Install-DattoRmmAgent",
       "title": "Install Datto RMM Agent",
       "path": "Scripts/Software/Install-DattoRmmAgent",
-      "desc": "Downloads and silently installs the Datto RMM Agent using site credentials. This script is sanitized to use variables for site details.",
+      "desc": "Downloads and silently installs the Datto RMM Agent (CagService) onto a Windows endpoint using your target Datto platform subdomain and client Site UID. The script automatically verifies whether the agent is already installed, enforces TLS 1.2+, validates the downloaded binary, checks the installer exit code, confirms service registration, and cleans up temporary installation files.",
       "lastUpdated": "2026-07-16T17:58:47+01:00",
       "childCount": 1,
       "isGuideOrPackage": true
@@ -789,7 +789,7 @@
       "name": "Install-DattoRmmAgent",
       "title": "Install Datto RMM Agent",
       "path": "Scripts/Software/Install-DattoRmmAgent",
-      "desc": "Downloads and silently installs the Datto RMM Agent using site credentials. This script is sanitized to use variables for site details.",
+      "desc": "Downloads and silently installs the Datto RMM Agent (CagService) onto a Windows endpoint using your target Datto platform subdomain and client Site UID. The script automatically verifies whether the agent is already installed, enforces TLS 1.2+, validates the downloaded binary, checks the installer exit code, confirms service registration, and cleans up temporary installation files.",
       "lastUpdated": "2026-07-16T17:58:47+01:00",
       "childCount": 1,
       "isGuideOrPackage": true
