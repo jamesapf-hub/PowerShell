@@ -1,0 +1,46 @@
+# -------------------------------------------------------------------------
+# Author: JP
+# Date: 06/07/26
+# Log Location: $env:SystemDrive\Logs\ScheduledTaskWindowsAppLogOff\KioskWatchdog.log
+# Description: Enhanced monitoring to capture both UWP execution names.
+# -------------------------------------------------------------------------
+
+$LogFolder = "$env:SystemDrive\Logs\ScheduledTaskWindowsAppLogOff"
+$LogPath = "$LogFolder\KioskWatchdog.log"
+
+if (-not (Test-Path $LogFolder)) { New-Item -ItemType Directory -Path $LogFolder -Force | Out-Null }
+
+function Write-KioskLog ($Message) {
+    $Timestamp = Get-Date -Format "dd/MM/yy HH:mm:ss"
+    "[$Timestamp] $Message" | Out-File -FilePath $LogPath -Append
+}
+
+Write-KioskLog "Kiosk Watchdog v2 Started."
+
+try {
+    # Wait for either process variations to launch
+    $App = $null
+    while ($true) {
+        $App = Get-Process | Where-Object { $_.Name -in @("Windows365", "WindowsApp") } | Select-Object -First 1
+        if ($App) {
+            Write-KioskLog "Execution detected: $($App.Name) (PID: $($App.Id)). Monitoring session..."
+            break
+        }
+        Start-Sleep -Seconds 2
+    }
+
+    # Wait for the monitored process window to close
+    $App | Wait-Process -ErrorAction Stop
+    Write-KioskLog "App exit detected. Initiating forceful session shutdown."
+
+    # Absolute session logoff command via cmd target override
+    $SessionId = (Get-CimInstance -ClassName Win32_Process -Filter "Name='explorer.exe'" -ErrorAction Stop | Select-Object -First 1).SessionId
+    if ($SessionId) {
+        Start-Process "cmd.exe" -ArgumentList "/c logoff $SessionId" -WindowStyle Hidden -ErrorAction Stop
+    } else {
+        & logoff
+    }
+} catch {
+    Write-KioskLog "ERROR: Kiosk Watchdog encountered an unexpected error: $($_.Exception.Message)"
+    exit 1
+}

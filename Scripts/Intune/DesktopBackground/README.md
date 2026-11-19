@@ -1,0 +1,57 @@
+# Intune Desktop Background Packager Guide
+
+## Overview
+A Windows Forms GUI utility designed to automate the building, staging, and packaging of corporate Desktop Background and Lock Screen deployments for Microsoft Intune. 
+
+It handles local files or remote image URLs, automatically downloads the Microsoft Win32 Content Prep Tool (`IntuneWinAppUtil.exe`), compiles the required scripts (`Install.ps1`, `ApplyBackground.ps1`, `DownloadBackgrounds.ps1`, and `Uninstall.ps1`), packages them into a `.intunewin` bundle, and generates custom detection scripts and setup configurations.
+
+### Key Features
+*   **Intuitive WinForms GUI:** Easily select and configure Desktop Background and Lock Screen management parameters.
+*   **Staggered Download Mode:** Built-in sleep randomizer (staggering) for remote image URL deployments to prevent rate-limiting when thousands of corporate endpoints download branding assets simultaneously.
+*   **Active Desktop Enforcements:** Prevents end-users from changing wallpaper or lock screens after deployment.
+*   **Custom Wallpaper Positioning:** Choose between Fill, Fit, Stretch, Center, Span, or Tile with automated user registry enforcement.
+*   **Automated Packaging:** Dynamically stages required files and automatically packs the bundle using the Microsoft Content Prep tool (`IntuneWinAppUtil.exe`), automatically detecting or downloading it across local folders, AppData cache, and PATH.
+*   **Auto-generated Assets:** Generates custom detection scripts (`DetectionScript.ps1`) and instructions (`InstallCommands.txt`) ready for the Intune Web Portal.
+
+> [!NOTE]
+> **Log File Location:** `C:\Logs\DesktopBackground\`
+
+## Prerequisites
+OS Support: Windows 10 / 11
+PowerShell: Windows PowerShell 5.1+
+Permissions: Local Administrator rights required
+Dependencies: Windows Forms assemblies (built-in) and active internet connection (to download `IntuneWinAppUtil.exe` if not present).
+
+## Walkthrough & Usage Guide
+
+### 1. Step-by-Step Instructions
+1. Open an elevated PowerShell prompt (Run as Administrator).
+2. Run `Create-IntuneBackgroundApp.ps1` (or use the one-liner Fast Execute snippet below).
+3. In the GUI form:
+   - Configure **Desktop Background** settings (Local file or dynamic URL).
+   - Select **Wallpaper Style** (Fill, Fit, Stretch, Center, Span, or Tile).
+   - Configure **Lock Screen** settings (same as desktop, a separate local file, or a separate URL).
+   - Check options to lock/prevent users from modifying wallpapers.
+   - Specify the target **Output Directory** for the packaged assets.
+4. Click **Generate Intune Package**.
+5. Once complete, check your specified output folder for:
+   - `DesktopBackground_[Date].intunewin`
+   - `DetectionScript.ps1`
+   - `InstallCommands.txt`
+6. Upload the `.intunewin` package to Intune and configure it using the parameters generated in `InstallCommands.txt` and the detection logic in `DetectionScript.ps1`.
+
+### 2. Logging & Outputs
+Staging files and execution logs are generated temporarily inside an isolated temp staging folder and cleaned up after compilation.
+Installation and update history on endpoints are saved to `C:\Logs\DesktopBackground\`:
+*   `C:\Logs\DesktopBackground\Install.log`
+*   `C:\Logs\DesktopBackground\ApplyBackground.log`
+*   `C:\Logs\DesktopBackground\DownloadBackgrounds.log` (Daily check-in task)
+*   `C:\Logs\DesktopBackground\Detection.log`
+*   `C:\Logs\DesktopBackground\Uninstall.log`
+
+## Fast Execute
+> [!TIP]
+> **Short Branded URL (phnx.it):**
+> ```powershell
+> irm https://phnx.it/INTUNBG | iex
+> ```

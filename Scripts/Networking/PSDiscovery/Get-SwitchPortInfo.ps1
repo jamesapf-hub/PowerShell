@@ -1,0 +1,385 @@
+<#
+.SYNOPSIS
+    Queries the local network adapter for CDP/LLDP packets to identify the connected switch port.
+.DESCRIPTION
+    This script checks for and installs the PSDiscoveryProtocol module if missing,
+    captures discovery packets, and outputs the switch name, port, VLAN, and model.
+    It logs progress to C:\Logs\PSDiscovery\ and appends network info to a central CSV file.
+.EXAMPLE
+    .\Get-SwitchPortInfo.ps1
+#>
+
+param (
+    [Parameter(Mandatory = $false)]
+    [string]$Customer = "Default"
+)
+
+# 1. Locate and import the Logging module dynamically
+$ModuleImported = $false
+
+if ($MyInvocation.MyCommand.Path) {
+    $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $CandidatePaths = @(
+        (Join-Path $ScriptDir "..\Modules\Logging\Logging.psm1"),
+        (Join-Path $ScriptDir "Modules\Logging\Logging.psm1"),
+        (Join-Path $ScriptDir "..\..\Modules\Logging\Logging.psm1"),
+        (Join-Path $ScriptDir "..\..\..\Modules\Logging\Logging.psm1")
+    )
+
+    foreach ($Path in $CandidatePaths) {
+        if (Test-Path $Path) {
+            try {
+                Import-Module $Path -Force -ErrorAction Stop
+                $ModuleImported = $true
+                break
+            } catch {}
+        }
+    }
+}
+
+if (-not $ModuleImported) {
+    # Define fallback logging functions so the script can run standalone/remotely (e.g., from raw GitHub URL)
+    function Initialize-ScriptLogging {
+        param (
+            [string]$ScriptPath,
+            [string]$LogDirectory
+        )
+        if ([string]::IsNullOrEmpty($LogDirectory)) {
+            $SystemDrive = $env:SystemDrive
+            if ([string]::IsNullOrEmpty($SystemDrive)) {
+                $SystemDrive = "C:"
+            }
+            $LogDirectory = Join-Path $SystemDrive "Logs\PSDiscovery"
+        }
+        if (-not (Test-Path -Path $LogDirectory -PathType Container)) {
+            try {
+                $null = New-Item -Path $LogDirectory -ItemType Directory -Force -ErrorAction Stop
+            } catch {}
+        }
+        $DateString = Get-Date -Format "dd-MM-yy"
+        return Join-Path $LogDirectory "Get-SwitchPortInfo_${DateString}.log"
+    }
+
+    function Write-ScriptLog {
+        param (
+            [string]$Message,
+            [string]$LogFile,
+            [string]$Level = 'INFO'
+        )
+        $Timestamp = Get-Date -Format "dd\/MM\/yy HH:mm:ss"
+        $LogEntry = "[$Timestamp] [$Level] $Message"
+        switch ($Level) {
+            'ERROR'   { Write-Host $LogEntry -ForegroundColor Red }
+            'WARNING' { Write-Host $LogEntry -ForegroundColor Yellow }
+            'SUCCESS' { Write-Host $LogEntry -ForegroundColor Green }
+            Default   { Write-Host $LogEntry -ForegroundColor White }
+        }
+        try {
+            Add-Content -Path $LogFile -Value $LogEntry -ErrorAction Stop
+        } catch {}
+    }
+}
+
+# Helper function to prompt and select/create a customer name
+function Get-CustomerName {
+    param (
+        [string]$OutputDir
+    )
+
+    # Scan for existing CSVs: SwitchInventory_*.csv or SwitchInventory.csv
+    $ExistingCustomers = @()
+    if (Test-Path $OutputDir) {
+        $Files = try { Get-ChildItem -Path $OutputDir -Filter "SwitchInventory*.csv" -ErrorAction Stop } catch { @() }
+        foreach ($File in $Files) {
+            if ($File.Name -eq "SwitchInventory.csv") {
+                $ExistingCustomers += "Default"
+            }
+            elseif ($File.Name -match "^SwitchInventory_(.+)\.csv$") {
+                $ExistingCustomers += $Matches[1]
+            }
+        }
+    }
+    # Unique and sorted customer names
+    $ExistingCustomers = $ExistingCustomers | Select-Object -Unique | Sort-Object
+
+    Clear-Host
+    Write-Host "==========================================================" -ForegroundColor Cyan
+    Write-Host "             Select Customer/Company                     " -ForegroundColor Cyan
+    Write-Host "==========================================================" -ForegroundColor Cyan
+    
+    if ($ExistingCustomers.Count -gt 0) {
+        Write-Host "Found the following existing customer inventories:" -ForegroundColor Yellow
+        for ($i = 0; $i -lt $ExistingCustomers.Count; $i++) {
+            Write-Host " [$($i + 1)] $($ExistingCustomers[$i])"
+        }
+        Write-Host " [$($ExistingCustomers.Count + 1)] (Create a new company/customer)"
+        Write-Host ""
+        $Choice = Read-Host "Choose an option (or type a new name directly)"
+        
+        $ParsedInt = 0
+        if ([int]::TryParse($Choice, [ref]$ParsedInt)) {
+            $Index = $ParsedInt - 1
+            if ($Index -ge 0 -and $Index -lt $ExistingCustomers.Count) {
+                return $ExistingCustomers[$Index]
+            }
+            elseif ($Index -eq $ExistingCustomers.Count) {
+                $NewName = Read-Host "Enter new Customer/Company name"
+                if (-not [string]::IsNullOrWhiteSpace($NewName)) {
+                    # Sanitize name to avoid invalid file characters
+                    return ($NewName -replace '[\\/:*?"<>|]', '')
+                }
+            }
+        }
+        else {
+            if (-not [string]::IsNullOrWhiteSpace($Choice)) {
+                # User typed a name directly rather than choosing a menu number
+                return ($Choice -replace '[\\/:*?"<>|]', '')
+            }
+        }
+    }
+    else {
+        # No existing customers
+        $NewName = Read-Host "Enter Customer/Company name"
+        if (-not [string]::IsNullOrWhiteSpace($NewName)) {
+            return ($NewName -replace '[\\/:*?"<>|]', '')
+        }
+    }
+    return $null
+}
+
+# Helper function to initialize CSV file with headers if it doesn't exist
+function Initialize-CustomerCsv {
+    param (
+        [string]$Path,
+        [string]$CustomerName,
+        [string]$LogFile
+    )
+
+    if (-not (Test-Path $Path)) {
+        try {
+            $ParentDir = Split-Path $Path -Parent
+            if (-not (Test-Path $ParentDir)) {
+                $null = New-Item -Path $ParentDir -ItemType Directory -Force -ErrorAction Stop
+            }
+            $Headers = '"Timestamp","ComputerName","CustomerName","ProtocolType","SwitchDevice","SwitchPort","VLAN","SwitchIP","SwitchModel"'
+            $Headers | Out-File -FilePath $Path -Encoding utf8 -Force -ErrorAction Stop
+            Write-ScriptLog -Message "Created new empty CSV inventory for '$CustomerName' at $Path" -LogFile $LogFile -Level SUCCESS
+        }
+        catch {
+            Write-ScriptLog -Message "Failed to initialize new CSV at $Path. Error: $_" -LogFile $LogFile -Level ERROR
+        }
+    }
+}
+
+# Define the log and inventory output directory
+$OutputDir = "$env:SystemDrive\Logs\PSDiscovery"
+$CustomerName = $Customer
+$CsvPath = if ($CustomerName -eq "Default") { Join-Path $OutputDir "SwitchInventory.csv" } else { Join-Path $OutputDir "SwitchInventory_$CustomerName.csv" }
+
+# 2. Initialize logging (creates C:\Logs\PSDiscovery if it doesn't exist)
+$ScriptName = $MyInvocation.MyCommand.Name
+$ScriptPath = $MyInvocation.MyCommand.Path
+$LogFile = Initialize-ScriptLogging -ScriptPath $ScriptPath -LogDirectory $OutputDir
+
+# Ensure current customer CSV exists
+Initialize-CustomerCsv -Path $CsvPath -CustomerName $CustomerName -LogFile $LogFile
+
+try {
+    Write-ScriptLog -Message "Starting Get-SwitchPortInfo execution." -LogFile $LogFile -Level INFO
+
+    # 3. Check and import PSDiscoveryProtocol dependency
+    Write-ScriptLog -Message "Checking for PSDiscoveryProtocol module dependency..." -LogFile $LogFile -Level INFO
+    
+    $LocalModulePath = Join-Path $ScriptDir "Modules\PSDiscoveryProtocol\PSDiscoveryProtocol.psd1"
+    $ModuleLoaded = $false
+    
+    if (Test-Path $LocalModulePath) {
+        try {
+            Import-Module $LocalModulePath -Force -ErrorAction Stop
+            $ModuleLoaded = $true
+            Write-ScriptLog -Message "Imported PSDiscoveryProtocol dynamically from local Modules folder." -LogFile $LogFile -Level SUCCESS
+        }
+        catch {
+            Write-ScriptLog -Message "Failed to load local PSDiscoveryProtocol: $_" -LogFile $LogFile -Level WARNING
+        }
+    }
+    
+    if (-not $ModuleLoaded) {
+        if (-not (Get-Module -ListAvailable -Name PSDiscoveryProtocol)) {
+            Write-ScriptLog -Message "PSDiscoveryProtocol module is not installed. Attempting installation for CurrentUser..." -LogFile $LogFile -Level WARNING
+            try {
+                Install-Module -Name PSDiscoveryProtocol -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+                Write-ScriptLog -Message "PSDiscoveryProtocol installed successfully." -LogFile $LogFile -Level SUCCESS
+                Import-Module -Name PSDiscoveryProtocol -Force -ErrorAction Stop
+                $ModuleLoaded = $true
+            } 
+            catch {
+                Write-ScriptLog -Message "Auto-installation failed. Please run 'Install-Module PSDiscoveryProtocol -Scope CurrentUser' in an elevated console." -LogFile $LogFile -Level ERROR
+                throw $_
+            }
+        }
+        else {
+            Write-ScriptLog -Message "PSDiscoveryProtocol module already installed. Importing..." -LogFile $LogFile -Level SUCCESS
+            Import-Module -Name PSDiscoveryProtocol -Force -ErrorAction Stop
+            $ModuleLoaded = $true
+        }
+    }
+
+    # 4. Interactive Menu Loop
+    $ExitMenu = $false
+    $FirstRun = $true
+    while (-not $ExitMenu) {
+        if (-not $FirstRun) {
+            Clear-Host
+        }
+        $FirstRun = $false
+        Write-Host "==========================================================" -ForegroundColor Cyan
+        Write-Host "             PSDiscovery Switch Utility                  " -ForegroundColor Cyan
+        Write-Host "==========================================================" -ForegroundColor Cyan
+        Write-Host " Current Customer/Company: $CustomerName" -ForegroundColor Yellow
+        Write-Host " Current CSV Destination:  $CsvPath" -ForegroundColor DarkGray
+        Write-Host "==========================================================" -ForegroundColor Cyan
+        Write-Host " 1. Capture/Update Switch Port Info (CDP/LLDP)" -ForegroundColor White
+        Write-Host " 2. View Switch Inventory CSV File" -ForegroundColor White
+        Write-Host " 3. Change Current Customer/Company" -ForegroundColor White
+        Write-Host " 4. View Switch Discovery Logs" -ForegroundColor White
+        Write-Host " 5. Install / Reinstall PSDiscovery Locally (For Offline Use)" -ForegroundColor White
+        Write-Host " 6. Exit" -ForegroundColor White
+        Write-Host "==========================================================" -ForegroundColor Cyan
+        Write-Host ""
+        
+        $Selection = Read-Host "Enter your choice [1-6]"
+        Write-Host ""
+        
+        switch ($Selection) {
+            "1" {
+                Write-ScriptLog -Message "Starting packet capture for customer: $CustomerName..." -LogFile $LogFile -Level INFO
+                Write-ScriptLog -Message "Listening for CDP/LLDP packets on network interfaces (this may take up to 60 seconds)..." -LogFile $LogFile -Level INFO
+ 
+                try {
+                    $Packet = Invoke-DiscoveryProtocolCapture -ErrorAction Stop
+                }
+                catch {
+                    Write-ScriptLog -Message "Capture command failed. Make sure you are running as Administrator or have WinPcap/Npcap installed if required." -LogFile $LogFile -Level ERROR
+                    $Packet = $null
+                }
+ 
+                if ($Packet) {
+                    Write-ScriptLog -Message "Packet(s) captured successfully. Parsing discovery data..." -LogFile $LogFile -Level INFO
+                    $Data = Get-DiscoveryProtocolData -Packet $Packet
+ 
+                    if ($Data) {
+                        $Records = [System.Collections.Generic.List[PSCustomObject]]::new()
+ 
+                        foreach ($Connection in $Data) {
+                            $Device = $Connection.Device
+                            $Port = $Connection.Port
+                            $VLAN = $Connection.VLAN
+                            $Model = $Connection.Model
+                            $IP = $Connection.IPAddress
+                            $Type = $Connection.Type
+ 
+                            # Format human-readable console/log message
+                            $InfoMsg = "[$Type] Connected to Device: $Device | Port: $Port | VLAN: $VLAN | Switch IP: $IP | Switch Model: $Model"
+                            Write-ScriptLog -Message $InfoMsg -LogFile $LogFile -Level SUCCESS
+ 
+                            # Build record object for CSV export
+                            $Record = [PSCustomObject]@{
+                                Timestamp    = (Get-Date -Format "dd/MM/yy HH:mm:ss")
+                                ComputerName = $env:COMPUTERNAME
+                                CustomerName = $CustomerName
+                                ProtocolType = $Type
+                                SwitchDevice = $Device
+                                SwitchPort   = $Port
+                                VLAN         = $VLAN
+                                SwitchIP     = $IP
+                                SwitchModel  = $Model
+                            }
+                            $Records.Add($Record)
+                        }
+ 
+                        # Export/Append findings to the CSV file
+                        try {
+                            $Records | Export-Csv -Path $CsvPath -Append -NoTypeInformation -ErrorAction Stop
+                            Write-ScriptLog -Message "Appended discovery findings to CSV inventory: $CsvPath" -LogFile $LogFile -Level SUCCESS
+                        }
+                        catch {
+                            Write-ScriptLog -Message "Failed to write results to CSV file. Error: $_" -LogFile $LogFile -Level ERROR
+                        }
+                    }
+                    else {
+                        Write-ScriptLog -Message "Captured packets, but no readable CDP or LLDP discovery data could be extracted." -LogFile $LogFile -Level WARNING
+                    }
+                }
+                else {
+                    Write-ScriptLog -Message "No CDP or LLDP packets were received. Verify the network adapter is connected to a managed switch that has CDP or LLDP enabled." -LogFile $LogFile -Level WARNING
+                }
+            }
+            "2" {
+                if (Test-Path $CsvPath) {
+                    Write-Host "--- Switch Inventory CSV (Customer: $CustomerName | Path: $CsvPath) ---" -ForegroundColor Yellow
+                    Import-Csv -Path $CsvPath | Format-Table -AutoSize
+                }
+                else {
+                    Write-Host "No Switch Inventory CSV found for Customer '$CustomerName' at $CsvPath." -ForegroundColor Red
+                    Write-Host "Please run the discovery first (Option 1) or change the customer." -ForegroundColor Red
+                }
+            }
+            "3" {
+                $NewCust = Get-CustomerName -OutputDir $OutputDir
+                if ($NewCust) {
+                    $CustomerName = $NewCust
+                    # Update CSV Path dynamically
+                    if ($CustomerName -eq "Default") {
+                        $CsvPath = Join-Path $OutputDir "SwitchInventory.csv"
+                    }
+                    else {
+                        $CsvPath = Join-Path $OutputDir "SwitchInventory_$CustomerName.csv"
+                    }
+                    Write-ScriptLog -Message "Switched current customer to: $CustomerName" -LogFile $LogFile -Level SUCCESS
+                    
+                    # Ensure CSV exists
+                    Initialize-CustomerCsv -Path $CsvPath -CustomerName $CustomerName -LogFile $LogFile
+                }
+            }
+            "4" {
+                if (Test-Path $LogFile) {
+                    Write-Host "--- Recent Log Entries (Path: $LogFile) ---" -ForegroundColor Yellow
+                    Get-Content -Path $LogFile -Tail 20
+                }
+                else {
+                    Write-Host "Log file not found at $LogFile." -ForegroundColor Red
+                }
+            }
+            "5" {
+                $InfoScript = Join-Path $ScriptDir "get-switchinfo.ps1"
+                if (Test-Path $InfoScript) {
+                    Write-Host "Running local PSDiscovery Installer..." -ForegroundColor Cyan
+                    & $InfoScript -Install -ForceInstall
+                }
+                else {
+                    Write-Host "[!] Could not locate get-switchinfo.ps1 to run the installer." -ForegroundColor Red
+                }
+            }
+            "6" {
+                $ExitMenu = $true
+                Write-ScriptLog -Message "User exited the interactive menu." -LogFile $LogFile -Level INFO
+                Write-Host "Thank you for using PSDiscovery Switch Utility!" -ForegroundColor Green
+            }
+            Default {
+                Write-Host "Invalid selection. Please enter a number between 1 and 6." -ForegroundColor Red
+            }
+        }
+        
+        if (-not $ExitMenu) {
+            Write-Host ""
+            Read-Host "Press Enter to continue..."
+        }
+    }
+}
+catch {
+    $ErrorMessage = $_.Exception.Message
+    Write-ScriptLog -Message "CRITICAL ERROR: $ErrorMessage" -LogFile $LogFile -Level ERROR
+    Write-ScriptLog -Message "Stack Trace: $($_.ScriptStackTrace)" -LogFile $LogFile -Level ERROR
+    exit 1
+}
