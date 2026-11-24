@@ -1,13 +1,13 @@
 {
   "repository": "PowerShell",
-  "generatedAt": "2026-11-19T21:32:56.698Z",
+  "generatedAt": "2026-11-24T16:10:07.815Z",
   "folders": {
     "docs": {
       "name": "docs",
       "title": "docs",
       "path": "docs",
       "desc": "PowerShell automation scripts inside docs.",
-      "lastUpdated": "2026-07-29T18:49:03+01:00",
+      "lastUpdated": "2026-07-29T19:00:14.637Z",
       "childCount": 0,
       "isGuideOrPackage": false
     },
@@ -16,7 +16,7 @@
       "title": "Logging",
       "path": "Modules/Logging",
       "desc": "PowerShell automation scripts inside Logging.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 0,
       "isGuideOrPackage": false
     },
@@ -25,7 +25,7 @@
       "title": "Logging",
       "path": "Modules/Logging",
       "desc": "PowerShell automation scripts inside Logging.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 0,
       "isGuideOrPackage": false
     },
@@ -34,7 +34,7 @@
       "title": "Modules",
       "path": "Modules",
       "desc": "PowerShell automation and scripts for Modules: Logging.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": false
     },
@@ -43,7 +43,7 @@
       "title": "Get Azure VM Details",
       "path": "Scripts/Azure/HelpfulTools/Get-AzureVmDetails",
       "desc": "Queries Azure IMDS metadata to display and log VM configuration, network IPs, subscription details, and region info.",
-      "lastUpdated": "2026-07-29T18:49:03+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -52,7 +52,7 @@
       "title": "Get Azure VM Details",
       "path": "Scripts/Azure/HelpfulTools/Get-AzureVmDetails",
       "desc": "Queries Azure IMDS metadata to display and log VM configuration, network IPs, subscription details, and region info.",
-      "lastUpdated": "2026-07-29T18:49:03+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -61,7 +61,7 @@
       "title": "Helpful Tools",
       "path": "Scripts/Azure/HelpfulTools",
       "desc": "Diagnostic, inspection, and utility scripts for Azure environment auditing and management.",
-      "lastUpdated": "2026-07-29T18:49:03+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": false
     },
@@ -70,7 +70,7 @@
       "title": "Helpful Tools",
       "path": "Scripts/Azure/HelpfulTools",
       "desc": "Diagnostic, inspection, and utility scripts for Azure environment auditing and management.",
-      "lastUpdated": "2026-07-29T18:49:03+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": false
     },
@@ -79,7 +79,7 @@
       "title": "Azure",
       "path": "Scripts/Azure",
       "desc": "Scripts and automation tools for Azure Infrastructure, Virtual Machines, Cloud Identity, and Resource Management.",
-      "lastUpdated": "2026-07-29T18:49:03+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": false
     },
@@ -88,7 +88,7 @@
       "title": "Azure",
       "path": "Scripts/Azure",
       "desc": "Scripts and automation tools for Azure Infrastructure, Virtual Machines, Cloud Identity, and Resource Management.",
-      "lastUpdated": "2026-07-29T18:49:03+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": false
     },
@@ -97,7 +97,7 @@
       "title": "Adobe Orphan Installer Patch Cleaner",
       "path": "Scripts/Clean Up Tools/CleanAdobeOrphanInstallers",
       "desc": "Cleans Adobe installer patch files.",
-      "lastUpdated": "2026-08-24T20:45:58+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -106,7 +106,7 @@
       "title": "Adobe Orphan Installer Patch Cleaner",
       "path": "Scripts/Clean Up Tools/CleanAdobeOrphanInstallers",
       "desc": "Cleans Adobe installer patch files.",
-      "lastUpdated": "2026-08-24T20:45:58+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -115,7 +115,7 @@
       "title": "Windows Update Cache Cleanup",
       "path": "Scripts/Clean Up Tools/ClearWindowsUpdateCache",
       "desc": "Clears the SoftwareDistribution cache.",
-      "lastUpdated": "2026-07-29T18:35:17+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -124,7 +124,7 @@
       "title": "Windows Update Cache Cleanup",
       "path": "Scripts/Clean Up Tools/ClearWindowsUpdateCache",
       "desc": "Clears the SoftwareDistribution cache.",
-      "lastUpdated": "2026-07-29T18:35:17+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -133,7 +133,7 @@
       "title": "Remove Old User Profiles",
       "path": "Scripts/Clean Up Tools/RemoveOldUserProfiles",
       "desc": "Removes old Active Directory and Azure AD user profiles from the system.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -142,7 +142,7 @@
       "title": "Remove Old User Profiles",
       "path": "Scripts/Clean Up Tools/RemoveOldUserProfiles",
       "desc": "Removes old Active Directory and Azure AD user profiles from the system.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -151,7 +151,7 @@
       "title": "System Temp Files & Recycle Bin Cleaner",
       "path": "Scripts/Clean Up Tools/SystemTempCleaner",
       "desc": "Cleans Windows system temp files and cache.",
-      "lastUpdated": "2026-07-29T18:35:17+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -160,7 +160,7 @@
       "title": "System Temp Files & Recycle Bin Cleaner",
       "path": "Scripts/Clean Up Tools/SystemTempCleaner",
       "desc": "Cleans Windows system temp files and cache.",
-      "lastUpdated": "2026-07-29T18:35:17+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -169,7 +169,7 @@
       "title": "Windows Upgrade Folder Cleanup",
       "path": "Scripts/Clean Up Tools/TidyUpWindows11",
       "desc": "Removes Windows 11 upgrade leftovers.",
-      "lastUpdated": "2026-07-29T18:35:17+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -178,7 +178,7 @@
       "title": "Windows Upgrade Folder Cleanup",
       "path": "Scripts/Clean Up Tools/TidyUpWindows11",
       "desc": "Removes Windows 11 upgrade leftovers.",
-      "lastUpdated": "2026-07-29T18:35:17+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -187,7 +187,7 @@
       "title": "Scripts",
       "path": "Scripts/Clean Up Tools/UltimateCleanUp/Scripts",
       "desc": "PowerShell automation and scripts for Scripts: 01 SystemTempCleaner, 03 CleanAdobeOrphanInstallers, 04 ClearWindowsUpdateCache, 05 RemoveOldUserProfiles, and more.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 5,
       "isGuideOrPackage": false
     },
@@ -196,7 +196,7 @@
       "title": "Scripts",
       "path": "Scripts",
       "desc": "PowerShell automation and scripts for Scripts: Get Azure VM Details, Adobe Orphan Installer Patch Cleaner, Windows Update Cache Cleanup, Remove Old User Profiles, and more.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 10,
       "isGuideOrPackage": false
     },
@@ -205,7 +205,7 @@
       "title": "Ultimate PC CleanUp Utility",
       "path": "Scripts/Clean Up Tools/UltimateCleanUp",
       "desc": "The ultimate self-contained PC cleanup utility.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 2,
       "isGuideOrPackage": true
     },
@@ -214,7 +214,7 @@
       "title": "Ultimate PC CleanUp Utility",
       "path": "Scripts/Clean Up Tools/UltimateCleanUp",
       "desc": "The ultimate self-contained PC cleanup utility.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 2,
       "isGuideOrPackage": true
     },
@@ -223,7 +223,7 @@
       "title": "Clean Up Tools",
       "path": "Scripts/Clean Up Tools",
       "desc": "Automated utilities to clean system caches, remove temp files, and reclaim disk space.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 6,
       "isGuideOrPackage": false
     },
@@ -232,7 +232,7 @@
       "title": "Clean Up Tools",
       "path": "Scripts/Clean Up Tools",
       "desc": "Automated utilities to clean system caches, remove temp files, and reclaim disk space.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 6,
       "isGuideOrPackage": false
     },
@@ -241,7 +241,7 @@
       "title": "Set Power Plan Configuration",
       "path": "Scripts/Configuration/Set-PowerPlan",
       "desc": "Configures a high-performance power plan scheme. It disables sleep mode, standby, monitor sleep timers, and USB selective suspend to prevent terminal locks.",
-      "lastUpdated": "2026-07-29T18:49:03+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -250,7 +250,7 @@
       "title": "Set Power Plan Configuration",
       "path": "Scripts/Configuration/Set-PowerPlan",
       "desc": "Configures a high-performance power plan scheme. It disables sleep mode, standby, monitor sleep timers, and USB selective suspend to prevent terminal locks.",
-      "lastUpdated": "2026-07-29T18:49:03+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -259,7 +259,7 @@
       "title": "Set System Language and Keyboard Locales (UK English)",
       "path": "Scripts/Configuration/Set-SystemLanguageUK",
       "desc": "Configures regional settings, user locale, system locale, and keyboard layouts to United Kingdom English (en-GB).",
-      "lastUpdated": "2026-07-29T18:49:03+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -268,7 +268,7 @@
       "title": "Set System Language and Keyboard Locales (UK English)",
       "path": "Scripts/Configuration/Set-SystemLanguageUK",
       "desc": "Configures regional settings, user locale, system locale, and keyboard layouts to United Kingdom English (en-GB).",
-      "lastUpdated": "2026-07-29T18:49:03+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -277,7 +277,7 @@
       "title": "Set VNC Password Configuration",
       "path": "Scripts/Configuration/Set-VncPassword",
       "desc": "Configures and resets TightVNC / UltraVNC server administrative passwords in the system registry.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -286,7 +286,7 @@
       "title": "Set VNC Password Configuration",
       "path": "Scripts/Configuration/Set-VncPassword",
       "desc": "Configures and resets TightVNC / UltraVNC server administrative passwords in the system registry.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -295,7 +295,7 @@
       "title": "Configuration",
       "path": "Scripts/Configuration",
       "desc": "Scripts for setting standard OS parameters, registry configurations, and profile adjustments.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 3,
       "isGuideOrPackage": false
     },
@@ -304,7 +304,7 @@
       "title": "Configuration",
       "path": "Scripts/Configuration",
       "desc": "Scripts for setting standard OS parameters, registry configurations, and profile adjustments.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 3,
       "isGuideOrPackage": false
     },
@@ -313,7 +313,7 @@
       "title": "Toggle Privacy Mode",
       "path": "Scripts/Datto/TogglePrivacyMode",
       "desc": "Toggles the 'PrivacyMode' setting in Datto RMM.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -322,7 +322,7 @@
       "title": "Toggle Privacy Mode",
       "path": "Scripts/Datto/TogglePrivacyMode",
       "desc": "Toggles the 'PrivacyMode' setting in Datto RMM.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -331,7 +331,7 @@
       "title": "Datto",
       "path": "Scripts/Datto",
       "desc": "Datto RMM custom components, policy scripts, and automated device status integrations.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": false
     },
@@ -340,7 +340,7 @@
       "title": "Datto",
       "path": "Scripts/Datto",
       "desc": "Datto RMM custom components, policy scripts, and automated device status integrations.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": false
     },
@@ -349,7 +349,7 @@
       "title": "How-To Guide: Intune Printer Packaging & Deployment",
       "path": "Scripts/Intune/AddPrinter",
       "desc": "The Intune Printer Packager is a PowerShell WPF-based graphical interface that prepares, structures, and compiles printer installers and driver binaries into a Microsoft-approved .intunewin package.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -358,7 +358,7 @@
       "title": "How-To Guide: Intune Printer Packaging & Deployment",
       "path": "Scripts/Intune/AddPrinter",
       "desc": "The Intune Printer Packager is a PowerShell WPF-based graphical interface that prepares, structures, and compiles printer installers and driver binaries into a Microsoft-approved .intunewin package.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -367,7 +367,7 @@
       "title": "Intune Desktop Background Packager",
       "path": "Scripts/Intune/DesktopBackground",
       "desc": "A Windows Forms GUI utility designed to automate the building, staging, and packaging of corporate Desktop Background and Lock Screen deployments for Microsoft Intune.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -376,7 +376,7 @@
       "title": "Intune Desktop Background Packager",
       "path": "Scripts/Intune/DesktopBackground",
       "desc": "A Windows Forms GUI utility designed to automate the building, staging, and packaging of corporate Desktop Background and Lock Screen deployments for Microsoft Intune.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -385,7 +385,7 @@
       "title": "src",
       "path": "Scripts/Intune/DesktopOverlay/src",
       "desc": "PowerShell automation and scripts for src: Detect ITOverlay, Install ITOverlay, Start ITOverlay, Uninstall ITOverlay.",
-      "lastUpdated": "2026-11-16T21:47:59Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 4,
       "isGuideOrPackage": false
     },
@@ -394,7 +394,7 @@
       "title": "src",
       "path": "Scripts/Intune/DesktopOverlay/src",
       "desc": "PowerShell automation and scripts for src: Detect ITOverlay, Install ITOverlay, Start ITOverlay, Uninstall ITOverlay.",
-      "lastUpdated": "2026-11-16T21:47:59Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 4,
       "isGuideOrPackage": false
     },
@@ -403,7 +403,7 @@
       "title": "Intune IT Support Desktop Overlay",
       "path": "Scripts/Intune/DesktopOverlay",
       "desc": "Visual GUI studio and automated packager to build, preview, and deploy customized desktop IT support overlays via Intune.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 3,
       "isGuideOrPackage": true
     },
@@ -412,7 +412,7 @@
       "title": "Intune IT Support Desktop Overlay",
       "path": "Scripts/Intune/DesktopOverlay",
       "desc": "Visual GUI studio and automated packager to build, preview, and deploy customized desktop IT support overlays via Intune.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 3,
       "isGuideOrPackage": true
     },
@@ -421,7 +421,7 @@
       "title": "Get Autopilot Hash",
       "path": "Scripts/Intune/Get-AutopilotHash",
       "desc": "Extracts the Windows Autopilot 4KB Hardware Hash natively via WMI/CIM and uploads it to `phnx.it` for instant short-URL CSV download on another machine (with multi-PC Batch PIN grouping).",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -430,7 +430,7 @@
       "title": "Get Autopilot Hash",
       "path": "Scripts/Intune/Get-AutopilotHash",
       "desc": "Extracts the Windows Autopilot 4KB Hardware Hash natively via WMI/CIM and uploads it to `phnx.it` for instant short-URL CSV download on another machine (with multi-PC Batch PIN grouping).",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -439,7 +439,7 @@
       "title": "Microsoft Teams Custom Background Win32 App Packager",
       "path": "Scripts/Intune/TeamsBackground",
       "desc": "A PowerShell WPF GUI application designed to package custom Microsoft Teams video meeting background images into an enterprise-grade Microsoft Intune Win32 application (.intunewin).",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -448,7 +448,7 @@
       "title": "Microsoft Teams Custom Background Win32 App Packager",
       "path": "Scripts/Intune/TeamsBackground",
       "desc": "A PowerShell WPF GUI application designed to package custom Microsoft Teams video meeting background images into an enterprise-grade Microsoft Intune Win32 application (.intunewin).",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -457,7 +457,7 @@
       "title": "Intune",
       "path": "Scripts/Intune",
       "desc": "Intune application packaging, custom proactive remediation policies, and MDM configurations.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 5,
       "isGuideOrPackage": false
     },
@@ -466,7 +466,7 @@
       "title": "Intune",
       "path": "Scripts/Intune",
       "desc": "Intune application packaging, custom proactive remediation policies, and MDM configurations.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 5,
       "isGuideOrPackage": false
     },
@@ -475,7 +475,7 @@
       "title": "Kiosk Per-User Shell Customization",
       "path": "Scripts/Kiosk/Configure-KioskPerUserShell",
       "desc": "The Configure-KioskPerUserShell.ps1 script configures registry settings to launch a custom user shell (e.g. Wyze Easy Setup Shell) for a specific local kiosk user.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -484,7 +484,7 @@
       "title": "Kiosk Per-User Shell Customization",
       "path": "Scripts/Kiosk/Configure-KioskPerUserShell",
       "desc": "The Configure-KioskPerUserShell.ps1 script configures registry settings to launch a custom user shell (e.g. Wyze Easy Setup Shell) for a specific local kiosk user.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -493,7 +493,7 @@
       "title": "Deploy Kiosk Policies and Cache Reset",
       "path": "Scripts/Kiosk/Deploy-KioskPoliciesAndCacheReset",
       "desc": "This script deploys native Microsoft Kiosk and Windows App group policies. It also purges local cached credentials on user logon to prevent mid-session Azure Virtual Desktop (AVD) pop-up overlaps.",
-      "lastUpdated": "2026-07-16T17:58:47+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -502,7 +502,7 @@
       "title": "Deploy Kiosk Policies and Cache Reset",
       "path": "Scripts/Kiosk/Deploy-KioskPoliciesAndCacheReset",
       "desc": "This script deploys native Microsoft Kiosk and Windows App group policies. It also purges local cached credentials on user logon to prevent mid-session Azure Virtual Desktop (AVD) pop-up overlaps.",
-      "lastUpdated": "2026-07-16T17:58:47+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -511,7 +511,7 @@
       "title": "Install Windows App (LTSC IoT Provisioning)",
       "path": "Scripts/Kiosk/Install-WindowsAppLTSC",
       "desc": "Performs offline provisioning of the Microsoft Windows App for Windows 10 IoT LTSC environments. It pulls the latest verified MSIX/MSIXBUNDLE payload from the Microsoft CDN repository and registers it machine-wide.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -520,7 +520,7 @@
       "title": "Install Windows App (LTSC IoT Provisioning)",
       "path": "Scripts/Kiosk/Install-WindowsAppLTSC",
       "desc": "Performs offline provisioning of the Microsoft Windows App for Windows 10 IoT LTSC environments. It pulls the latest verified MSIX/MSIXBUNDLE payload from the Microsoft CDN repository and registers it machine-wide.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -529,7 +529,7 @@
       "title": "Remove/Disable Unified Write Filter (UWF)",
       "path": "Scripts/Kiosk/Remove-UnifiedWriteFilter",
       "desc": "This script disables and configures the Windows Unified Write Filter (UWF) configuration, ensuring permanent changes persist across system restarts.",
-      "lastUpdated": "2026-07-16T17:58:47+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -538,7 +538,7 @@
       "title": "Remove/Disable Unified Write Filter (UWF)",
       "path": "Scripts/Kiosk/Remove-UnifiedWriteFilter",
       "desc": "This script disables and configures the Windows Unified Write Filter (UWF) configuration, ensuring permanent changes persist across system restarts.",
-      "lastUpdated": "2026-07-16T17:58:47+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -547,7 +547,7 @@
       "title": "Schedule Kiosk App Runtime Fix",
       "path": "Scripts/Kiosk/Schedule-KioskAppRuntimeFix",
       "desc": "Creates a scheduled task to run Kiosk Shell App runtime fixes on user authentication to prevent logon UI hanging states.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -556,7 +556,7 @@
       "title": "Schedule Kiosk App Runtime Fix",
       "path": "Scripts/Kiosk/Schedule-KioskAppRuntimeFix",
       "desc": "Creates a scheduled task to run Kiosk Shell App runtime fixes on user authentication to prevent logon UI hanging states.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -565,7 +565,7 @@
       "title": "Scheduled Task Windows App Log Off Watchdog",
       "path": "Scripts/Kiosk/ScheduledTaskWindowsAppLogOff",
       "desc": "Sets up a watchdog scheduled task to monitor UWP app processes. If the primary kiosk app closes, the script automatically logs off the local user to keep the terminal secure.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -574,7 +574,7 @@
       "title": "Scheduled Task Windows App Log Off Watchdog",
       "path": "Scripts/Kiosk/ScheduledTaskWindowsAppLogOff",
       "desc": "Sets up a watchdog scheduled task to monitor UWP app processes. If the primary kiosk app closes, the script automatically logs off the local user to keep the terminal secure.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -583,7 +583,7 @@
       "title": "Kiosk",
       "path": "Scripts/Kiosk",
       "desc": "Utilities to securely provision and lock down Windows endpoints into single-app kiosk systems.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 6,
       "isGuideOrPackage": false
     },
@@ -592,7 +592,7 @@
       "title": "Kiosk",
       "path": "Scripts/Kiosk",
       "desc": "Utilities to securely provision and lock down Windows endpoints into single-app kiosk systems.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 6,
       "isGuideOrPackage": false
     },
@@ -601,7 +601,7 @@
       "title": "Device Quarantine Release",
       "path": "Scripts/Microsoft 365/DeviceQuarantineRelease",
       "desc": "The DeviceQuarantineReleaseApp.ps1 script launches a native Windows WPF desktop assistant designed for Exchange Online administration. It provides a simple, graphical interface to search tenant mailboxes, retrieve ActiveSync mobile device metadata, inspect their current quarantine status, and instantly release selected devices to the Allowed list.",
-      "lastUpdated": "2026-08-02T21:20:00+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -610,7 +610,7 @@
       "title": "Device Quarantine Release",
       "path": "Scripts/Microsoft 365/DeviceQuarantineRelease",
       "desc": "The DeviceQuarantineReleaseApp.ps1 script launches a native Windows WPF desktop assistant designed for Exchange Online administration. It provides a simple, graphical interface to search tenant mailboxes, retrieve ActiveSync mobile device metadata, inspect their current quarantine status, and instantly release selected devices to the Allowed list.",
-      "lastUpdated": "2026-08-02T21:20:00+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -619,7 +619,7 @@
       "title": "Microsoft 365 Shared Mailbox Access Viewer",
       "path": "Scripts/Microsoft 365/SharedMailboxAccessViewer",
       "desc": "The Microsoft 365 Shared Mailbox Access Viewer is a desktop WPF GUI auditing tool for IT administrators and Managed Service Providers (MSPs). It solves the operational challenge of quickly determining which Shared Mailboxes (and optionally delegated User Mailboxes) a specific user has access to across an Exchange Online tenant without manually running slow per-mailbox PowerShell loops.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -628,7 +628,7 @@
       "title": "Microsoft 365 Shared Mailbox Access Viewer",
       "path": "Scripts/Microsoft 365/SharedMailboxAccessViewer",
       "desc": "The Microsoft 365 Shared Mailbox Access Viewer is a desktop WPF GUI auditing tool for IT administrators and Managed Service Providers (MSPs). It solves the operational challenge of quickly determining which Shared Mailboxes (and optionally delegated User Mailboxes) a specific user has access to across an Exchange Online tenant without manually running slow per-mailbox PowerShell loops.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -637,7 +637,7 @@
       "title": "Entra ID SMS Deprecation Audit",
       "path": "Scripts/Microsoft 365/SMSDeprecationCheck",
       "desc": "Audits Entra ID user authentication methods to identify high-risk SMS dependencies before Microsoft deprecates SMS/voice MFA.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -646,7 +646,7 @@
       "title": "Entra ID SMS Deprecation Audit",
       "path": "Scripts/Microsoft 365/SMSDeprecationCheck",
       "desc": "Audits Entra ID user authentication methods to identify high-risk SMS dependencies before Microsoft deprecates SMS/voice MFA.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -655,7 +655,7 @@
       "title": "ExternalTeamsRoom",
       "path": "Scripts/Microsoft 365/TeamsRooms/AllowForwardOfExternalMeetings",
       "desc": "Securely enables a Microsoft Teams Room (MTR) mailbox to accept forwarded external meeting invites while blocking direct bookings from outside the organization. The successful configuration relies on a two-step process that utilizes Mail Flow Security and Calendar Processing.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -664,7 +664,7 @@
       "title": "ExternalTeamsRoom",
       "path": "Scripts/Microsoft 365/TeamsRooms/AllowForwardOfExternalMeetings",
       "desc": "Securely enables a Microsoft Teams Room (MTR) mailbox to accept forwarded external meeting invites while blocking direct bookings from outside the organization. The successful configuration relies on a two-step process that utilizes Mail Flow Security and Calendar Processing.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -673,7 +673,7 @@
       "title": "TeamsRooms",
       "path": "Scripts/Microsoft 365/TeamsRooms",
       "desc": "PowerShell automation and scripts for TeamsRooms: ExternalTeamsRoom.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": false
     },
@@ -682,7 +682,7 @@
       "title": "TeamsRooms",
       "path": "Scripts/Microsoft 365/TeamsRooms",
       "desc": "PowerShell automation and scripts for TeamsRooms: ExternalTeamsRoom.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": false
     },
@@ -691,7 +691,7 @@
       "title": "images",
       "path": "Scripts/Microsoft 365/UserLicenceCheck/images",
       "desc": "PowerShell automation scripts inside images.",
-      "lastUpdated": "2026-07-08T16:55:06+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 0,
       "isGuideOrPackage": false
     },
@@ -700,7 +700,7 @@
       "title": "images",
       "path": "Scripts/Microsoft 365/UserLicenceCheck/images",
       "desc": "PowerShell automation scripts inside images.",
-      "lastUpdated": "2026-07-08T16:55:06+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 0,
       "isGuideOrPackage": false
     },
@@ -709,7 +709,7 @@
       "title": "User License Check",
       "path": "Scripts/Microsoft 365/UserLicenceCheck",
       "desc": "The Console.ps1 script launches a modern, dark-themed (Kinetic Command) administration dashboard. It queries Microsoft Graph to fetch all tenant users (licensed and unlicensed, members and external guests, enabled and disabled accounts), extracts last sign-in telemetry, maps subscription identifiers (SKU IDs), and provides dynamic multi-filter controls and exporters directly from your desktop.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 3,
       "isGuideOrPackage": true
     },
@@ -718,7 +718,7 @@
       "title": "User License Check",
       "path": "Scripts/Microsoft 365/UserLicenceCheck",
       "desc": "The Console.ps1 script launches a modern, dark-themed (Kinetic Command) administration dashboard. It queries Microsoft Graph to fetch all tenant users (licensed and unlicensed, members and external guests, enabled and disabled accounts), extracts last sign-in telemetry, maps subscription identifiers (SKU IDs), and provides dynamic multi-filter controls and exporters directly from your desktop.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 3,
       "isGuideOrPackage": true
     },
@@ -727,7 +727,7 @@
       "title": "Microsoft 365",
       "path": "Scripts/Microsoft 365",
       "desc": "Exchange Online, Entra ID, licensing checks, and general tenant automation scripts.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 5,
       "isGuideOrPackage": false
     },
@@ -736,7 +736,7 @@
       "title": "Microsoft 365",
       "path": "Scripts/Microsoft 365",
       "desc": "Exchange Online, Entra ID, licensing checks, and general tenant automation scripts.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 5,
       "isGuideOrPackage": false
     },
@@ -745,7 +745,7 @@
       "title": "PSDiscovery",
       "path": "Scripts/Networking/PSDiscovery",
       "desc": "This utility is designed for network engineers and IT administrators to identify physical switch port connections and query switch configurations. It operates in two modes: passive packet sniffs (CDP/LLDP) and active SNMP audits. It includes a built-in installer for local, offline bootstrapper execution.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 3,
       "isGuideOrPackage": true
     },
@@ -754,7 +754,7 @@
       "title": "PSDiscovery",
       "path": "Scripts/Networking/PSDiscovery",
       "desc": "This utility is designed for network engineers and IT administrators to identify physical switch port connections and query switch configurations. It operates in two modes: passive packet sniffs (CDP/LLDP) and active SNMP audits. It includes a built-in installer for local, offline bootstrapper execution.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 3,
       "isGuideOrPackage": true
     },
@@ -763,7 +763,7 @@
       "title": "Networking",
       "path": "Scripts/Networking",
       "desc": "IP/subnet scanners, DNS resolvers, traceroutes, and network diagnostics tools.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": false
     },
@@ -772,7 +772,7 @@
       "title": "Networking",
       "path": "Scripts/Networking",
       "desc": "IP/subnet scanners, DNS resolvers, traceroutes, and network diagnostics tools.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": false
     },
@@ -781,7 +781,7 @@
       "title": "Sample",
       "path": "Scripts/Sample",
       "desc": "Standardized boilerplate templates showing correct logging, parameters, and error handling.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -790,7 +790,7 @@
       "title": "Sample",
       "path": "Scripts/Sample",
       "desc": "Standardized boilerplate templates showing correct logging, parameters, and error handling.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -799,7 +799,7 @@
       "title": "Install Datto RMM Agent",
       "path": "Scripts/Software/Install-DattoRmmAgent",
       "desc": "Downloads and silently installs the Datto RMM Agent (CagService) onto a Windows endpoint using your target Datto platform subdomain and client Site UID. The script automatically verifies whether the agent is already installed, enforces TLS 1.2+, validates the downloaded binary, checks the installer exit code, confirms service registration, and cleans up temporary installation files.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -808,7 +808,7 @@
       "title": "Install Datto RMM Agent",
       "path": "Scripts/Software/Install-DattoRmmAgent",
       "desc": "Downloads and silently installs the Datto RMM Agent (CagService) onto a Windows endpoint using your target Datto platform subdomain and client Site UID. The script automatically verifies whether the agent is already installed, enforces TLS 1.2+, validates the downloaded binary, checks the installer exit code, confirms service registration, and cleans up temporary installation files.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -817,7 +817,7 @@
       "title": "Install Windows Updates (LTSC)",
       "path": "Scripts/Software/Install-WindowsUpdatesLTSC",
       "desc": "Triggers Windows Update check and installation using the native Windows Update Agent COM objects. Operates without any external module dependencies.",
-      "lastUpdated": "2026-07-16T17:58:47+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -826,7 +826,7 @@
       "title": "Install Windows Updates (LTSC)",
       "path": "Scripts/Software/Install-WindowsUpdatesLTSC",
       "desc": "Triggers Windows Update check and installation using the native Windows Update Agent COM objects. Operates without any external module dependencies.",
-      "lastUpdated": "2026-07-16T17:58:47+01:00",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -835,7 +835,7 @@
       "title": "Update Microsoft Edge Browser",
       "path": "Scripts/Software/Update-EdgeBrowser",
       "desc": "Downloads the latest Microsoft Edge Enterprise x64 MSI package directly from Microsoft and updates/installs the browser silently.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -844,7 +844,7 @@
       "title": "Update Microsoft Edge Browser",
       "path": "Scripts/Software/Update-EdgeBrowser",
       "desc": "Downloads the latest Microsoft Edge Enterprise x64 MSI package directly from Microsoft and updates/installs the browser silently.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -853,7 +853,7 @@
       "title": "Software",
       "path": "Scripts/Software",
       "desc": "Silent software deployment helper wrappers, app updaters, and software removers.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 3,
       "isGuideOrPackage": false
     },
@@ -862,7 +862,7 @@
       "title": "Software",
       "path": "Scripts/Software",
       "desc": "Silent software deployment helper wrappers, app updaters, and software removers.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 3,
       "isGuideOrPackage": false
     },
@@ -871,7 +871,7 @@
       "title": "Templates",
       "path": "Templates",
       "desc": "PowerShell automation and scripts for Templates: ScriptTemplate.",
-      "lastUpdated": "2026-11-19T20:54:17Z",
+      "lastUpdated": "2026-11-19T21:33:41Z",
       "childCount": 1,
       "isGuideOrPackage": false
     }
