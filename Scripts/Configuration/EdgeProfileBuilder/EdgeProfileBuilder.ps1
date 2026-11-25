@@ -101,40 +101,46 @@ function Initialize-RemoteAsset {
         }
     }
 
-    foreach ($coreFile in @('EdgeProfileEngine.psm1', 'EdgeProfileBuilder.xaml')) {
-        $destFile = Join-Path -Path $CacheDir -ChildPath $coreFile
-        $url = "$($Script:RepoRawBaseUrl)/$coreFile"
-        try {
-            Invoke-WebRequest -Uri $url -OutFile $destFile -UseBasicParsing -ErrorAction Stop
-        } catch {
-            if (-not (Test-Path -Path $destFile -PathType Leaf)) {
-                throw "Failed to download required component '$coreFile' from '$url': $($_.Exception.Message)"
-            }
-            Write-Warning "Using cached '$coreFile' because download failed: $($_.Exception.Message)"
-        }
-    }
-
-    $defaultIcons = @(
-        'Edge_CyberNeon.png',
-        'Edge_Gold.png',
-        'Edge_Lime.png',
-        'Edge_Magenta.png',
-        'Edge_Orange.png',
-        'Edge_Purple.png',
-        'Edge_Rainbow.png',
-        'Edge_Silver.png',
-        'Edge_Teal.png'
-    )
-    foreach ($iconName in $defaultIcons) {
-        $iconDest = Join-Path -Path $assetsDir -ChildPath $iconName
-        if (-not (Test-Path -Path $iconDest -PathType Leaf)) {
-            $iconUrl = "$($Script:RepoRawBaseUrl)/assets/$iconName"
+    $prevProgress = $ProgressPreference
+    $ProgressPreference = 'SilentlyContinue'
+    try {
+        foreach ($coreFile in @('EdgeProfileEngine.psm1', 'EdgeProfileBuilder.xaml')) {
+            $destFile = Join-Path -Path $CacheDir -ChildPath $coreFile
+            $url = "$($Script:RepoRawBaseUrl)/$coreFile"
             try {
-                Invoke-WebRequest -Uri $iconUrl -OutFile $iconDest -UseBasicParsing -ErrorAction Stop
+                Invoke-WebRequest -Uri $url -OutFile $destFile -UseBasicParsing -ErrorAction Stop
             } catch {
-                Write-Warning "Could not download default icon '$iconName': $($_.Exception.Message)"
+                if (-not (Test-Path -Path $destFile -PathType Leaf)) {
+                    throw "Failed to download required component '$coreFile' from '$url': $($_.Exception.Message)"
+                }
+                Write-Warning "Using cached '$coreFile' because download failed: $($_.Exception.Message)"
             }
         }
+
+        $defaultIcons = @(
+            'Edge_CyberNeon.png',
+            'Edge_Gold.png',
+            'Edge_Lime.png',
+            'Edge_Magenta.png',
+            'Edge_Orange.png',
+            'Edge_Purple.png',
+            'Edge_Rainbow.png',
+            'Edge_Silver.png',
+            'Edge_Teal.png'
+        )
+        foreach ($iconName in $defaultIcons) {
+            $iconDest = Join-Path -Path $assetsDir -ChildPath $iconName
+            if (-not (Test-Path -Path $iconDest -PathType Leaf)) {
+                $iconUrl = "$($Script:RepoRawBaseUrl)/assets/$iconName"
+                try {
+                    Invoke-WebRequest -Uri $iconUrl -OutFile $iconDest -UseBasicParsing -ErrorAction Stop
+                } catch {
+                    Write-Warning "Could not download default icon '$iconName': $($_.Exception.Message)"
+                }
+            }
+        }
+    } finally {
+        $ProgressPreference = $prevProgress
     }
 }
 
@@ -165,7 +171,10 @@ $Script:EnginePath = Join-Path -Path $Script:ScriptRoot -ChildPath 'EdgeProfileE
 $Script:SupportedExtensions = @('.png', '.ico', '.jpg', '.jpeg', '.bmp', '.gif')
 $Script:LogTextBox = $null
 
-Import-Module -Name $Script:EnginePath -Force
+Remove-Module -Name 'EdgeProfileEngine' -ErrorAction SilentlyContinue
+$engineSource = Get-Content -Path $Script:EnginePath -Raw -Encoding UTF8
+$engineModule = New-Module -Name 'EdgeProfileEngine' -ScriptBlock ([scriptblock]::Create($engineSource))
+Import-Module -ModuleInfo $engineModule -Force -Global | Out-Null
 
 # ---------------------------------------------------------------------------
 # 2. Diagnostic Logging (UK Format dd/MM/yy HH:mm:ss)
