@@ -48,8 +48,12 @@ WPF GUI utility with a visual thumbnail selector grid, bundled 9-color Edge icon
 ## Fast Execute
 
 > [!TIP]
-> **Full Transparent GitHub Command (`irm | iex`):**
+> **Short Branded URL (`phnx.it`):**
 > Automatically downloads and caches `EdgeProfileEngine.psm1`, `EdgeProfileBuilder.xaml`, and the 9 default `assets\` PNGs in `%LOCALAPPDATA%\EdgeProfileBuilder\cache\` when run remotely:
+> ```powershell
+> irm https://phnx.it/EDGEPRO | iex
+> ```
+> **Full Transparent GitHub Command:**
 > ```powershell
 > iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Configuration/EdgeProfileBuilder/EdgeProfileBuilder.ps1")
 > ```
