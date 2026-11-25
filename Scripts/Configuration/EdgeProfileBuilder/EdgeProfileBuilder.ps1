@@ -247,6 +247,14 @@ function Show-EdgeProfileBuilderGui {
     $xmlReader = New-Object System.Xml.XmlNodeReader $xamlDoc
     $window = [Windows.Markup.XamlReader]::Load($xmlReader)
 
+    $workArea = [System.Windows.SystemParameters]::WorkArea
+    $targetWidth = [Math]::Max(860, [Math]::Min(1440, $workArea.Width * 0.70))
+    $targetHeight = [Math]::Max(640, [Math]::Min(900, $workArea.Height * 0.80))
+    $window.Width = [Math]::Round([Math]::Min($targetWidth, $workArea.Width - 24))
+    $window.Height = [Math]::Round([Math]::Min($targetHeight, $workArea.Height - 24))
+    $window.Left = [Math]::Round($workArea.Left + (($workArea.Width - $window.Width) / 2))
+    $window.Top = [Math]::Round($workArea.Top + (($workArea.Height - $window.Height) / 2))
+
     $txtSelectedBadge = $window.FindName('TxtSelectedBadge')
     $btnUploadIcons = $window.FindName('BtnUploadIcons')
     $btnLoadFolder = $window.FindName('BtnLoadFolder')
