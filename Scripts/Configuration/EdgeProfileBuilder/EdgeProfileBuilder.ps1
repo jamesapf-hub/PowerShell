@@ -19,7 +19,7 @@
 
 .EXAMPLE
     .\EdgeProfileBuilder.ps1
-    Launches the interactive WPF GUI with the bundled 9-color Microsoft Edge icon pack.
+    Launches the interactive WPF GUI with the bundled 10-color Microsoft Edge icon pack.
 
 .EXAMPLE
     .\EdgeProfileBuilder.ps1 -OutputPath "C:\EdgeProfiles"
@@ -118,6 +118,7 @@ function Initialize-RemoteAsset {
         }
 
         $defaultIcons = @(
+            'Edge_Cobalt.png',
             'Edge_CyberNeon.png',
             'Edge_Gold.png',
             'Edge_Lime.png',

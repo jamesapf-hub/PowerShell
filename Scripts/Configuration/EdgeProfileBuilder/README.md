@@ -1,6 +1,6 @@
 # Edge Profile Builder Guide
 
-WPF GUI utility with a visual thumbnail selector grid, bundled 9-color Edge icon pack, drag-and-drop custom image converter (multi-size `.ico`), and isolated Microsoft Edge profile shortcut generator with unique Windows 11 taskbar pinning IDs.
+WPF GUI utility with a visual thumbnail selector grid, bundled 10-color Edge icon pack, drag-and-drop custom image converter (multi-size `.ico`), and isolated Microsoft Edge profile shortcut generator with unique Windows 11 taskbar pinning IDs.
 
 ## Overview
 
@@ -9,7 +9,7 @@ WPF GUI utility with a visual thumbnail selector grid, bundled 9-color Edge icon
 ### Key Features
 
 - **Visual Icon Selector Grid:** Displays large crisp icon cards with tick boxes, live selection counter badge, `Select All` / `Clear Selection`, and inline editable profile names.
-- **Bundled 9-Color Default Pack (`assets\`):** Includes `Edge_CyberNeon`, `Edge_Gold`, `Edge_Lime`, `Edge_Magenta`, `Edge_Orange`, `Edge_Purple`, `Edge_Rainbow`, `Edge_Silver`, and `Edge_Teal`.
+- **Bundled 10-Color Default Pack (`assets\`):** Includes `Edge_Cobalt`, `Edge_CyberNeon`, `Edge_Gold`, `Edge_Lime`, `Edge_Magenta`, `Edge_Orange`, `Edge_Purple`, `Edge_Rainbow`, `Edge_Silver`, and `Edge_Teal`.
 - **Custom Upload & Drag-and-Drop Auto-Converter:** Upload or drop `.png`, `.jpg`, `.jpeg`, `.bmp`, `.gif`, or `.ico` files onto the grid; non-ICO images are automatically converted into lossless multi-size `.ico` files (`256`, `64`, `48`, `32`, `16` px) preserving transparency and aspect ratio.
 - **Isolated Profiles & Taskbar Pinning:** Creates separate `--user-data-dir` folders (or `--profile-directory="Profile X"` flags), optional `--inprivate` launch mode, optional Desktop shortcut copies, and stamps a unique `System.AppUserModel.ID` onto every `.lnk` file so Windows 11 pins each shortcut independently on the taskbar.
 
@@ -49,7 +49,7 @@ WPF GUI utility with a visual thumbnail selector grid, bundled 9-color Edge icon
 
 > [!TIP]
 > **Short Branded URL (`phnx.it`):**
-> Automatically downloads and caches `EdgeProfileEngine.psm1`, `EdgeProfileBuilder.xaml`, and the 9 default `assets\` PNGs in `%LOCALAPPDATA%\EdgeProfileBuilder\cache\` when run remotely:
+> Automatically downloads and caches `EdgeProfileEngine.psm1`, `EdgeProfileBuilder.xaml`, and the 10 default `assets\` PNGs in `%LOCALAPPDATA%\EdgeProfileBuilder\cache\` when run remotely:
 > ```powershell
 > irm https://phnx.it/EDGEPRO | iex
 > ```
