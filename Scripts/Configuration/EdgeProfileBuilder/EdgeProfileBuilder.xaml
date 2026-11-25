@@ -327,6 +327,9 @@
             <Button x:Name="BtnOpenShortcuts" DockPanel.Dock="Left" Content="Open Shortcuts Folder"/>
             <Button x:Name="BtnGenerate" DockPanel.Dock="Right" HorizontalAlignment="Right"
                     Content="Generate Shortcuts" Style="{StaticResource GenerateButton}" IsEnabled="False"/>
+            <TextBlock Text="Tip: Right-click any generated shortcut &#x2192; Show more options &#x2192; Pin to taskbar to keep profiles separate."
+                       Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center" HorizontalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" Margin="14,0"/>
         </DockPanel>
     </Grid>
 </Window>
