@@ -42,43 +42,123 @@ param(
     [string]$IconFolder = ''
 )
 
+$ErrorActionPreference = 'Stop'
+
+$Script:RepoRawBaseUrl = 'https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Configuration/EdgeProfileBuilder'
+$Script:CacheRoot = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'EdgeProfileBuilder\cache'
+
 # ---------------------------------------------------------------------------
-# 1. Enforce STA Threading for WPF
+# 1. Enforce STA Threading for WPF (Supports Local & In-Memory irm | iex)
 # ---------------------------------------------------------------------------
 if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
-    $relaunchPath = if ($PSScriptRoot) { Join-Path -Path $PSScriptRoot -ChildPath $MyInvocation.MyCommand.Name } else { $PSCommandPath }
-    if ($relaunchPath) {
-        $argList = New-Object System.Collections.Generic.List[string]
-        $argList.Add('-STA')
-        $argList.Add('-ExecutionPolicy')
-        $argList.Add('Bypass')
-        $argList.Add('-NoProfile')
-        $argList.Add('-File')
-        $argList.Add("`"$relaunchPath`"")
-        if ($PSBoundParameters.ContainsKey('OutputPath')) {
-            $argList.Add('-OutputPath')
-            $argList.Add("`"$OutputPath`"")
+    $relaunchPath = if ($PSScriptRoot -and $MyInvocation.MyCommand.Name) {
+        Join-Path -Path $PSScriptRoot -ChildPath $MyInvocation.MyCommand.Name
+    } elseif ($PSCommandPath) {
+        $PSCommandPath
+    } else {
+        $null
+    }
+
+    if (-not $relaunchPath -or -not (Test-Path -Path $relaunchPath -PathType Leaf)) {
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+        if (-not (Test-Path -Path $Script:CacheRoot)) {
+            New-Item -Path $Script:CacheRoot -ItemType Directory -Force | Out-Null
         }
-        if ($PSBoundParameters.ContainsKey('IconFolder') -and -not [string]::IsNullOrWhiteSpace($IconFolder)) {
-            $argList.Add('-IconFolder')
-            $argList.Add("`"$IconFolder`"")
+        $relaunchPath = Join-Path -Path $Script:CacheRoot -ChildPath 'EdgeProfileBuilder.ps1'
+        Invoke-WebRequest -Uri "$($Script:RepoRawBaseUrl)/EdgeProfileBuilder.ps1" -OutFile $relaunchPath -UseBasicParsing
+    }
+
+    $argList = New-Object System.Collections.Generic.List[string]
+    $argList.Add('-STA')
+    $argList.Add('-ExecutionPolicy')
+    $argList.Add('Bypass')
+    $argList.Add('-NoProfile')
+    $argList.Add('-File')
+    $argList.Add("`"$relaunchPath`"")
+    if ($PSBoundParameters.ContainsKey('OutputPath')) {
+        $argList.Add('-OutputPath')
+        $argList.Add("`"$OutputPath`"")
+    }
+    if ($PSBoundParameters.ContainsKey('IconFolder') -and -not [string]::IsNullOrWhiteSpace($IconFolder)) {
+        $argList.Add('-IconFolder')
+        $argList.Add("`"$IconFolder`"")
+    }
+    Start-Process -FilePath 'powershell.exe' -ArgumentList ($argList -join ' ')
+    exit
+}
+
+function Initialize-RemoteAsset {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$CacheDir
+    )
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+
+    $assetsDir = Join-Path -Path $CacheDir -ChildPath 'assets'
+    foreach ($dir in @($CacheDir, $assetsDir)) {
+        if (-not (Test-Path -Path $dir)) {
+            New-Item -Path $dir -ItemType Directory -Force | Out-Null
         }
-        Start-Process -FilePath 'powershell.exe' -ArgumentList ($argList -join ' ')
-        exit
+    }
+
+    foreach ($coreFile in @('EdgeProfileEngine.psm1', 'EdgeProfileBuilder.xaml')) {
+        $destFile = Join-Path -Path $CacheDir -ChildPath $coreFile
+        $url = "$($Script:RepoRawBaseUrl)/$coreFile"
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $destFile -UseBasicParsing -ErrorAction Stop
+        } catch {
+            if (-not (Test-Path -Path $destFile -PathType Leaf)) {
+                throw "Failed to download required component '$coreFile' from '$url': $($_.Exception.Message)"
+            }
+            Write-Warning "Using cached '$coreFile' because download failed: $($_.Exception.Message)"
+        }
+    }
+
+    $defaultIcons = @(
+        'Edge_CyberNeon.png',
+        'Edge_Gold.png',
+        'Edge_Lime.png',
+        'Edge_Magenta.png',
+        'Edge_Orange.png',
+        'Edge_Purple.png',
+        'Edge_Rainbow.png',
+        'Edge_Silver.png',
+        'Edge_Teal.png'
+    )
+    foreach ($iconName in $defaultIcons) {
+        $iconDest = Join-Path -Path $assetsDir -ChildPath $iconName
+        if (-not (Test-Path -Path $iconDest -PathType Leaf)) {
+            $iconUrl = "$($Script:RepoRawBaseUrl)/assets/$iconName"
+            try {
+                Invoke-WebRequest -Uri $iconUrl -OutFile $iconDest -UseBasicParsing -ErrorAction Stop
+            } catch {
+                Write-Warning "Could not download default icon '$iconName': $($_.Exception.Message)"
+            }
+        }
     }
 }
 
-$ErrorActionPreference = 'Stop'
-
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Drawing, System.Windows.Forms, System.Xaml
 
-$Script:ScriptRoot = if ($PSScriptRoot) {
+$localCandidate = if ($PSScriptRoot) {
     $PSScriptRoot
 } elseif ($PSCommandPath) {
     Split-Path -Path $PSCommandPath -Parent
 } else {
-    (Get-Location).Path
+    $null
 }
+
+$hasLocalFiles = $localCandidate -and
+    (Test-Path -Path (Join-Path -Path $localCandidate -ChildPath 'EdgeProfileEngine.psm1') -PathType Leaf) -and
+    (Test-Path -Path (Join-Path -Path $localCandidate -ChildPath 'EdgeProfileBuilder.xaml') -PathType Leaf)
+
+if ($hasLocalFiles) {
+    $Script:ScriptRoot = $localCandidate
+} else {
+    $Script:ScriptRoot = $Script:CacheRoot
+    Initialize-RemoteAsset -CacheDir $Script:ScriptRoot
+}
+
 $Script:DefaultAssetsDir = Join-Path -Path $Script:ScriptRoot -ChildPath 'assets'
 $Script:XamlPath = Join-Path -Path $Script:ScriptRoot -ChildPath 'EdgeProfileBuilder.xaml'
 $Script:EnginePath = Join-Path -Path $Script:ScriptRoot -ChildPath 'EdgeProfileEngine.psm1'

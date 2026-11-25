@@ -47,12 +47,13 @@ WPF GUI utility with a visual thumbnail selector grid, bundled 9-color Edge icon
 
 ## Fast Execute
 
-> [!WARNING]
-> **Bundled Package Notice:**
-> This tool is a multi-file package (`EdgeProfileBuilder.ps1`, `EdgeProfileEngine.psm1`, `EdgeProfileBuilder.xaml`, and the `assets\` icon pack) and cannot be executed in-memory via `irm | iex`. Please download or clone the repository locally before executing.
->
 > [!TIP]
-> **Run locally in PowerShell:**
+> **Full Transparent GitHub Command (`irm | iex`):**
+> Automatically downloads and caches `EdgeProfileEngine.psm1`, `EdgeProfileBuilder.xaml`, and the 9 default `assets\` PNGs in `%LOCALAPPDATA%\EdgeProfileBuilder\cache\` when run remotely:
+> ```powershell
+> iex (irm "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/Scripts/Configuration/EdgeProfileBuilder/EdgeProfileBuilder.ps1")
+> ```
+> **Run locally from a cloned folder:**
 > Double-click `Start-Gui.bat` or run:
 > ```powershell
 > powershell.exe -ExecutionPolicy Bypass -File .\EdgeProfileBuilder.ps1

@@ -1,6 +1,6 @@
 {
   "repository": "PowerShell",
-  "generatedAt": "2026-11-25T18:57:08.960Z",
+  "generatedAt": "2026-11-25T19:20:17.887Z",
   "folders": {
     "docs": {
       "name": "docs",
@@ -196,7 +196,7 @@
       "title": "Scripts",
       "path": "Scripts",
       "desc": "PowerShell automation and scripts for Scripts: Get Azure VM Details, Adobe Orphan Installer Patch Cleaner, Windows Update Cache Cleanup, Remove Old User Profiles, and more.",
-      "lastUpdated": "2026-11-24T16:11:33Z",
+      "lastUpdated": "2026-11-25T19:13:44Z",
       "childCount": 10,
       "isGuideOrPackage": false
     },
@@ -241,7 +241,7 @@
       "title": "Edge Profile Builder",
       "path": "Scripts/Configuration/EdgeProfileBuilder",
       "desc": "WPF GUI utility with a visual thumbnail selector grid, bundled 9-color Edge icon pack, drag-and-drop custom image converter (multi-size .ico), and isolated Microsoft Edge profile shortcut generator with unique Windows 11 taskbar pinning IDs.",
-      "lastUpdated": "2026-11-25T18:56:51.802Z",
+      "lastUpdated": "2026-11-25T19:13:44Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -250,7 +250,7 @@
       "title": "Edge Profile Builder",
       "path": "Scripts/Configuration/EdgeProfileBuilder",
       "desc": "WPF GUI utility with a visual thumbnail selector grid, bundled 9-color Edge icon pack, drag-and-drop custom image converter (multi-size .ico), and isolated Microsoft Edge profile shortcut generator with unique Windows 11 taskbar pinning IDs.",
-      "lastUpdated": "2026-11-25T18:56:51.802Z",
+      "lastUpdated": "2026-11-25T19:13:44Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -313,7 +313,7 @@
       "title": "Configuration",
       "path": "Scripts/Configuration",
       "desc": "Scripts for setting standard OS parameters, registry configurations, and profile adjustments.",
-      "lastUpdated": "2026-11-24T16:11:33Z",
+      "lastUpdated": "2026-11-25T19:13:44Z",
       "childCount": 4,
       "isGuideOrPackage": false
     },
@@ -322,7 +322,7 @@
       "title": "Configuration",
       "path": "Scripts/Configuration",
       "desc": "Scripts for setting standard OS parameters, registry configurations, and profile adjustments.",
-      "lastUpdated": "2026-11-24T16:11:33Z",
+      "lastUpdated": "2026-11-25T19:13:44Z",
       "childCount": 4,
       "isGuideOrPackage": false
     },
