@@ -1,0 +1,332 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Edge Profile Shortcut Builder"
+        Height="790" Width="1060" MinHeight="660" MinWidth="900"
+        WindowStartupLocation="CenterScreen"
+        Background="#0F172A" Foreground="#F8FAFC"
+        FontFamily="Segoe UI, Segoe UI Variable, Arial">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#334155"/>
+            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="13,7"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                BorderBrush="{TemplateBinding BorderBrush}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#475569"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#1E293B"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#2563EB"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#3B82F6"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#1D4ED8"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="GenerateButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#10B981"/>
+            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="FontSize" Value="13.5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="20,9"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#34D399"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#059669"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CardImageButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent" Padding="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RemoveCardButton" TargetType="Button">
+            <Setter Property="Background" Value="#450A0A"/>
+            <Setter Property="Foreground" Value="#FCA5A5"/>
+            <Setter Property="Width" Value="20"/>
+            <Setter Property="Height" Value="20"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#DC2626"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#0F172A"/>
+            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#334155"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="CaretBrush" Value="#38BDF8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Row 0: Header -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,12">
+            <Border DockPanel.Dock="Right" Background="#1E293B" BorderBrush="#38BDF8" BorderThickness="1"
+                    CornerRadius="14" Padding="14,6" VerticalAlignment="Center">
+                <TextBlock x:Name="TxtSelectedBadge" Text="0 Selected" Foreground="#38BDF8" FontWeight="Bold" FontSize="13"/>
+            </Border>
+            <StackPanel>
+                <TextBlock Text="Edge Profile Shortcut Builder" FontSize="22" FontWeight="Bold" Foreground="#F8FAFC"/>
+                <TextBlock Text="Tick icons from the default pack or upload/drop your own images to build isolated Edge profiles and taskbar-pinnable shortcuts."
+                           FontSize="12.5" Foreground="#94A3B8" Margin="0,3,0,0"/>
+            </StackPanel>
+        </DockPanel>
+
+        <!-- Row 1: Action Toolbar -->
+        <Border Grid.Row="1" Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,12">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <Button x:Name="BtnUploadIcons" Content="+ Upload Icons..." Style="{StaticResource PrimaryButton}" Margin="0,0,8,0"/>
+                    <Button x:Name="BtnLoadFolder" Content="Load Folder..." Margin="0,0,8,0"/>
+                    <Button x:Name="BtnDefaultPack" Content="Default Pack" Margin="0,0,8,0"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                    <TextBlock Text="Drag &amp; drop PNG/JPG/ICO onto grid" Foreground="#64748B" FontSize="11.5"
+                               VerticalAlignment="Center" Margin="0,0,14,0"/>
+                    <Button x:Name="BtnSelectAll" Content="Select All" Margin="0,0,8,0"/>
+                    <Button x:Name="BtnClearAll" Content="Clear Selection"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Row 2: Visual Icon Grid -->
+        <Border x:Name="DropZoneBorder" Grid.Row="2" Background="#0B1220" BorderBrush="#334155" BorderThickness="1"
+                CornerRadius="8" Padding="8" AllowDrop="True" Margin="0,0,0,12">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl x:Name="IcIcons">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Width="178" Margin="7" Padding="10" CornerRadius="10">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="#1E293B"/>
+                                        <Setter Property="BorderBrush" Value="#334155"/>
+                                        <Setter Property="BorderThickness" Value="1.5"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="Background" Value="#172554"/>
+                                                <Setter Property="BorderBrush" Value="#38BDF8"/>
+                                                <Setter Property="BorderThickness" Value="2"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="96"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Card Header: Checkbox + Format Badge + Optional Remove -->
+                                    <DockPanel Grid.Row="0" Margin="0,0,0,4">
+                                        <CheckBox DockPanel.Dock="Left" VerticalAlignment="Center"
+                                                  IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                                            <Border Background="#0F172A" CornerRadius="4" Padding="5,2" VerticalAlignment="Center" Margin="0,0,4,0">
+                                                <TextBlock Text="{Binding FormatBadge}" FontSize="10" FontWeight="SemiBold" Foreground="#94A3B8"/>
+                                            </Border>
+                                            <Button Content="x" Tag="{Binding Id}" Style="{StaticResource RemoveCardButton}"
+                                                    Visibility="{Binding IsUploaded, Converter={StaticResource BoolToVis}}"
+                                                    ToolTip="Remove uploaded icon" Name="BtnRemoveCard"/>
+                                        </StackPanel>
+                                    </DockPanel>
+
+                                    <!-- Icon Preview (Clickable to toggle selection) -->
+                                    <Button Grid.Row="1" Style="{StaticResource CardImageButton}" Tag="{Binding Id}" Name="BtnToggleCard">
+                                        <Image Source="{Binding Thumbnail}" Width="82" Height="82" Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality"/>
+                                    </Button>
+
+                                    <!-- Source Label -->
+                                    <TextBlock Grid.Row="2" Text="{Binding SourceBadge}" FontSize="10" FontWeight="SemiBold"
+                                               Foreground="#64748B" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+
+                                    <!-- Editable Profile Name -->
+                                    <TextBox Grid.Row="3" Text="{Binding ProfileName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             HorizontalContentAlignment="Center" ToolTip="Edit profile / shortcut display name"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Row 3: Profile & Output Options -->
+        <Border Grid.Row="3" Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.2*"/>
+                    <ColumnDefinition Width="18"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Profile Mode &amp; Shortcut Options" FontWeight="SemiBold" Foreground="#F8FAFC" Margin="0,0,0,6"/>
+                    <RadioButton x:Name="RbIsolated" IsChecked="True" Margin="0,0,0,5"
+                                 Content="Isolated User-Data-Dir (separate cookies &amp; sessions per icon)"/>
+                    <RadioButton x:Name="RbStandard" Margin="0,0,0,8"
+                                 Content="Standard Edge Profile Flag (--profile-directory=&quot;Profile X&quot;)"/>
+                    <StackPanel Orientation="Horizontal">
+                        <CheckBox x:Name="ChkInPrivate" IsChecked="True" Content="Launch in InPrivate (--inprivate)" Margin="0,0,18,0"/>
+                        <CheckBox x:Name="ChkDesktop" IsChecked="False" Content="Also copy shortcuts to Desktop"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2">
+                    <TextBlock Text="Output Root Folder (Shortcuts, Profiles &amp; ConvertedIcons)" FontWeight="SemiBold" Foreground="#F8FAFC" Margin="0,0,0,6"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="TxtOutputRoot" Grid.Column="0" VerticalContentAlignment="Center"/>
+                        <Button x:Name="BtnBrowseOutput" Grid.Column="2" Content="Browse..."/>
+                    </Grid>
+                    <TextBlock Text="Converted .ico files and isolated profiles stay here so pinned shortcuts never break."
+                               FontSize="11" Foreground="#94A3B8" Margin="0,5,0,0"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Row 4: Log Console -->
+        <TextBox x:Name="TxtLog" Grid.Row="4" Height="86" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Auto" Background="#020617" Foreground="#CBD5E1"
+                 FontFamily="Consolas" FontSize="11.5" Margin="0,0,0,12" AcceptsReturn="True"/>
+
+        <!-- Row 5: Footer Buttons -->
+        <DockPanel Grid.Row="5">
+            <Button x:Name="BtnOpenShortcuts" DockPanel.Dock="Left" Content="Open Shortcuts Folder"/>
+            <Button x:Name="BtnGenerate" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                    Content="Generate Shortcuts" Style="{StaticResource GenerateButton}" IsEnabled="False"/>
+        </DockPanel>
+    </Grid>
+</Window>
