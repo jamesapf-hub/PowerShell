@@ -1,6 +1,6 @@
 {
   "repository": "PowerShell",
-  "generatedAt": "2026-11-26T22:21:18.485Z",
+  "generatedAt": "2026-11-26T22:28:23.907Z",
   "folders": {
     "docs": {
       "name": "docs",
@@ -196,7 +196,7 @@
       "title": "Scripts",
       "path": "Scripts",
       "desc": "PowerShell automation and scripts for Scripts: Get Azure VM Details, Adobe Orphan Installer Patch Cleaner, Windows Update Cache Cleanup, Remove Old User Profiles, and more.",
-      "lastUpdated": "2026-11-26T22:17:43Z",
+      "lastUpdated": "2026-11-26T22:23:18Z",
       "childCount": 10,
       "isGuideOrPackage": false
     },
@@ -385,7 +385,7 @@
       "title": "Intune Desktop Background Packager",
       "path": "Scripts/Intune/DesktopBackground",
       "desc": "A Windows Forms GUI utility designed to automate the building, staging, and packaging of corporate Desktop Background and Lock Screen deployments for Microsoft Intune.",
-      "lastUpdated": "2026-11-26T22:17:43Z",
+      "lastUpdated": "2026-11-26T22:23:18Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -394,7 +394,7 @@
       "title": "Intune Desktop Background Packager",
       "path": "Scripts/Intune/DesktopBackground",
       "desc": "A Windows Forms GUI utility designed to automate the building, staging, and packaging of corporate Desktop Background and Lock Screen deployments for Microsoft Intune.",
-      "lastUpdated": "2026-11-26T22:17:43Z",
+      "lastUpdated": "2026-11-26T22:23:18Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -475,7 +475,7 @@
       "title": "Intune",
       "path": "Scripts/Intune",
       "desc": "Intune application packaging, custom proactive remediation policies, and MDM configurations.",
-      "lastUpdated": "2026-11-26T22:17:43Z",
+      "lastUpdated": "2026-11-26T22:23:18Z",
       "childCount": 5,
       "isGuideOrPackage": false
     },
@@ -484,7 +484,7 @@
       "title": "Intune",
       "path": "Scripts/Intune",
       "desc": "Intune application packaging, custom proactive remediation policies, and MDM configurations.",
-      "lastUpdated": "2026-11-26T22:17:43Z",
+      "lastUpdated": "2026-11-26T22:23:18Z",
       "childCount": 5,
       "isGuideOrPackage": false
     },

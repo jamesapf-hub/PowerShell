@@ -1047,10 +1047,10 @@ $xamlText = @'
                 <TextBlock x:Name="TxtFooterStatus" Grid.Column="0" VerticalAlignment="Center" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"
                            Text="Ready. Configure Desktop Background or Lock Screen options and click Generate Intune Package."/>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button x:Name="BtnOpenOutput" Style="{StaticResource SecondaryBtnStyle}" Content="Open Output Folder" Margin="0,0,10,0"/>
-                    <Button x:Name="BtnGenerate" Style="{StaticResource PrimaryCtaStyle}" Content="Generate Intune Package"/>
-                </StackPanel>
+                <UniformGrid Grid.Column="1" Columns="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button x:Name="BtnOpenOutput" Style="{StaticResource SecondaryBtnStyle}" Content="Open Output Folder" Margin="0,0,5,0"/>
+                    <Button x:Name="BtnGenerate" Style="{StaticResource PrimaryCtaStyle}" Content="Generate Intune Package" Margin="5,0,0,0"/>
+                </UniformGrid>
             </Grid>
         </Border>
     </Grid>
