@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Microsoft 365 Shared Mailbox Access Viewer - Interactive WPF GUI Tool (v1.0)
 
@@ -52,6 +52,195 @@ if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
 # Load Required Assemblies & Hide Console Window (Single GUI Window Only)
 # -------------------------------------------------------------------------
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing
+
+# Painted Windows 11 Chrome Helper (Frame / DwmSetWindowAttribute Pattern)
+if (-not ('Win11ChromeHelper' -as [type])) {
+    $chromeCSharp = @'
+using System;
+using System.Runtime.InteropServices;
+
+public class Win11ChromeHelper
+{
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const int DWMWA_CAPTION_COLOR = 35;
+    private const int DWMWA_TEXT_COLOR = 36;
+    private const int DWMWCP_ROUND = 2;
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
+
+    public static void ApplyWindowChrome(IntPtr hwnd, bool isDark)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        try
+        {
+            int darkVal = isDark ? 1 : 0;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkVal, sizeof(int));
+
+            int cornerVal = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerVal, sizeof(int));
+
+            uint captionBgr = isDark ? 0x0026160Fu : 0x00FFFFFFu; // #0F1626 dark / #FFFFFF light
+            uint textBgr    = isDark ? 0x00FCFAF8u : 0x002A170Fu; // #F8FAFC dark / #0F172A light
+            uint borderBgr  = isDark ? 0x003B291Eu : 0x00E1D5CBu; // #1E293B dark / #CBD5E1 light
+
+            DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref captionBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref textBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderBgr, sizeof(uint));
+        }
+        catch
+        {
+            // Ignore gracefully on Windows 10 hosts lacking Win11 DWM attributes
+        }
+    }
+}
+'@
+    try { Add-Type -TypeDefinition $chromeCSharp -Language CSharp -ErrorAction Stop } catch {}
+}
+
+function Get-SystemIsDarkTheme {
+    [CmdletBinding()]
+    param()
+    try {
+        $regPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+        if (Test-Path -Path $regPath) {
+            $val = Get-ItemPropertyValue -Path $regPath -Name 'AppsUseLightTheme' -ErrorAction Stop
+            return ([int]$val -eq 0)
+        }
+    } catch {}
+    return $true
+}
+
+function Set-StandardGuiTheme {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$IsDark,
+
+        [System.Windows.Controls.TextBlock]$ThemeLabel = $null,
+        [bool]$IsSystemAuto = $true
+    )
+
+    $conv = New-Object System.Windows.Media.BrushConverter
+    if ($IsDark) {
+        $canvasBrush = New-Object System.Windows.Media.RadialGradientBrush
+        $canvasBrush.Center = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.GradientOrigin = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.RadiusX = 0.95
+        $canvasBrush.RadiusY = 0.9
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#0F1F3D')), 0.0))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#091122')), 0.52))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#05070C')), 1.0))
+
+        $map = @{
+            BrushChromeBar      = '#CC070D19'
+            BrushHairline       = '#1CFFFFFF'
+            BrushCardBg         = '#B30D192E'
+            BrushCardBorder     = '#26354D'
+            BrushInputBg        = '#C7070D1A'
+            BrushLogBg          = '#E6050A14'
+            BrushPopupBg        = '#0D192E'
+            BrushTextPrimary    = '#F8FAFC'
+            BrushTextSecondary  = '#CBD5E1'
+            BrushTextMuted      = '#94A3B8'
+            BrushAccent         = '#2DD4BF'
+            BrushAccentHover    = '#5EEAD4'
+            BrushAccentPressed  = '#14B8A6'
+            BrushAccentFg       = '#042F2E'
+            BrushAccentTint     = '#242DD4BF'
+            BrushAccentBorder   = '#6B2DD4BF'
+            BrushSecBtnBg       = '#14FFFFFF'
+            BrushSecBtnHover    = '#24FFFFFF'
+            BrushSecBtnPressed  = '#0DFFFFFF'
+            BrushScrollThumb    = '#26354D'
+            BrushScrollTrack    = '#050A14'
+            BrushDisabledBg     = '#1A2B44'
+            BrushOk             = '#34D399'
+            BrushOkTint         = '#1F34D399'
+            BrushWarn           = '#FBBF24'
+            BrushErr            = '#F87171'
+            BrushGridHeaderBg   = '#0B1528'
+            BrushGridRowBg      = '#091122'
+            BrushGridAltRowBg   = '#0C172B'
+            BrushGridSelectedBg = '#1E3A5F'
+            BrushGridLine       = '#1A2B44'
+            BrushDangerBg       = '#26EF4444'
+            BrushDangerHover    = '#3CEF4444'
+            BrushDangerBorder   = '#66EF4444'
+            BrushDangerFg       = '#FCA5A5'
+        }
+    } else {
+        $canvasBrush = $conv.ConvertFromString('#F8F9FF')
+        $map = @{
+            BrushChromeBar      = '#F2FFFFFF'
+            BrushHairline       = '#190F172A'
+            BrushCardBg         = '#FFFFFFFF'
+            BrushCardBorder     = '#CBD5E1'
+            BrushInputBg        = '#F8FAFC'
+            BrushLogBg          = '#F1F5F9'
+            BrushPopupBg        = '#FFFFFF'
+            BrushTextPrimary    = '#0F172A'
+            BrushTextSecondary  = '#334155'
+            BrushTextMuted      = '#64748B'
+            BrushAccent         = '#2563EB'
+            BrushAccentHover    = '#1D4ED8'
+            BrushAccentPressed  = '#1E40AF'
+            BrushAccentFg       = '#FFFFFF'
+            BrushAccentTint     = '#DBEAFE'
+            BrushAccentBorder   = '#592563EB'
+            BrushSecBtnBg       = '#FFFFFF'
+            BrushSecBtnHover    = '#F1F5F9'
+            BrushSecBtnPressed  = '#E2E8F0'
+            BrushScrollThumb    = '#CBD5E1'
+            BrushScrollTrack    = '#F1F5F9'
+            BrushDisabledBg     = '#E2E8F0'
+            BrushOk             = '#059669'
+            BrushOkTint         = '#D1FAE5'
+            BrushWarn           = '#B45309'
+            BrushErr            = '#DC2626'
+            BrushGridHeaderBg   = '#F1F5F9'
+            BrushGridRowBg      = '#FFFFFF'
+            BrushGridAltRowBg   = '#F8FAFC'
+            BrushGridSelectedBg = '#DBEAFE'
+            BrushGridLine       = '#E2E8F0'
+            BrushDangerBg       = '#FEE2E2'
+            BrushDangerHover    = '#FECACA'
+            BrushDangerBorder   = '#FCA5A5'
+            BrushDangerFg       = '#B91C1C'
+        }
+    }
+
+    if ($canvasBrush.CanFreeze) { $canvasBrush.Freeze() }
+    $Window.Background = $canvasBrush
+    $Window.Resources['BrushCanvas'] = $canvasBrush
+    foreach ($key in $map.Keys) {
+        $b = $conv.ConvertFromString($map[$key])
+        if ($b.CanFreeze) { $b.Freeze() }
+        $Window.Resources[$key] = $b
+    }
+
+    if ($null -ne $ThemeLabel) {
+        $modeTag = if ($IsSystemAuto) { 'System' } else { 'Manual' }
+        $toneTag = if ($IsDark) { 'Dark' } else { 'Light' }
+        $ThemeLabel.Text = "Theme: $modeTag ($toneTag)"
+    }
+
+    try {
+        $helper = New-Object System.Windows.Interop.WindowInteropHelper($Window)
+        if ($helper.Handle -ne [IntPtr]::Zero -and ('Win11ChromeHelper' -as [type])) {
+            [Win11ChromeHelper]::ApplyWindowChrome($helper.Handle, $IsDark)
+        }
+    } catch {}
+}
 
 try {
     try {
@@ -367,18 +556,17 @@ function Update-ConnectionBadge {
         [bool]$Connected,
         [string]$Account
     )
-    $bc = [System.Windows.Media.BrushConverter]::new()
     if ($Connected) {
-        $bdgConnection.Background = $bc.ConvertFromString("#1F34D399")
-        $bdgConnection.BorderBrush = $bc.ConvertFromString("#34D399")
+        $bdgConnection.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushOkTint')
+        $bdgConnection.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushOk')
         $lblConnectionStatus.Text = "Connected: $Account"
-        $lblConnectionStatus.Foreground = $bc.ConvertFromString("#F8FAFC")
+        $lblConnectionStatus.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextPrimary')
         $btnConnect.Content = "Reconnect / Switch"
     } else {
-        $bdgConnection.Background = $bc.ConvertFromString("#14FFFFFF")
-        $bdgConnection.BorderBrush = $bc.ConvertFromString("#26354D")
+        $bdgConnection.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushSecBtnBg')
+        $bdgConnection.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushCardBorder')
         $lblConnectionStatus.Text = "Not Signed In"
-        $lblConnectionStatus.Foreground = $bc.ConvertFromString("#94A3B8")
+        $lblConnectionStatus.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextMuted')
         $btnConnect.Content = "Sign In to Exchange Online"
     }
     Invoke-DoEvent
@@ -513,17 +701,16 @@ function New-DirectoryLookupMap {
 }
 
 function Update-IndexBadge {
-    $bc = [System.Windows.Media.BrushConverter]::new()
     if ($global:IsFullIndexBuilt) {
-        $bdgIndexStatus.Background = $bc.ConvertFromString("#262DD4BF")
-        $bdgIndexStatus.BorderBrush = $bc.ConvertFromString("#2DD4BF")
+        $bdgIndexStatus.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushAccentTint')
+        $bdgIndexStatus.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushAccent')
         $lblIndexStatus.Text = "Instant Index Active (Click any user)"
-        $lblIndexStatus.Foreground = $bc.ConvertFromString("#5EEAD4")
+        $lblIndexStatus.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushAccent')
     } else {
-        $bdgIndexStatus.Background = $bc.ConvertFromString("#14FFFFFF")
-        $bdgIndexStatus.BorderBrush = $bc.ConvertFromString("#26354D")
+        $bdgIndexStatus.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushSecBtnBg')
+        $bdgIndexStatus.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushCardBorder')
         $lblIndexStatus.Text = "On-Demand Mode (Select user & click Check)"
-        $lblIndexStatus.Foreground = $bc.ConvertFromString("#94A3B8")
+        $lblIndexStatus.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextMuted')
     }
     Invoke-DoEvent
 }
@@ -1033,28 +1220,57 @@ function Export-AllCachedReport {
 }
 
 # -------------------------------------------------------------------------
-# WPF XAML User Interface (Obsidian Teal Standard)
+# WPF XAML User Interface (Dynamic System Dark/Light Theme)
 # -------------------------------------------------------------------------
 [xml]$xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Microsoft 365 Shared Mailbox Access Viewer v1.0"
         Height="820" Width="1340" MinHeight="640" MinWidth="860"
-        WindowStartupLocation="Manual" Foreground="#F8FAFC" FontSize="12.5">
-    <Window.Background>
-        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
-            <GradientStop Color="#0F1F3D" Offset="0.0"/>
-            <GradientStop Color="#091122" Offset="0.55"/>
-            <GradientStop Color="#05070C" Offset="1.0"/>
-        </RadialGradientBrush>
-    </Window.Background>
-
+        WindowStartupLocation="Manual" Background="#091122" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12.5">
     <Window.Resources>
+        <SolidColorBrush x:Key="BrushCanvas" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushChromeBar" Color="#CC070D19"/>
+        <SolidColorBrush x:Key="BrushHairline" Color="#1CFFFFFF"/>
+        <SolidColorBrush x:Key="BrushCardBg" Color="#B30D192E"/>
+        <SolidColorBrush x:Key="BrushCardBorder" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushInputBg" Color="#C7070D1A"/>
+        <SolidColorBrush x:Key="BrushLogBg" Color="#E6050A14"/>
+        <SolidColorBrush x:Key="BrushPopupBg" Color="#0D192E"/>
+        <SolidColorBrush x:Key="BrushTextPrimary" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="BrushTextSecondary" Color="#CBD5E1"/>
+        <SolidColorBrush x:Key="BrushTextMuted" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BrushAccent" Color="#2DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentHover" Color="#5EEAD4"/>
+        <SolidColorBrush x:Key="BrushAccentPressed" Color="#14B8A6"/>
+        <SolidColorBrush x:Key="BrushAccentFg" Color="#042F2E"/>
+        <SolidColorBrush x:Key="BrushAccentTint" Color="#242DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentBorder" Color="#6B2DD4BF"/>
+        <SolidColorBrush x:Key="BrushSecBtnBg" Color="#14FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnHover" Color="#24FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnPressed" Color="#0DFFFFFF"/>
+        <SolidColorBrush x:Key="BrushScrollThumb" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushScrollTrack" Color="#050A14"/>
+        <SolidColorBrush x:Key="BrushDisabledBg" Color="#1A2B44"/>
+        <SolidColorBrush x:Key="BrushOk" Color="#34D399"/>
+        <SolidColorBrush x:Key="BrushOkTint" Color="#1F34D399"/>
+        <SolidColorBrush x:Key="BrushWarn" Color="#FBBF24"/>
+        <SolidColorBrush x:Key="BrushErr" Color="#F87171"/>
+        <SolidColorBrush x:Key="BrushGridHeaderBg" Color="#0B1528"/>
+        <SolidColorBrush x:Key="BrushGridRowBg" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushGridAltRowBg" Color="#0C172B"/>
+        <SolidColorBrush x:Key="BrushGridSelectedBg" Color="#1E3A5F"/>
+        <SolidColorBrush x:Key="BrushGridLine" Color="#1A2B44"/>
+        <SolidColorBrush x:Key="BrushDangerBg" Color="#26EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerHover" Color="#3CEF4444"/>
+        <SolidColorBrush x:Key="BrushDangerBorder" Color="#66EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerFg" Color="#FCA5A5"/>
+
         <!-- Secondary Button -->
         <Style TargetType="Button">
-            <Setter Property="Background" Value="#14FFFFFF"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="12,6"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -1071,10 +1287,10 @@ function Export-AllCachedReport {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#24FFFFFF"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSecBtnHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#0DFFFFFF"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSecBtnPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="border" Property="Opacity" Value="0.45"/>
@@ -1085,10 +1301,10 @@ function Export-AllCachedReport {
             </Setter>
         </Style>
 
-        <!-- Primary CTA (Teal) -->
+        <!-- Primary CTA -->
         <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#2DD4BF"/>
-            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccentFg}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Template">
@@ -1100,14 +1316,14 @@ function Export-AllCachedReport {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#5EEAD4"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushAccentHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#14B8A6"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushAccentPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="border" Property="Background" Value="#1A2B44"/>
-                                <Setter Property="Foreground" Value="#64748B"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushDisabledBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -1115,19 +1331,19 @@ function Export-AllCachedReport {
             </Setter>
         </Style>
 
-        <!-- Teal Outline Accent Button -->
+        <!-- Outline Accent Button -->
         <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#1A2DD4BF"/>
-            <Setter Property="Foreground" Value="#5EEAD4"/>
-            <Setter Property="BorderBrush" Value="#2DD4BF"/>
+            <Setter Property="Background" Value="{DynamicResource BrushAccentTint}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushAccentBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
         </Style>
 
         <!-- Danger Button -->
         <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#26EF4444"/>
-            <Setter Property="Foreground" Value="#FCA5A5"/>
-            <Setter Property="BorderBrush" Value="#66EF4444"/>
+            <Setter Property="Background" Value="{DynamicResource BrushDangerBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushDangerFg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushDangerBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -1140,7 +1356,7 @@ function Export-AllCachedReport {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#3CEF4444"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushDangerHover}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="border" Property="Opacity" Value="0.4"/>
@@ -1154,13 +1370,13 @@ function Export-AllCachedReport {
         <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}"/>
 
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#99070D1A"/>
-            <Setter Property="Foreground" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushInputBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8,5"/>
-            <Setter Property="CaretBrush" Value="#2DD4BF"/>
-            <Setter Property="SelectionBrush" Value="#2DD4BF"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="SelectionBrush" Value="{DynamicResource BrushAccent}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -1172,7 +1388,7 @@ function Export-AllCachedReport {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="Border" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -1181,29 +1397,29 @@ function Export-AllCachedReport {
         </Style>
 
         <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Border x:Name="Box" Width="16" Height="16" CornerRadius="4"
-                                    Background="#99070D1A" BorderBrush="#26354D" BorderThickness="1"
+                                    Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1"
                                     Margin="0,0,7,0" VerticalAlignment="Center">
                                 <Path x:Name="CheckMark" Data="M 3,7.5 L 6.2,10.5 L 11.5,4"
-                                      Stroke="#042F2E" StrokeThickness="2" Visibility="Collapsed"
+                                      Stroke="{DynamicResource BrushAccentFg}" StrokeThickness="2" Visibility="Collapsed"
                                       StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
                             </Border>
                             <ContentPresenter VerticalAlignment="Center"/>
                         </StackPanel>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Box" Property="Background" Value="#2DD4BF"/>
-                                <Setter TargetName="Box" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="Box" Property="Background" Value="{DynamicResource BrushAccent}"/>
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                                 <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Box" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -1211,10 +1427,10 @@ function Export-AllCachedReport {
             </Setter>
         </Style>
 
-        <!-- Dark ComboBox & ComboBoxItem -->
+        <!-- ComboBox & ComboBoxItem -->
         <Style TargetType="ComboBoxItem">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
             <Setter Property="Padding" Value="10,7"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -1224,12 +1440,12 @@ function Export-AllCachedReport {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#1E3A5F"/>
-                                <Setter Property="Foreground" Value="#F8FAFC"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource BrushGridSelectedBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemBorder" Property="Background" Value="#262DD4BF"/>
-                                <Setter Property="Foreground" Value="#F8FAFC"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource BrushAccentTint}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -1238,9 +1454,9 @@ function Export-AllCachedReport {
         </Style>
 
         <Style TargetType="ComboBox">
-            <Setter Property="Background" Value="#99070D1A"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushInputBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,5"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -1253,18 +1469,18 @@ function Export-AllCachedReport {
                                           ClickMode="Press">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
-                                        <Border x:Name="ComboBorder" Background="#99070D1A" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6">
+                                        <Border x:Name="ComboBorder" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6">
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="26"/>
                                                 </Grid.ColumnDefinitions>
-                                                <Path Grid.Column="1" Data="M 0,0 L 4,4 L 8,0 Z" Fill="#94A3B8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                <Path Grid.Column="1" Data="M 0,0 L 4,4 L 8,0 Z" Fill="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                             </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
-                                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#2DD4BF"/>
+                                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
@@ -1276,7 +1492,7 @@ function Export-AllCachedReport {
                                               Margin="10,4,28,4" VerticalAlignment="Center" HorizontalAlignment="Left"/>
                             <Popup x:Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
                                 <Grid MinWidth="{TemplateBinding ActualWidth}" MaxHeight="260" SnapsToDevicePixels="True">
-                                    <Border Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Margin="0,2,0,0">
+                                    <Border Background="{DynamicResource BrushPopupBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Margin="0,2,0,0">
                                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                                             <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
                                         </ScrollViewer>
@@ -1289,39 +1505,39 @@ function Export-AllCachedReport {
             </Setter>
         </Style>
 
-        <!-- Dark DataGrid -->
+        <!-- DataGrid -->
         <Style TargetType="DataGrid">
-            <Setter Property="Background" Value="#091122"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushGridRowBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="RowBackground" Value="#091122"/>
-            <Setter Property="AlternatingRowBackground" Value="#0C172B"/>
+            <Setter Property="RowBackground" Value="{DynamicResource BrushGridRowBg}"/>
+            <Setter Property="AlternatingRowBackground" Value="{DynamicResource BrushGridAltRowBg}"/>
             <Setter Property="GridLinesVisibility" Value="Horizontal"/>
-            <Setter Property="HorizontalGridLinesBrush" Value="#1A2B44"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource BrushGridLine}"/>
             <Setter Property="HeadersVisibility" Value="Column"/>
             <Setter Property="RowHeaderWidth" Value="0"/>
         </Style>
 
         <Style TargetType="DataGridColumnHeader">
-            <Setter Property="Background" Value="#0B1528"/>
-            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="Background" Value="{DynamicResource BrushGridHeaderBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
             <Setter Property="Padding" Value="10,7"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="0,0,0,1"/>
         </Style>
 
         <Style TargetType="DataGridRow">
-            <Setter Property="Background" Value="#091122"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="Background" Value="{DynamicResource BrushGridRowBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#142DD4BF"/>
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentTint}"/>
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#1E3A5F"/>
-                    <Setter Property="Foreground" Value="#F8FAFC"/>
+                    <Setter Property="Background" Value="{DynamicResource BrushGridSelectedBg}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -1334,13 +1550,13 @@ function Export-AllCachedReport {
             <Style.Triggers>
                 <Trigger Property="IsSelected" Value="True">
                     <Setter Property="Background" Value="Transparent"/>
-                    <Setter Property="Foreground" Value="#F8FAFC"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
 
         <Style TargetType="ScrollBar">
-            <Setter Property="Background" Value="#050A14"/>
+            <Setter Property="Background" Value="{DynamicResource BrushScrollTrack}"/>
             <Setter Property="Width" Value="10"/>
             <Setter Property="MinWidth" Value="10"/>
             <Setter Property="Template">
@@ -1352,7 +1568,7 @@ function Export-AllCachedReport {
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Border Background="#26354D" CornerRadius="4" Margin="2"/>
+                                                <Border Background="{DynamicResource BrushScrollThumb}" CornerRadius="4" Margin="2"/>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -1376,7 +1592,7 @@ function Export-AllCachedReport {
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#26354D" BorderThickness="1,1,1,1" CornerRadius="6,6,0,0">
+                            <Border Grid.Row="0" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1,1,1,1" CornerRadius="6,6,0,0">
                                 <TabPanel IsItemsHost="True" Margin="6,0"/>
                             </Border>
                             <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"/>
@@ -1387,7 +1603,7 @@ function Export-AllCachedReport {
         </Style>
 
         <Style TargetType="TabItem">
-            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Padding" Value="14,8"/>
@@ -1400,12 +1616,12 @@ function Export-AllCachedReport {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Foreground" Value="#E2E8F0"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Foreground" Value="#F8FAFC"/>
-                                <Setter TargetName="TabBorder" Property="Background" Value="#142DD4BF"/>
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource BrushAccentTint}"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -1423,7 +1639,7 @@ function Export-AllCachedReport {
         </Grid.RowDefinitions>
 
         <!-- TOP HEADER BAR -->
-        <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="20,13">
+        <Border Grid.Row="0" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,0,0,1" Padding="20,13">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -1431,14 +1647,17 @@ function Export-AllCachedReport {
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Vertical" VerticalAlignment="Center">
-                    <TextBlock Text="Shared Mailbox Access Viewer v1.0" Foreground="#F8FAFC" FontSize="19" FontWeight="Bold"/>
+                    <TextBlock Text="Shared Mailbox Access Viewer v1.0" Foreground="{DynamicResource BrushTextPrimary}" FontSize="19" FontWeight="Bold"/>
                     <TextBlock Text="Inspect Exchange Online Shared Mailbox Full Access, Send As, and Send on Behalf delegations."
-                               Foreground="#94A3B8" FontSize="12" Margin="0,2,0,0"/>
+                               Foreground="{DynamicResource BrushTextMuted}" FontSize="12" Margin="0,2,0,0"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border x:Name="bdgConnection" Background="#14FFFFFF" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="11,6" Margin="0,0,10,0" VerticalAlignment="Center">
-                        <TextBlock x:Name="lblConnectionStatus" Text="Not Signed In" Foreground="#94A3B8" FontSize="12" FontWeight="SemiBold"/>
+                    <Button x:Name="BtnThemeToggle" Height="34" Margin="0,0,10,0" Padding="11,6" ToolTip="Follows Windows system light/dark theme automatically; click to toggle.">
+                        <TextBlock x:Name="TxtThemeLabel" Text="Theme: System (Dark)"/>
+                    </Button>
+                    <Border x:Name="bdgConnection" Background="{DynamicResource BrushSecBtnBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="11,6" Margin="0,0,10,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="lblConnectionStatus" Text="Not Signed In" Foreground="{DynamicResource BrushTextMuted}" FontSize="12" FontWeight="SemiBold"/>
                     </Border>
                     <Button x:Name="btnConnect" Content="Sign In to Exchange Online" Style="{StaticResource PrimaryButton}" Height="34" Margin="0,0,8,0"/>
                     <Button x:Name="btnReloadMailboxes" Content="Reload Users" Height="34" Margin="0,0,8,0"/>
@@ -1456,7 +1675,7 @@ function Export-AllCachedReport {
             </Grid.ColumnDefinitions>
 
             <!-- LEFT PANE: USER DIRECTORY LIST -->
-            <Border Grid.Column="0" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="12">
+            <Border Grid.Column="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -1472,8 +1691,8 @@ function Export-AllCachedReport {
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="1. Select User" FontSize="14.5" FontWeight="Bold" Foreground="#F8FAFC"/>
-                        <TextBlock x:Name="lblUserCount" Grid.Column="1" Text="0 users loaded" FontSize="12" FontWeight="SemiBold" Foreground="#2DD4BF" VerticalAlignment="Center"/>
+                        <TextBlock Text="1. Select User" FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <TextBlock x:Name="lblUserCount" Grid.Column="1" Text="0 users loaded" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushAccent}" VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Search Box -->
@@ -1483,7 +1702,7 @@ function Export-AllCachedReport {
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Search:" VerticalAlignment="Center" Foreground="#94A3B8" FontWeight="SemiBold" Margin="0,0,8,0" FontSize="12"/>
+                        <TextBlock Text="Search:" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextMuted}" FontWeight="SemiBold" Margin="0,0,8,0" FontSize="12"/>
                         <TextBox x:Name="txtUserSearch" Grid.Column="1" Height="32" VerticalContentAlignment="Center"
                                  ToolTip="Type a user's name, email, or alias to filter"/>
                         <Button x:Name="btnClearUserSearch" Grid.Column="2" Content="X" Width="32" Height="32" Padding="0" Margin="6,0,0,0" ToolTip="Clear search"/>
@@ -1495,7 +1714,7 @@ function Export-AllCachedReport {
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Show:" VerticalAlignment="Center" Foreground="#94A3B8" FontWeight="SemiBold" Margin="0,0,10,0" FontSize="12"/>
+                        <TextBlock Text="Show:" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextMuted}" FontWeight="SemiBold" Margin="0,0,10,0" FontSize="12"/>
                         <ComboBox x:Name="cmbUserFilter" Grid.Column="1" Height="30" SelectedIndex="0" VerticalContentAlignment="Center">
                             <ComboBoxItem Content="User Mailboxes Only (Standard Users)"/>
                             <ComboBoxItem Content="All Mailboxes (Users + Shared Mailboxes)"/>
@@ -1543,38 +1762,38 @@ function Export-AllCachedReport {
 
                     <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                            <TextBlock x:Name="lblSelectedUserName" Text="No User Selected" FontSize="17" FontWeight="Bold" Foreground="#F8FAFC"/>
-                            <Border x:Name="bdgIndexStatus" Background="#14FFFFFF" BorderBrush="#26354D" BorderThickness="1" CornerRadius="4" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                                <TextBlock x:Name="lblIndexStatus" Text="On-Demand Mode (Select user &amp; click Check)" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8"/>
+                            <TextBlock x:Name="lblSelectedUserName" Text="No User Selected" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                            <Border x:Name="bdgIndexStatus" Background="{DynamicResource BrushSecBtnBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="4" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock x:Name="lblIndexStatus" Text="On-Demand Mode (Select user &amp; click Check)" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}"/>
                             </Border>
                         </StackPanel>
-                        <TextBlock x:Name="lblSelectedUserEmail" Text="Sign in and select a user on the left to inspect their Shared Mailbox permissions." FontSize="12" Foreground="#94A3B8" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock x:Name="lblSelectedUserEmail" Text="Sign in and select a user on the left to inspect their Shared Mailbox permissions." FontSize="12" Foreground="{DynamicResource BrushTextMuted}" TextTrimming="CharacterEllipsis"/>
                     </StackPanel>
 
                     <!-- KPI Counters -->
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
-                        <Border Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,7" Margin="0,0,6,0" MinWidth="84">
+                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,7" Margin="0,0,6,0" MinWidth="84">
                             <StackPanel HorizontalAlignment="Center">
-                                <TextBlock x:Name="lblStatTotal" Text="0" FontSize="18" FontWeight="Bold" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center"/>
-                                <TextBlock Text="Mailboxes" FontSize="10.5" FontWeight="SemiBold" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="lblStatTotal" Text="0" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Mailboxes" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
-                        <Border Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,7" Margin="0,0,6,0" MinWidth="84">
+                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,7" Margin="0,0,6,0" MinWidth="84">
                             <StackPanel HorizontalAlignment="Center">
-                                <TextBlock x:Name="lblStatFullAccess" Text="0" FontSize="18" FontWeight="Bold" Foreground="#34D399" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center"/>
-                                <TextBlock Text="Full Access" FontSize="10.5" FontWeight="SemiBold" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="lblStatFullAccess" Text="0" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushOk}" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Full Access" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
-                        <Border Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,7" Margin="0,0,6,0" MinWidth="84">
+                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,7" Margin="0,0,6,0" MinWidth="84">
                             <StackPanel HorizontalAlignment="Center">
-                                <TextBlock x:Name="lblStatSendAs" Text="0" FontSize="18" FontWeight="Bold" Foreground="#FBBF24" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center"/>
-                                <TextBlock Text="Send As" FontSize="10.5" FontWeight="SemiBold" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="lblStatSendAs" Text="0" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushWarn}" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Send As" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
-                        <Border Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,7" MinWidth="92">
+                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,7" MinWidth="92">
                             <StackPanel HorizontalAlignment="Center">
-                                <TextBlock x:Name="lblStatSendOnBehalf" Text="0" FontSize="18" FontWeight="Bold" Foreground="#CBD5E1" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center"/>
-                                <TextBlock Text="Send On Behalf" FontSize="10.5" FontWeight="SemiBold" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="lblStatSendOnBehalf" Text="0" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Send On Behalf" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -1590,15 +1809,15 @@ function Export-AllCachedReport {
                             </Grid.RowDefinitions>
 
                             <!-- Filter Bar -->
-                            <Border Grid.Row="0" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,0,8">
+                            <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,0,8">
                                 <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,2,14,2">
-                                        <TextBlock Text="Filter Mailboxes:" VerticalAlignment="Center" Foreground="#94A3B8" FontWeight="SemiBold" Margin="0,0,6,0" FontSize="12"/>
+                                        <TextBlock Text="Filter Mailboxes:" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextMuted}" FontWeight="SemiBold" Margin="0,0,6,0" FontSize="12"/>
                                         <TextBox x:Name="txtResultSearch" Width="170" Height="30" VerticalContentAlignment="Center"/>
                                     </StackPanel>
 
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,2,14,2">
-                                        <TextBlock Text="Permission:" VerticalAlignment="Center" Foreground="#94A3B8" FontWeight="SemiBold" Margin="0,0,6,0" FontSize="12"/>
+                                        <TextBlock Text="Permission:" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextMuted}" FontWeight="SemiBold" Margin="0,0,6,0" FontSize="12"/>
                                         <ComboBox x:Name="cmbPermFilter" Width="165" Height="30" SelectedIndex="0" VerticalContentAlignment="Center">
                                             <ComboBoxItem Content="All Permissions"/>
                                             <ComboBoxItem Content="Full Access Only"/>
@@ -1609,7 +1828,7 @@ function Export-AllCachedReport {
 
                                     <CheckBox x:Name="chkIncludeUserMailboxes" VerticalAlignment="Center" Margin="0,2,0,2"
                                               ToolTip="Also check if the user has delegated access to other regular User Mailboxes">
-                                        <TextBlock Text="Include Delegated User Mailboxes" FontSize="12" Foreground="#CBD5E1" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Include Delegated User Mailboxes" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" FontWeight="SemiBold"/>
                                     </CheckBox>
                                 </WrapPanel>
                             </Border>
@@ -1632,8 +1851,8 @@ function Export-AllCachedReport {
                     </TabItem>
 
                     <TabItem Header="Activity Log">
-                        <Border Margin="0,8,0,0" Background="#CC050A14" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="10">
-                            <TextBox x:Name="txtLog" Background="Transparent" Foreground="#CBD5E1" BorderThickness="0" Padding="0"
+                        <Border Margin="0,8,0,0" Background="{DynamicResource BrushLogBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="10">
+                            <TextBox x:Name="txtLog" Background="Transparent" Foreground="{DynamicResource BrushTextSecondary}" BorderThickness="0" Padding="0"
                                      FontFamily="Cascadia Mono, Consolas" FontSize="11.5" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap"/>
                         </Border>
                     </TabItem>
@@ -1643,10 +1862,10 @@ function Export-AllCachedReport {
 
         <!-- SLIM PROGRESS BAR -->
         <ProgressBar x:Name="progressBar" Grid.Row="2" Height="3" Minimum="0" Maximum="100" Value="0"
-                     Background="#0B1528" Foreground="#2DD4BF" BorderThickness="0"/>
+                     Background="{DynamicResource BrushGridHeaderBg}" Foreground="{DynamicResource BrushAccent}" BorderThickness="0"/>
 
         <!-- SINGLE-ROW FOOTER -->
-        <Border Grid.Row="3" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="20,10">
+        <Border Grid.Row="3" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,1,0,0" Padding="20,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -1654,7 +1873,7 @@ function Export-AllCachedReport {
                 </Grid.ColumnDefinitions>
 
                 <TextBlock x:Name="lblProgress" Grid.Column="0" Text="Ready. Click 'Sign In to Exchange Online' to load users."
-                           Foreground="#94A3B8" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                           Foreground="{DynamicResource BrushTextMuted}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -1674,6 +1893,8 @@ $reader = [System.Xml.XmlNodeReader]::new($xaml)
 $window = [System.Windows.Markup.XamlReader]::Load($reader)
 Initialize-StandardGuiWindow -Window $window
 
+$btnThemeToggle         = $window.FindName("BtnThemeToggle")
+$txtThemeLabel          = $window.FindName("TxtThemeLabel")
 $bdgConnection          = $window.FindName("bdgConnection")
 $lblConnectionStatus    = $window.FindName("lblConnectionStatus")
 $btnConnect             = $window.FindName("btnConnect")
@@ -1707,6 +1928,37 @@ $dgAccessResults        = $window.FindName("dgAccessResults")
 $lblProgress            = $window.FindName("lblProgress")
 $progressBar            = $window.FindName("progressBar")
 $txtLog                 = $window.FindName("txtLog")
+
+# Theme State + Painted Win11 Chrome Hook
+$global:IsDarkTheme = Get-SystemIsDarkTheme
+$global:IsSystemThemeAuto = $true
+Set-StandardGuiTheme -Window $window -IsDark $global:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $true
+
+$window.Add_SourceInitialized({
+    Set-StandardGuiTheme -Window $window -IsDark $global:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $global:IsSystemThemeAuto
+})
+
+$userPrefHandler = [Microsoft.Win32.UserPreferenceChangedEventHandler]{
+    param($sender, $e)
+    if ($e.Category -eq [Microsoft.Win32.UserPreferenceCategory]::General -and $global:IsSystemThemeAuto) {
+        $window.Dispatcher.Invoke([Action]{
+            $global:IsDarkTheme = Get-SystemIsDarkTheme
+            Set-StandardGuiTheme -Window $window -IsDark $global:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $true
+        })
+    }
+}
+[Microsoft.Win32.SystemEvents]::add_UserPreferenceChanged($userPrefHandler)
+$window.Add_Closed({
+    try { [Microsoft.Win32.SystemEvents]::remove_UserPreferenceChanged($userPrefHandler) } catch {}
+})
+
+if ($btnThemeToggle) {
+    $btnThemeToggle.Add_Click({
+        $global:IsSystemThemeAuto = $false
+        $global:IsDarkTheme = -not $global:IsDarkTheme
+        Set-StandardGuiTheme -Window $window -IsDark $global:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $false
+    })
+}
 
 # Bind ObservableCollections
 $dgUsers.ItemsSource         = $global:UserCollection

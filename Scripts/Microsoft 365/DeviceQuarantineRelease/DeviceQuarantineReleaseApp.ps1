@@ -22,6 +22,197 @@ if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
 # Load WPF assemblies
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
+# Painted Windows 11 Chrome Helper (Frame / DwmSetWindowAttribute Pattern)
+if (-not ('Win11ChromeHelper' -as [type])) {
+    $chromeCSharp = @'
+using System;
+using System.Runtime.InteropServices;
+
+public class Win11ChromeHelper
+{
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const int DWMWA_CAPTION_COLOR = 35;
+    private const int DWMWA_TEXT_COLOR = 36;
+    private const int DWMWCP_ROUND = 2;
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
+
+    public static void ApplyWindowChrome(IntPtr hwnd, bool isDark)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        try
+        {
+            int darkVal = isDark ? 1 : 0;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkVal, sizeof(int));
+
+            int cornerVal = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerVal, sizeof(int));
+
+            uint captionBgr = isDark ? 0x0026160Fu : 0x00FFFFFFu; // #0F1626 dark / #FFFFFF light
+            uint textBgr    = isDark ? 0x00FCFAF8u : 0x002A170Fu; // #F8FAFC dark / #0F172A light
+            uint borderBgr  = isDark ? 0x003B291Eu : 0x00E1D5CBu; // #1E293B dark / #CBD5E1 light
+
+            DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref captionBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref textBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderBgr, sizeof(uint));
+        }
+        catch
+        {
+            // Ignore gracefully on Windows 10 hosts lacking Win11 DWM attributes
+        }
+    }
+}
+'@
+    try { Add-Type -TypeDefinition $chromeCSharp -Language CSharp -ErrorAction Stop } catch {}
+}
+
+function Get-SystemIsDarkTheme {
+    [CmdletBinding()]
+    param()
+    try {
+        $regPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+        if (Test-Path -Path $regPath) {
+            $val = Get-ItemPropertyValue -Path $regPath -Name 'AppsUseLightTheme' -ErrorAction Stop
+            return ([int]$val -eq 0)
+        }
+    } catch {}
+    return $true
+}
+
+function Set-StandardGuiTheme {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$IsDark,
+
+        [System.Windows.Controls.TextBlock]$ThemeLabel = $null,
+        [bool]$IsSystemAuto = $true
+    )
+
+    $conv = New-Object System.Windows.Media.BrushConverter
+    if ($IsDark) {
+        $canvasBrush = New-Object System.Windows.Media.RadialGradientBrush
+        $canvasBrush.Center = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.GradientOrigin = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.RadiusX = 0.95
+        $canvasBrush.RadiusY = 0.9
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#0F1F3D')), 0.0))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#091122')), 0.52))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#05070C')), 1.0))
+
+        $map = @{
+            BrushChromeBar     = '#CC070D19'
+            BrushHairline      = '#1CFFFFFF'
+            BrushCardBg        = '#B30D192E'
+            BrushCardBorder    = '#26354D'
+            BrushInputBg       = '#C7070D1A'
+            BrushLogBg         = '#E6050A14'
+            BrushTextPrimary   = '#F8FAFC'
+            BrushTextSecondary = '#CBD5E1'
+            BrushTextMuted     = '#94A3B8'
+            BrushAccent        = '#2DD4BF'
+            BrushAccentHover   = '#5EEAD4'
+            BrushAccentPressed = '#14B8A6'
+            BrushAccentFg      = '#042F2E'
+            BrushAccentTint    = '#242DD4BF'
+            BrushAccentBorder  = '#6B2DD4BF'
+            BrushSecBtnBg      = '#14FFFFFF'
+            BrushSecBtnHover   = '#24FFFFFF'
+            BrushSecBtnPressed = '#0DFFFFFF'
+            BrushScrollThumb   = '#26354D'
+            BrushScrollTrack   = '#050A14'
+            BrushDisabledBg    = '#1A2B44'
+            BrushOk            = '#34D399'
+            BrushOkTint        = '#1F34D399'
+            BrushWarn          = '#FBBF24'
+            BrushWarnTint      = '#26FBBF24'
+            BrushWarnBorder    = '#66FBBF24'
+            BrushErr           = '#F87171'
+            BrushGridHeaderBg  = '#0B1528'
+            BrushGridRowBg     = '#091122'
+            BrushGridAltRowBg  = '#0C172B'
+            BrushGridSelectedBg = '#1E3A5F'
+            BrushGridLine      = '#1A2B44'
+            BrushDangerBg      = '#26EF4444'
+            BrushDangerHover   = '#3CEF4444'
+            BrushDangerBorder  = '#66EF4444'
+            BrushDangerFg      = '#FCA5A5'
+        }
+    } else {
+        $canvasBrush = $conv.ConvertFromString('#F8F9FF')
+        $map = @{
+            BrushChromeBar     = '#F2FFFFFF'
+            BrushHairline      = '#190F172A'
+            BrushCardBg        = '#FFFFFFFF'
+            BrushCardBorder    = '#CBD5E1'
+            BrushInputBg       = '#F8FAFC'
+            BrushLogBg         = '#F1F5F9'
+            BrushTextPrimary   = '#0F172A'
+            BrushTextSecondary = '#334155'
+            BrushTextMuted     = '#64748B'
+            BrushAccent        = '#2563EB'
+            BrushAccentHover   = '#1D4ED8'
+            BrushAccentPressed = '#1E40AF'
+            BrushAccentFg      = '#FFFFFF'
+            BrushAccentTint    = '#DBEAFE'
+            BrushAccentBorder  = '#592563EB'
+            BrushSecBtnBg      = '#FFFFFF'
+            BrushSecBtnHover   = '#F1F5F9'
+            BrushSecBtnPressed = '#E2E8F0'
+            BrushScrollThumb   = '#CBD5E1'
+            BrushScrollTrack   = '#F1F5F9'
+            BrushDisabledBg    = '#E2E8F0'
+            BrushOk            = '#059669'
+            BrushOkTint        = '#D1FAE5'
+            BrushWarn          = '#B45309'
+            BrushWarnTint      = '#FEF3C7'
+            BrushWarnBorder    = '#F59E0B'
+            BrushErr           = '#DC2626'
+            BrushGridHeaderBg  = '#F1F5F9'
+            BrushGridRowBg     = '#FFFFFF'
+            BrushGridAltRowBg  = '#F8FAFC'
+            BrushGridSelectedBg = '#DBEAFE'
+            BrushGridLine      = '#E2E8F0'
+            BrushDangerBg      = '#FEE2E2'
+            BrushDangerHover   = '#FECACA'
+            BrushDangerBorder  = '#FCA5A5'
+            BrushDangerFg      = '#B91C1C'
+        }
+    }
+
+    if ($canvasBrush.CanFreeze) { $canvasBrush.Freeze() }
+    $Window.Background = $canvasBrush
+    $Window.Resources['BrushCanvas'] = $canvasBrush
+    foreach ($key in $map.Keys) {
+        $b = $conv.ConvertFromString($map[$key])
+        if ($b.CanFreeze) { $b.Freeze() }
+        $Window.Resources[$key] = $b
+    }
+
+    if ($null -ne $ThemeLabel) {
+        $modeTag = if ($IsSystemAuto) { 'System' } else { 'Manual' }
+        $toneTag = if ($IsDark) { 'Dark' } else { 'Light' }
+        $ThemeLabel.Text = "Theme: $modeTag ($toneTag)"
+    }
+
+    try {
+        $helper = New-Object System.Windows.Interop.WindowInteropHelper($Window)
+        if ($helper.Handle -ne [IntPtr]::Zero -and ('Win11ChromeHelper' -as [type])) {
+            [Win11ChromeHelper]::ApplyWindowChrome($helper.Handle, $IsDark)
+        }
+    } catch {}
+}
+
 function Initialize-StandardGuiWindow {
     [CmdletBinding()]
     param(
@@ -121,37 +312,67 @@ try {
 }
 $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQuarantineRelease_{0}.log" -f (Get-Date -Format 'dd-MM-yy'))
 
-# Define XAML layout (Obsidian Teal Standard)
+# Define XAML layout (Dynamic System Dark/Light Theme)
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Exchange Online Quarantine Release Manager v1.1"
         Height="720" Width="1060" MinHeight="640" MinWidth="860"
-        WindowStartupLocation="Manual" FontSize="13" Foreground="#F8FAFC">
-    <Window.Background>
-        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
-            <GradientStop Color="#0F1F3D" Offset="0.0"/>
-            <GradientStop Color="#091122" Offset="0.55"/>
-            <GradientStop Color="#05070C" Offset="1.0"/>
-        </RadialGradientBrush>
-    </Window.Background>
-
+        WindowStartupLocation="Manual" FontSize="13" Background="#091122" Foreground="{DynamicResource BrushTextPrimary}">
     <Window.Resources>
+        <SolidColorBrush x:Key="BrushCanvas" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushChromeBar" Color="#CC070D19"/>
+        <SolidColorBrush x:Key="BrushHairline" Color="#1CFFFFFF"/>
+        <SolidColorBrush x:Key="BrushCardBg" Color="#B30D192E"/>
+        <SolidColorBrush x:Key="BrushCardBorder" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushInputBg" Color="#C7070D1A"/>
+        <SolidColorBrush x:Key="BrushLogBg" Color="#E6050A14"/>
+        <SolidColorBrush x:Key="BrushTextPrimary" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="BrushTextSecondary" Color="#CBD5E1"/>
+        <SolidColorBrush x:Key="BrushTextMuted" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BrushAccent" Color="#2DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentHover" Color="#5EEAD4"/>
+        <SolidColorBrush x:Key="BrushAccentPressed" Color="#14B8A6"/>
+        <SolidColorBrush x:Key="BrushAccentFg" Color="#042F2E"/>
+        <SolidColorBrush x:Key="BrushAccentTint" Color="#242DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentBorder" Color="#6B2DD4BF"/>
+        <SolidColorBrush x:Key="BrushSecBtnBg" Color="#14FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnHover" Color="#24FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnPressed" Color="#0DFFFFFF"/>
+        <SolidColorBrush x:Key="BrushScrollThumb" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushScrollTrack" Color="#050A14"/>
+        <SolidColorBrush x:Key="BrushDisabledBg" Color="#1A2B44"/>
+        <SolidColorBrush x:Key="BrushOk" Color="#34D399"/>
+        <SolidColorBrush x:Key="BrushOkTint" Color="#1F34D399"/>
+        <SolidColorBrush x:Key="BrushWarn" Color="#FBBF24"/>
+        <SolidColorBrush x:Key="BrushWarnTint" Color="#26FBBF24"/>
+        <SolidColorBrush x:Key="BrushWarnBorder" Color="#66FBBF24"/>
+        <SolidColorBrush x:Key="BrushErr" Color="#F87171"/>
+        <SolidColorBrush x:Key="BrushGridHeaderBg" Color="#0B1528"/>
+        <SolidColorBrush x:Key="BrushGridRowBg" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushGridAltRowBg" Color="#0C172B"/>
+        <SolidColorBrush x:Key="BrushGridSelectedBg" Color="#1E3A5F"/>
+        <SolidColorBrush x:Key="BrushGridLine" Color="#1A2B44"/>
+        <SolidColorBrush x:Key="BrushDangerBg" Color="#26EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerHover" Color="#3CEF4444"/>
+        <SolidColorBrush x:Key="BrushDangerBorder" Color="#66EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerFg" Color="#FCA5A5"/>
+
         <Style x:Key="HeaderStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="19"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
         </Style>
         <Style x:Key="SubHeaderStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="FontWeight" Value="Normal"/>
-            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
         </Style>
 
-        <!-- Primary CTA Button (Obsidian Teal) -->
+        <!-- Primary CTA Button -->
         <Style TargetType="Button">
-            <Setter Property="Background" Value="#2DD4BF"/>
-            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccentFg}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="15,8"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -166,14 +387,14 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#5EEAD4"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushAccentHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#14B8A6"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushAccentPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Border" Property="Background" Value="#1A2B44"/>
-                                <Setter Property="Foreground" Value="#64748B"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushDisabledBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -183,9 +404,9 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
 
         <!-- Secondary Button Style -->
         <Style x:Key="SecondaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#14FFFFFF"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="14,8"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -200,10 +421,10 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#24FFFFFF"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushSecBtnHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#0DFFFFFF"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushSecBtnPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Border" Property="Opacity" Value="0.45"/>
@@ -214,18 +435,18 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
             </Setter>
         </Style>
 
-        <!-- Action CTA Button (Obsidian Teal) -->
+        <!-- Action CTA Button -->
         <Style x:Key="ActionButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"/>
 
         <!-- Input TextBox Style -->
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#99070D1A"/>
-            <Setter Property="Foreground" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushInputBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,7"/>
-            <Setter Property="CaretBrush" Value="#2DD4BF"/>
-            <Setter Property="SelectionBrush" Value="#2DD4BF"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="SelectionBrush" Value="{DynamicResource BrushAccent}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -235,7 +456,7 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="Border" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Border" Property="Opacity" Value="0.5"/>
@@ -246,9 +467,9 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
             </Setter>
         </Style>
 
-        <!-- Dark ScrollBar -->
+        <!-- ScrollBar -->
         <Style TargetType="ScrollBar">
-            <Setter Property="Background" Value="#050A14"/>
+            <Setter Property="Background" Value="{DynamicResource BrushScrollTrack}"/>
             <Setter Property="Width" Value="10"/>
             <Setter Property="MinWidth" Value="10"/>
             <Setter Property="Template">
@@ -260,7 +481,7 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Border Background="#26354D" CornerRadius="4" Margin="2"/>
+                                                <Border Background="{DynamicResource BrushScrollThumb}" CornerRadius="4" Margin="2"/>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -274,9 +495,9 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
 
         <!-- Directory ListBox Style -->
         <Style TargetType="ListBox">
-            <Setter Property="Background" Value="#091122"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushGridRowBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="4"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -299,12 +520,12 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="Border" Property="Background" Value="#14FFFFFF"/>
+                                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushSecBtnHover}"/>
                                         </Trigger>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="Border" Property="Background" Value="#1E3A5F"/>
-                                            <Setter TargetName="Border" Property="BorderBrush" Value="#2DD4BF"/>
-                                            <Setter Property="Foreground" Value="#F8FAFC"/>
+                                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushGridSelectedBg}"/>
+                                            <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
@@ -325,7 +546,7 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
         </Grid.RowDefinitions>
 
         <!-- HEADER BAR -->
-        <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="20,14">
+        <Border Grid.Row="0" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,0,0,1" Padding="20,14">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -338,8 +559,11 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border x:Name="StatusBadge" Background="#14FFFFFF" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="11,6" Margin="0,0,12,0" VerticalAlignment="Center">
-                        <TextBlock x:Name="StatusText" Text="Disconnected" Foreground="#94A3B8" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
+                    <Button x:Name="BtnThemeToggle" Style="{StaticResource SecondaryButton}" Height="36" Margin="0,0,10,0" Padding="12,6" ToolTip="Follows Windows system light/dark theme automatically; click to toggle.">
+                        <TextBlock x:Name="TxtThemeLabel" Text="Theme: System (Dark)"/>
+                    </Button>
+                    <Border x:Name="StatusBadge" Background="{DynamicResource BrushSecBtnBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="11,6" Margin="0,0,12,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="StatusText" Text="Disconnected" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
                     </Border>
                     <Button x:Name="BtnConnect" Content="Connect to Exchange Online" Height="36" MinWidth="200"/>
                     <Button x:Name="BtnDisconnect" Content="Disconnect" Height="36" MinWidth="105" Margin="10,0,0,0" Style="{StaticResource SecondaryButton}" Visibility="Collapsed"/>
@@ -356,7 +580,7 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
             </Grid.ColumnDefinitions>
 
             <!-- LEFT COLUMN: USER DIRECTORY -->
-            <Border Grid.Column="0" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="14">
+            <Border Grid.Column="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -367,7 +591,7 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
                     <!-- Local Filtering Search Box -->
                     <Grid Grid.Row="0" Margin="0,0,0,10">
                         <TextBox x:Name="TxtSearch" Height="36" VerticalContentAlignment="Center" IsEnabled="False"/>
-                        <TextBlock IsHitTestVisible="False" Text="Filter mailbox users..." VerticalAlignment="Center" HorizontalAlignment="Left" Margin="12,0,0,0" Foreground="#94A3B8">
+                        <TextBlock IsHitTestVisible="False" Text="Filter mailbox users..." VerticalAlignment="Center" HorizontalAlignment="Left" Margin="12,0,0,0" Foreground="{DynamicResource BrushTextMuted}">
                             <TextBlock.Style>
                                 <Style TargetType="{x:Type TextBlock}">
                                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -386,8 +610,8 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel>
-                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Foreground="#F8FAFC" FontSize="13"/>
-                                    <TextBlock Text="{Binding PrimarySmtpAddress}" Foreground="#94A3B8" FontSize="11.5" Margin="0,2,0,0"/>
+                                    <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="13"/>
+                                    <TextBlock Text="{Binding PrimarySmtpAddress}" Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -399,7 +623,7 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
             </Border>
 
             <!-- RIGHT COLUMN: SELECTION & DEVICE PANEL -->
-            <Border Grid.Column="2" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="16">
+            <Border Grid.Column="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="16">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -408,8 +632,8 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
 
                     <!-- Selected Target Header -->
                     <StackPanel Grid.Row="0" Margin="0,0,0,14">
-                        <TextBlock x:Name="TxtSelectedUserName" Text="No Mailbox Selected" FontSize="17" FontWeight="Bold" Foreground="#F8FAFC"/>
-                        <TextBlock x:Name="TxtSelectedUserEmail" Text="Select a mailbox from the left panel to display quarantine status." FontSize="12.5" Foreground="#94A3B8" Margin="0,3,0,0"/>
+                        <TextBlock x:Name="TxtSelectedUserName" Text="No Mailbox Selected" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <TextBlock x:Name="TxtSelectedUserEmail" Text="Select a mailbox from the left panel to display quarantine status." FontSize="12.5" Foreground="{DynamicResource BrushTextMuted}" Margin="0,3,0,0"/>
                     </StackPanel>
 
                     <!-- Quarantined Devices Container -->
@@ -419,12 +643,12 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Text="Detected Quarantined Devices" FontWeight="SemiBold" Foreground="#CBD5E1" Margin="0,0,0,8"/>
+                        <TextBlock Text="Detected Quarantined Devices" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,8"/>
 
                         <ListBox Grid.Row="1" x:Name="LstDevices">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderBrush="#1A2B44" BorderThickness="0,0,0,1" Padding="4,6">
+                                    <Border BorderBrush="{DynamicResource BrushGridLine}" BorderThickness="0,0,0,1" Padding="4,6">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*"/>
@@ -432,17 +656,17 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
                                             </Grid.ColumnDefinitions>
 
                                             <StackPanel>
-                                                <TextBlock Text="{Binding DeviceModel}" FontWeight="SemiBold" Foreground="#F8FAFC" FontSize="13.5"/>
+                                                <TextBlock Text="{Binding DeviceModel}" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" FontSize="13.5"/>
                                                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                    <TextBlock Text="Type: " Foreground="#94A3B8" FontSize="11.5"/>
-                                                    <TextBlock Text="{Binding DeviceType}" Foreground="#CBD5E1" FontSize="11.5" Margin="0,0,14,0"/>
-                                                    <TextBlock Text="ID: " Foreground="#94A3B8" FontSize="11.5"/>
-                                                    <TextBlock Text="{Binding DeviceId}" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
+                                                    <TextBlock Text="Type: " Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5"/>
+                                                    <TextBlock Text="{Binding DeviceType}" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11.5" Margin="0,0,14,0"/>
+                                                    <TextBlock Text="ID: " Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5"/>
+                                                    <TextBlock Text="{Binding DeviceId}" Foreground="{DynamicResource BrushAccent}" FontFamily="Cascadia Mono, Consolas" FontSize="11.5"/>
                                                 </StackPanel>
                                             </StackPanel>
 
-                                            <Border Grid.Column="1" Background="#26FBBF24" BorderBrush="#66FBBF24" BorderThickness="1" CornerRadius="4" Padding="8,4" VerticalAlignment="Center" Margin="12,0,0,0">
-                                                <TextBlock Text="{Binding DeviceAccessState}" Foreground="#FBBF24" FontSize="11" FontWeight="Bold"/>
+                                            <Border Grid.Column="1" Background="{DynamicResource BrushWarnTint}" BorderBrush="{DynamicResource BrushWarnBorder}" BorderThickness="1" CornerRadius="4" Padding="8,4" VerticalAlignment="Center" Margin="12,0,0,0">
+                                                <TextBlock Text="{Binding DeviceAccessState}" Foreground="{DynamicResource BrushWarn}" FontSize="11" FontWeight="Bold"/>
                                             </Border>
                                         </Grid>
                                     </Border>
@@ -451,36 +675,36 @@ $script:LogFilePath = Join-Path -Path $script:LogDirectory -ChildPath ("DeviceQu
                         </ListBox>
 
                         <!-- Empty/Feedback States overlaying the ListBox -->
-                        <TextBlock Grid.Row="1" x:Name="TxtNoDevices" Text="No quarantined devices found for this user." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#94A3B8" Visibility="Collapsed"/>
-                        <TextBlock Grid.Row="1" x:Name="TxtLoadingDevices" Text="Querying Mobile Devices..." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#2DD4BF" FontWeight="SemiBold" Visibility="Collapsed"/>
+                        <TextBlock Grid.Row="1" x:Name="TxtNoDevices" Text="No quarantined devices found for this user." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextMuted}" Visibility="Collapsed"/>
+                        <TextBlock Grid.Row="1" x:Name="TxtLoadingDevices" Text="Querying Mobile Devices..." HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource BrushAccent}" FontWeight="SemiBold" Visibility="Collapsed"/>
                     </Grid>
                 </Grid>
             </Border>
         </Grid>
 
         <!-- LIVE ACTIVITY CONSOLE -->
-        <Border Grid.Row="2" Background="#CC050A14" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Margin="16,0,16,12" Padding="10,8">
+        <Border Grid.Row="2" Background="{DynamicResource BrushLogBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Margin="16,0,16,12" Padding="10,8">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <TextBlock Text="Activity Console" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                <TextBlock Text="Activity Console" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
                 <TextBox Grid.Row="1" x:Name="TxtConsole" Background="Transparent" BorderThickness="0" Padding="0"
-                         FontFamily="Cascadia Mono, Consolas" FontSize="11.5" Foreground="#CBD5E1"
+                         FontFamily="Cascadia Mono, Consolas" FontSize="11.5" Foreground="{DynamicResource BrushTextSecondary}"
                          IsReadOnly="True" VerticalScrollBarVisibility="Auto" AcceptsReturn="True" TextWrapping="Wrap"/>
             </Grid>
         </Border>
 
         <!-- SINGLE-ROW FOOTER -->
-        <Border Grid.Row="3" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="20,10">
+        <Border Grid.Row="3" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,1,0,0" Padding="20,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock x:Name="TxtFooterHint" Grid.Column="0" Text="Log: C:\Logs\DeviceQuarantineRelease" Foreground="#94A3B8"
+                <TextBlock x:Name="TxtFooterHint" Grid.Column="0" Text="Log: C:\Logs\DeviceQuarantineRelease" Foreground="{DynamicResource BrushTextMuted}"
                            FontFamily="Cascadia Mono, Consolas" FontSize="11.5" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
 
@@ -521,6 +745,37 @@ if ($TxtFooterHint -and $script:LogFilePath) {
     $TxtFooterHint.Text = "Log: $($script:LogFilePath)"
 }
 
+# Theme State + Painted Win11 Chrome Hook
+$script:IsDarkTheme = Get-SystemIsDarkTheme
+$script:IsSystemThemeAuto = $true
+Set-StandardGuiTheme -Window $Form -IsDark $script:IsDarkTheme -ThemeLabel $TxtThemeLabel -IsSystemAuto $true
+
+$Form.Add_SourceInitialized({
+    Set-StandardGuiTheme -Window $Form -IsDark $script:IsDarkTheme -ThemeLabel $TxtThemeLabel -IsSystemAuto $script:IsSystemThemeAuto
+})
+
+$userPrefHandler = [Microsoft.Win32.UserPreferenceChangedEventHandler]{
+    param($sender, $e)
+    if ($e.Category -eq [Microsoft.Win32.UserPreferenceCategory]::General -and $script:IsSystemThemeAuto) {
+        $Form.Dispatcher.Invoke([Action]{
+            $script:IsDarkTheme = Get-SystemIsDarkTheme
+            Set-StandardGuiTheme -Window $Form -IsDark $script:IsDarkTheme -ThemeLabel $TxtThemeLabel -IsSystemAuto $true
+        })
+    }
+}
+[Microsoft.Win32.SystemEvents]::add_UserPreferenceChanged($userPrefHandler)
+$Form.Add_Closed({
+    try { [Microsoft.Win32.SystemEvents]::remove_UserPreferenceChanged($userPrefHandler) } catch {}
+})
+
+if ($BtnThemeToggle) {
+    $BtnThemeToggle.Add_Click({
+        $script:IsSystemThemeAuto = $false
+        $script:IsDarkTheme = -not $script:IsDarkTheme
+        Set-StandardGuiTheme -Window $Form -IsDark $script:IsDarkTheme -ThemeLabel $TxtThemeLabel -IsSystemAuto $false
+    })
+}
+
 # Console/Log Writer helper
 function Write-Log {
     param(
@@ -552,11 +807,10 @@ function Write-Log {
 
 # Reset GUI UI elements to initial state
 function Reset-UIState {
-    $bc = [System.Windows.Media.BrushConverter]::new()
-    $StatusBadge.Background  = $bc.ConvertFromString("#14FFFFFF")
-    $StatusBadge.BorderBrush = $bc.ConvertFromString("#26354D")
+    $StatusBadge.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushSecBtnBg')
+    $StatusBadge.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushCardBorder')
     $StatusText.Text = "Disconnected"
-    $StatusText.Foreground = $bc.ConvertFromString("#94A3B8")
+    $StatusText.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextMuted')
 
     $BtnDisconnect.Visibility = [System.Windows.Visibility]::Collapsed
     $BtnConnect.Visibility = [System.Windows.Visibility]::Visible
@@ -676,11 +930,10 @@ $BtnConnect.Add_Click({
         Write-Log "Connection established successfully with $adminUser." "Success"
 
         # Update Connection Pane UI
-        $bc = [System.Windows.Media.BrushConverter]::new()
-        $StatusBadge.Background  = $bc.ConvertFromString("#1F34D399")
-        $StatusBadge.BorderBrush = $bc.ConvertFromString("#34D399")
+        $StatusBadge.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushOkTint')
+        $StatusBadge.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushOk')
         $StatusText.Text = "Connected ($adminUser)"
-        $StatusText.Foreground = $bc.ConvertFromString("#F8FAFC")
+        $StatusText.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextPrimary')
 
         $BtnDisconnect.Visibility = [System.Windows.Visibility]::Visible
         $BtnConnect.Visibility = [System.Windows.Visibility]::Collapsed

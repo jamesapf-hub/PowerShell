@@ -1,4 +1,4 @@
-﻿#Requires -Version 7.2
+#Requires -Version 7.2
 <#
 .SYNOPSIS
     M365 Admin Console - Native PowerShell 7 WPF Desktop Dashboard.
@@ -25,6 +25,213 @@ if ($Host.Runspace.ApartmentState -ne 'STA') {
 
 # 2. Import Required Windows Presentation Assemblies
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Xaml, System.Xml, System.Drawing
+
+# Painted Windows 11 Chrome Helper (Frame / DwmSetWindowAttribute Pattern)
+if (-not ('Win11ChromeHelper' -as [type])) {
+    $chromeCSharp = @'
+using System;
+using System.Runtime.InteropServices;
+
+public class Win11ChromeHelper
+{
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const int DWMWA_CAPTION_COLOR = 35;
+    private const int DWMWA_TEXT_COLOR = 36;
+    private const int DWMWCP_ROUND = 2;
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
+
+    public static void ApplyWindowChrome(IntPtr hwnd, bool isDark)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        try
+        {
+            int darkVal = isDark ? 1 : 0;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkVal, sizeof(int));
+
+            int cornerVal = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerVal, sizeof(int));
+
+            uint captionBgr = isDark ? 0x0026160Fu : 0x00FFFFFFu; // #0F1626 dark / #FFFFFF light
+            uint textBgr    = isDark ? 0x00FCFAF8u : 0x002A170Fu; // #F8FAFC dark / #0F172A light
+            uint borderBgr  = isDark ? 0x003B291Eu : 0x00E1D5CBu; // #1E293B dark / #CBD5E1 light
+
+            DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref captionBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref textBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderBgr, sizeof(uint));
+        }
+        catch
+        {
+            // Ignore gracefully on Windows 10 hosts lacking Win11 DWM attributes
+        }
+    }
+}
+'@
+    try { Add-Type -TypeDefinition $chromeCSharp -Language CSharp -ErrorAction Stop } catch {}
+}
+
+function Get-SystemIsDarkTheme {
+    [CmdletBinding()]
+    param()
+    try {
+        $regPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+        if (Test-Path -Path $regPath) {
+            $val = Get-ItemPropertyValue -Path $regPath -Name 'AppsUseLightTheme' -ErrorAction Stop
+            return ([int]$val -eq 0)
+        }
+    } catch {}
+    return $true
+}
+
+function Set-StandardGuiTheme {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$IsDark,
+
+        [System.Windows.Controls.TextBlock]$ThemeLabel = $null,
+        [bool]$IsSystemAuto = $true
+    )
+
+    $conv = New-Object System.Windows.Media.BrushConverter
+    if ($IsDark) {
+        $canvasBrush = New-Object System.Windows.Media.RadialGradientBrush
+        $canvasBrush.Center = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.GradientOrigin = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.RadiusX = 0.95
+        $canvasBrush.RadiusY = 0.9
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#0F1F3D')), 0.0))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#091122')), 0.52))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#05070C')), 1.0))
+
+        $map = @{
+            BrushChromeBar      = '#CC070D19'
+            BrushHairline       = '#1CFFFFFF'
+            BrushCardBg         = '#B30D192E'
+            BrushCardBorder     = '#26354D'
+            BrushInputBg        = '#C7070D1A'
+            BrushLogBg          = '#E6050A14'
+            BrushTextPrimary    = '#F8FAFC'
+            BrushTextSecondary  = '#CBD5E1'
+            BrushTextMuted      = '#94A3B8'
+            BrushAccent         = '#2DD4BF'
+            BrushAccentHover    = '#5EEAD4'
+            BrushAccentPressed  = '#14B8A6'
+            BrushAccentFg       = '#042F2E'
+            BrushAccentTint     = '#242DD4BF'
+            BrushAccentBorder   = '#6B2DD4BF'
+            BrushSecBtnBg       = '#14FFFFFF'
+            BrushSecBtnHover    = '#24FFFFFF'
+            BrushSecBtnPressed  = '#0DFFFFFF'
+            BrushScrollThumb    = '#26354D'
+            BrushScrollTrack    = '#050A14'
+            BrushDisabledBg     = '#1A2B44'
+            BrushOk             = '#34D399'
+            BrushOkTint         = '#1F34D399'
+            BrushWarn           = '#FBBF24'
+            BrushErr            = '#F87171'
+            BrushInfo           = '#38BDF8'
+            BrushGridHeaderBg   = '#0B1528'
+            BrushGridRowBg      = '#091122'
+            BrushGridAltRowBg   = '#0C172B'
+            BrushGridSelectedBg = '#1E3A5F'
+            BrushGridLine       = '#1A2B44'
+            BrushDangerBg       = '#26EF4444'
+            BrushDangerBorder   = '#66EF4444'
+            BrushDangerFg       = '#FCA5A5'
+            BrushRowActiveBg    = '#1A34D399'
+            BrushRowActiveFg    = '#6EE7B7'
+            BrushRowWarnBg      = '#1AFBBF24'
+            BrushRowWarnFg      = '#FDE68A'
+            BrushRowInactBg     = '#1A2DD4BF'
+            BrushRowInactFg     = '#5EEAD4'
+            BrushRowCritBg      = '#26EF4444'
+            BrushRowCritFg      = '#FCA5A5'
+            BrushRowNeverBg     = '#1494A3B8'
+            BrushRowNeverFg     = '#CBD5E1'
+        }
+    } else {
+        $canvasBrush = $conv.ConvertFromString('#F8F9FF')
+        $map = @{
+            BrushChromeBar      = '#F2FFFFFF'
+            BrushHairline       = '#190F172A'
+            BrushCardBg         = '#FFFFFFFF'
+            BrushCardBorder     = '#CBD5E1'
+            BrushInputBg        = '#F8FAFC'
+            BrushLogBg          = '#F1F5F9'
+            BrushTextPrimary    = '#0F172A'
+            BrushTextSecondary  = '#334155'
+            BrushTextMuted      = '#64748B'
+            BrushAccent         = '#2563EB'
+            BrushAccentHover    = '#1D4ED8'
+            BrushAccentPressed  = '#1E40AF'
+            BrushAccentFg       = '#FFFFFF'
+            BrushAccentTint     = '#DBEAFE'
+            BrushAccentBorder   = '#592563EB'
+            BrushSecBtnBg       = '#FFFFFF'
+            BrushSecBtnHover    = '#F1F5F9'
+            BrushSecBtnPressed  = '#E2E8F0'
+            BrushScrollThumb    = '#CBD5E1'
+            BrushScrollTrack    = '#F1F5F9'
+            BrushDisabledBg     = '#E2E8F0'
+            BrushOk             = '#059669'
+            BrushOkTint         = '#D1FAE5'
+            BrushWarn           = '#B45309'
+            BrushErr            = '#DC2626'
+            BrushInfo           = '#0284C7'
+            BrushGridHeaderBg   = '#F1F5F9'
+            BrushGridRowBg      = '#FFFFFF'
+            BrushGridAltRowBg   = '#F8FAFC'
+            BrushGridSelectedBg = '#DBEAFE'
+            BrushGridLine       = '#E2E8F0'
+            BrushDangerBg       = '#FEE2E2'
+            BrushDangerBorder   = '#FCA5A5'
+            BrushDangerFg       = '#B91C1C'
+            BrushRowActiveBg    = '#D1FAE5'
+            BrushRowActiveFg    = '#065F46'
+            BrushRowWarnBg      = '#FEF3C7'
+            BrushRowWarnFg      = '#92400E'
+            BrushRowInactBg     = '#DBEAFE'
+            BrushRowInactFg     = '#1E40AF'
+            BrushRowCritBg      = '#FEE2E2'
+            BrushRowCritFg      = '#991B1B'
+            BrushRowNeverBg     = '#F1F5F9'
+            BrushRowNeverFg     = '#334155'
+        }
+    }
+
+    if ($canvasBrush.CanFreeze) { $canvasBrush.Freeze() }
+    $Window.Background = $canvasBrush
+    $Window.Resources['BrushCanvas'] = $canvasBrush
+    foreach ($key in $map.Keys) {
+        $b = $conv.ConvertFromString($map[$key])
+        if ($b.CanFreeze) { $b.Freeze() }
+        $Window.Resources[$key] = $b
+    }
+
+    if ($null -ne $ThemeLabel) {
+        $modeTag = if ($IsSystemAuto) { 'System' } else { 'Manual' }
+        $toneTag = if ($IsDark) { 'Dark' } else { 'Light' }
+        $ThemeLabel.Text = "Theme: $modeTag ($toneTag)"
+    }
+
+    try {
+        $helper = New-Object System.Windows.Interop.WindowInteropHelper($Window)
+        if ($helper.Handle -ne [IntPtr]::Zero -and ('Win11ChromeHelper' -as [type])) {
+            [Win11ChromeHelper]::ApplyWindowChrome($helper.Handle, $IsDark)
+        }
+    } catch {}
+}
 
 # Dependency Check & Auto-Installation
 function Assert-ModuleInstalled {
@@ -143,24 +350,62 @@ function Initialize-StandardGuiWindow {
     $Window.ResizeMode = 'CanResize'
 }
 
-# 3. GUI Layout Definition (XAML - Obsidian Teal Archetype 2 Compact Tabs)
+# 3. GUI Layout Definition (XAML - Dynamic System Dark/Light Theme)
 $Xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Microsoft 365 Licence Console" Height="780" Width="1180" MinHeight="640" MinWidth="860"
-        WindowStartupLocation="Manual" Foreground="#F8FAFC" FontSize="12.5">
-    <Window.Background>
-        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
-            <GradientStop Color="#0F1F3D" Offset="0.0"/>
-            <GradientStop Color="#091122" Offset="0.55"/>
-            <GradientStop Color="#05070C" Offset="1.0"/>
-        </RadialGradientBrush>
-    </Window.Background>
-
+        WindowStartupLocation="Manual" Background="#091122" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12.5">
     <Window.Resources>
+        <SolidColorBrush x:Key="BrushCanvas" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushChromeBar" Color="#CC070D19"/>
+        <SolidColorBrush x:Key="BrushHairline" Color="#1CFFFFFF"/>
+        <SolidColorBrush x:Key="BrushCardBg" Color="#B30D192E"/>
+        <SolidColorBrush x:Key="BrushCardBorder" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushInputBg" Color="#C7070D1A"/>
+        <SolidColorBrush x:Key="BrushLogBg" Color="#E6050A14"/>
+        <SolidColorBrush x:Key="BrushTextPrimary" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="BrushTextSecondary" Color="#CBD5E1"/>
+        <SolidColorBrush x:Key="BrushTextMuted" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BrushAccent" Color="#2DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentHover" Color="#5EEAD4"/>
+        <SolidColorBrush x:Key="BrushAccentPressed" Color="#14B8A6"/>
+        <SolidColorBrush x:Key="BrushAccentFg" Color="#042F2E"/>
+        <SolidColorBrush x:Key="BrushAccentTint" Color="#242DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentBorder" Color="#6B2DD4BF"/>
+        <SolidColorBrush x:Key="BrushSecBtnBg" Color="#14FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnHover" Color="#24FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnPressed" Color="#0DFFFFFF"/>
+        <SolidColorBrush x:Key="BrushScrollThumb" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushScrollTrack" Color="#050A14"/>
+        <SolidColorBrush x:Key="BrushDisabledBg" Color="#1A2B44"/>
+        <SolidColorBrush x:Key="BrushOk" Color="#34D399"/>
+        <SolidColorBrush x:Key="BrushOkTint" Color="#1F34D399"/>
+        <SolidColorBrush x:Key="BrushWarn" Color="#FBBF24"/>
+        <SolidColorBrush x:Key="BrushErr" Color="#F87171"/>
+        <SolidColorBrush x:Key="BrushInfo" Color="#38BDF8"/>
+        <SolidColorBrush x:Key="BrushGridHeaderBg" Color="#0B1528"/>
+        <SolidColorBrush x:Key="BrushGridRowBg" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushGridAltRowBg" Color="#0C172B"/>
+        <SolidColorBrush x:Key="BrushGridSelectedBg" Color="#1E3A5F"/>
+        <SolidColorBrush x:Key="BrushGridLine" Color="#1A2B44"/>
+        <SolidColorBrush x:Key="BrushDangerBg" Color="#26EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerBorder" Color="#66EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerFg" Color="#FCA5A5"/>
+        <SolidColorBrush x:Key="BrushRowActiveBg" Color="#1A34D399"/>
+        <SolidColorBrush x:Key="BrushRowActiveFg" Color="#6EE7B7"/>
+        <SolidColorBrush x:Key="BrushRowWarnBg" Color="#1AFBBF24"/>
+        <SolidColorBrush x:Key="BrushRowWarnFg" Color="#FDE68A"/>
+        <SolidColorBrush x:Key="BrushRowInactBg" Color="#1A2DD4BF"/>
+        <SolidColorBrush x:Key="BrushRowInactFg" Color="#5EEAD4"/>
+        <SolidColorBrush x:Key="BrushRowCritBg" Color="#26EF4444"/>
+        <SolidColorBrush x:Key="BrushRowCritFg" Color="#FCA5A5"/>
+        <SolidColorBrush x:Key="BrushRowNeverBg" Color="#1494A3B8"/>
+        <SolidColorBrush x:Key="BrushRowNeverFg" Color="#CBD5E1"/>
+
         <Style x:Key="BrandBtn" TargetType="Button">
-            <Setter Property="Background" Value="#2DD4BF"/>
-            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccentFg}"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Padding" Value="15,8"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -173,14 +418,14 @@ $Xaml = @"
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#5EEAD4"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushAccentHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#14B8A6"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushAccentPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Border" Property="Background" Value="#1A2B44"/>
-                                <Setter Property="Foreground" Value="#64748B"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushDisabledBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -189,9 +434,9 @@ $Xaml = @"
         </Style>
 
         <Style x:Key="SecBtn" TargetType="Button">
-            <Setter Property="Background" Value="#14FFFFFF"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Padding" Value="12,6"/>
@@ -206,10 +451,10 @@ $Xaml = @"
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#24FFFFFF"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushSecBtnHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#0DFFFFFF"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushSecBtnPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Border" Property="Opacity" Value="0.45"/>
@@ -221,12 +466,12 @@ $Xaml = @"
         </Style>
 
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#99070D1A"/>
-            <Setter Property="Foreground" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushInputBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CaretBrush" Value="#2DD4BF"/>
-            <Setter Property="SelectionBrush" Value="#2DD4BF"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="SelectionBrush" Value="{DynamicResource BrushAccent}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -237,7 +482,7 @@ $Xaml = @"
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="Border" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -246,11 +491,11 @@ $Xaml = @"
         </Style>
 
         <Style TargetType="PasswordBox">
-            <Setter Property="Background" Value="#99070D1A"/>
-            <Setter Property="Foreground" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushInputBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CaretBrush" Value="#2DD4BF"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource BrushAccent}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="PasswordBox">
@@ -261,7 +506,7 @@ $Xaml = @"
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsFocused" Value="True">
-                                <Setter TargetName="Border" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -270,7 +515,7 @@ $Xaml = @"
         </Style>
 
         <Style TargetType="ScrollBar">
-            <Setter Property="Background" Value="#050A14"/>
+            <Setter Property="Background" Value="{DynamicResource BrushScrollTrack}"/>
             <Setter Property="Width" Value="10"/>
             <Setter Property="MinWidth" Value="10"/>
             <Setter Property="Template">
@@ -282,7 +527,7 @@ $Xaml = @"
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Border Background="#26354D" CornerRadius="4" Margin="2"/>
+                                                <Border Background="{DynamicResource BrushScrollThumb}" CornerRadius="4" Margin="2"/>
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -306,7 +551,7 @@ $Xaml = @"
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1">
+                            <Border Grid.Row="0" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,0,0,1">
                                 <TabPanel IsItemsHost="True" Margin="18,0"/>
                             </Border>
                             <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"/>
@@ -317,7 +562,7 @@ $Xaml = @"
         </Style>
 
         <Style TargetType="TabItem">
-            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="Padding" Value="16,10"/>
@@ -330,12 +575,12 @@ $Xaml = @"
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Foreground" Value="#E2E8F0"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Foreground" Value="#F8FAFC"/>
-                                <Setter TargetName="TabBorder" Property="Background" Value="#142DD4BF"/>
-                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource BrushAccentTint}"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -352,7 +597,7 @@ $Xaml = @"
         </Grid.RowDefinitions>
 
         <!-- HEADER BAR -->
-        <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="20,13">
+        <Border Grid.Row="0" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,0,0,1" Padding="20,13">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -360,17 +605,22 @@ $Xaml = @"
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="Microsoft 365 Licence Console" Foreground="#F8FAFC" FontSize="19" FontWeight="Bold"/>
-                    <TextBlock Text="Audit licensed Entra ID accounts, inactive sign-ins, unassigned SKU waste, and downgrade opportunities." Foreground="#94A3B8" FontSize="12" Margin="0,2,0,0"/>
+                    <TextBlock Text="Microsoft 365 Licence Console" Foreground="{DynamicResource BrushTextPrimary}" FontSize="19" FontWeight="Bold"/>
+                    <TextBlock Text="Audit licensed Entra ID accounts, inactive sign-ins, unassigned SKU waste, and downgrade opportunities." Foreground="{DynamicResource BrushTextMuted}" FontSize="12" Margin="0,2,0,0"/>
                 </StackPanel>
 
-                <Border Name="bdgSessionStatus" Grid.Column="1" Background="#14FFFFFF" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,6" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Name="txtStatusLabel" Text="Offline Session" Foreground="#94A3B8" FontSize="11.5" FontWeight="SemiBold" FontFamily="Cascadia Mono, Consolas"/>
-                        <Border Width="1" Height="12" Background="#26354D" Margin="10,0"/>
-                        <TextBlock Text="TLS 1.2" Foreground="#34D399" FontSize="11" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold"/>
-                    </StackPanel>
-                </Border>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Name="BtnThemeToggle" Style="{StaticResource SecBtn}" Height="32" Margin="0,0,10,0" Padding="11,5" ToolTip="Follows Windows system light/dark theme automatically; click to toggle.">
+                        <TextBlock Name="TxtThemeLabel" Text="Theme: System (Dark)"/>
+                    </Button>
+                    <Border Name="bdgSessionStatus" Background="{DynamicResource BrushSecBtnBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,6" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Name="txtStatusLabel" Text="Offline Session" Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" FontWeight="SemiBold" FontFamily="Cascadia Mono, Consolas"/>
+                            <Border Width="1" Height="12" Background="{DynamicResource BrushCardBorder}" Margin="10,0"/>
+                            <TextBlock Text="TLS 1.2" Foreground="{DynamicResource BrushOk}" FontSize="11" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -396,55 +646,55 @@ $Xaml = @"
                             <ColumnDefinition Name="colKpiPoolWaste" Width="1.2*"/>
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,8,0">
+                        <Border Grid.Column="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,8,0">
                             <StackPanel>
-                                <TextBlock Text="TOTAL AUDITED" Foreground="#94A3B8" FontSize="10" FontWeight="Bold"/>
-                                <TextBlock Name="kpiTotal" Text="0" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="22" FontWeight="Bold" Margin="0,3,0,0"/>
+                                <TextBlock Text="TOTAL AUDITED" Foreground="{DynamicResource BrushTextMuted}" FontSize="10" FontWeight="Bold"/>
+                                <TextBlock Name="kpiTotal" Text="0" Foreground="{DynamicResource BrushAccent}" FontFamily="Cascadia Mono, Consolas" FontSize="22" FontWeight="Bold" Margin="0,3,0,0"/>
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="1" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,8,0">
+                        <Border Grid.Column="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,8,0">
                             <StackPanel>
-                                <TextBlock Text="ACTIVE (&lt;=30d)" Foreground="#94A3B8" FontSize="10" FontWeight="Bold"/>
-                                <TextBlock Name="kpiActive" Text="0" Foreground="#34D399" FontFamily="Cascadia Mono, Consolas" FontSize="22" FontWeight="Bold" Margin="0,3,0,0"/>
+                                <TextBlock Text="ACTIVE (&lt;=30d)" Foreground="{DynamicResource BrushTextMuted}" FontSize="10" FontWeight="Bold"/>
+                                <TextBlock Name="kpiActive" Text="0" Foreground="{DynamicResource BrushOk}" FontFamily="Cascadia Mono, Consolas" FontSize="22" FontWeight="Bold" Margin="0,3,0,0"/>
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="2" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,8,0">
+                        <Border Grid.Column="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,8,0">
                             <StackPanel>
-                                <TextBlock Text="INACTIVE (&gt;90d)" Foreground="#94A3B8" FontSize="10" FontWeight="Bold"/>
-                                <TextBlock Name="kpiInactive90d" Text="0" Foreground="#FBBF24" FontFamily="Cascadia Mono, Consolas" FontSize="22" FontWeight="Bold" Margin="0,3,0,0"/>
+                                <TextBlock Text="INACTIVE (&gt;90d)" Foreground="{DynamicResource BrushTextMuted}" FontSize="10" FontWeight="Bold"/>
+                                <TextBlock Name="kpiInactive90d" Text="0" Foreground="{DynamicResource BrushWarn}" FontFamily="Cascadia Mono, Consolas" FontSize="22" FontWeight="Bold" Margin="0,3,0,0"/>
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="3" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,8,0">
+                        <Border Grid.Column="3" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,8,0">
                             <StackPanel>
-                                <TextBlock Text="CRITICAL (&gt;1yr)" Foreground="#94A3B8" FontSize="10" FontWeight="Bold"/>
-                                <TextBlock Name="kpiInactive1yr" Text="0" Foreground="#F87171" FontFamily="Cascadia Mono, Consolas" FontSize="22" FontWeight="Bold" Margin="0,3,0,0"/>
+                                <TextBlock Text="CRITICAL (&gt;1yr)" Foreground="{DynamicResource BrushTextMuted}" FontSize="10" FontWeight="Bold"/>
+                                <TextBlock Name="kpiInactive1yr" Text="0" Foreground="{DynamicResource BrushErr}" FontFamily="Cascadia Mono, Consolas" FontSize="22" FontWeight="Bold" Margin="0,3,0,0"/>
                             </StackPanel>
                         </Border>
-                        <Border Name="borderKpiSavings" Grid.Column="4" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,8,0">
+                        <Border Name="borderKpiSavings" Grid.Column="4" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,8,0">
                             <StackPanel>
-                                <TextBlock Text="WASTED MONEY (&gt;6m)" Foreground="#94A3B8" FontSize="9.5" FontWeight="Bold"/>
-                                <TextBlock Name="kpiSavings" Text="£0.00" Foreground="#F87171" FontFamily="Cascadia Mono, Consolas" FontSize="15" FontWeight="Bold" Margin="0,1,0,0"/>
-                                <TextBlock Text="POTENTIAL MONTHLY SAVINGS" Foreground="#94A3B8" FontSize="9.5" FontWeight="Bold" Margin="0,3,0,0"/>
-                                <TextBlock Name="kpiMonthlySavings" Text="£0.00/mo" Foreground="#34D399" FontFamily="Cascadia Mono, Consolas" FontSize="15" FontWeight="Bold" Margin="0,1,0,0"/>
+                                <TextBlock Text="WASTED MONEY (&gt;6m)" Foreground="{DynamicResource BrushTextMuted}" FontSize="9.5" FontWeight="Bold"/>
+                                <TextBlock Name="kpiSavings" Text="£0.00" Foreground="{DynamicResource BrushErr}" FontFamily="Cascadia Mono, Consolas" FontSize="15" FontWeight="Bold" Margin="0,1,0,0"/>
+                                <TextBlock Text="POTENTIAL MONTHLY SAVINGS" Foreground="{DynamicResource BrushTextMuted}" FontSize="9.5" FontWeight="Bold" Margin="0,3,0,0"/>
+                                <TextBlock Name="kpiMonthlySavings" Text="£0.00/mo" Foreground="{DynamicResource BrushOk}" FontFamily="Cascadia Mono, Consolas" FontSize="15" FontWeight="Bold" Margin="0,1,0,0"/>
                             </StackPanel>
                         </Border>
-                        <Border Name="borderKpiPoolWaste" Grid.Column="5" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,8">
+                        <Border Name="borderKpiPoolWaste" Grid.Column="5" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="12,8">
                             <StackPanel>
-                                <TextBlock Text="POOL WASTE (UNASSIGNED)" Foreground="#94A3B8" FontSize="9.5" FontWeight="Bold"/>
-                                <TextBlock Name="kpiPoolWaste" Text="£0.00" Foreground="#F87171" FontFamily="Cascadia Mono, Consolas" FontSize="15" FontWeight="Bold" Margin="0,1,0,0"/>
-                                <TextBlock Name="kpiPoolWasteCount" Text="0 unused licenses" Foreground="#94A3B8" FontSize="10" Margin="0,3,0,0" FontWeight="SemiBold"/>
+                                <TextBlock Text="POOL WASTE (UNASSIGNED)" Foreground="{DynamicResource BrushTextMuted}" FontSize="9.5" FontWeight="Bold"/>
+                                <TextBlock Name="kpiPoolWaste" Text="£0.00" Foreground="{DynamicResource BrushErr}" FontFamily="Cascadia Mono, Consolas" FontSize="15" FontWeight="Bold" Margin="0,1,0,0"/>
+                                <TextBlock Name="kpiPoolWasteCount" Text="0 unused licenses" Foreground="{DynamicResource BrushTextMuted}" FontSize="10" Margin="0,3,0,0" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Border>
                     </Grid>
 
                     <!-- Activity Distribution Card -->
-                    <Border Grid.Row="1" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,12">
+                    <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,12">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="User Activity Distribution" Foreground="#F8FAFC" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                            <TextBlock Grid.Row="0" Text="User Activity Distribution" Foreground="{DynamicResource BrushTextPrimary}" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                                 <StackPanel Name="panelActivityChart"/>
                             </ScrollViewer>
@@ -457,7 +707,7 @@ $Xaml = @"
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Inspect full SKU pool waste on Licences or filter accounts on User Directory." Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center"/>
+                        <TextBlock Text="Inspect full SKU pool waste on Licences or filter accounts on User Directory." Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" VerticalAlignment="Center"/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
                             <Button Name="btnGenEmailDash" Style="{StaticResource SecBtn}" Content="Generate Email Draft" Height="34" Margin="0,0,8,0"/>
                             <Button Name="btnExportCSVDash" Style="{StaticResource SecBtn}" Content="Export CSV" Height="34" Margin="0,0,8,0"/>
@@ -471,26 +721,26 @@ $Xaml = @"
 
             <!-- TAB 2: LICENCES -->
             <TabItem Name="tabLicences" Header="Licences">
-                <Border Margin="20,14,20,12" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="14">
+                <Border Margin="20,14,20,12" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="Tenant Subscriptions &amp; Unassigned Licence Pool" Foreground="#F8FAFC" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <TextBlock Grid.Row="0" Text="Tenant Subscriptions &amp; Unassigned Licence Pool" Foreground="{DynamicResource BrushTextPrimary}" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
                         <DataGrid Grid.Row="1" Name="gridUnassigned" AutoGenerateColumns="False" IsReadOnly="True"
-                                  Background="#091122" BorderBrush="#26354D" BorderThickness="1" Foreground="#E2E8F0"
-                                  RowBackground="#091122" AlternatingRowBackground="#0C172B"
-                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#1A2B44"
+                                  Background="{DynamicResource BrushGridRowBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Foreground="{DynamicResource BrushTextSecondary}"
+                                  RowBackground="{DynamicResource BrushGridRowBg}" AlternatingRowBackground="{DynamicResource BrushGridAltRowBg}"
+                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{DynamicResource BrushGridLine}"
                                   RowHeaderWidth="0" SelectionMode="Single" FontSize="12" RowHeight="30">
                             <DataGrid.ColumnHeaderStyle>
                                 <Style TargetType="DataGridColumnHeader">
-                                    <Setter Property="Background" Value="#0B1528"/>
-                                    <Setter Property="Foreground" Value="#94A3B8"/>
+                                    <Setter Property="Background" Value="{DynamicResource BrushGridHeaderBg}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
                                     <Setter Property="Padding" Value="10,7"/>
                                     <Setter Property="FontWeight" Value="Bold"/>
                                     <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                    <Setter Property="BorderBrush" Value="#26354D"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
                                 </Style>
                             </DataGrid.ColumnHeaderStyle>
                             <DataGrid.CellStyle>
@@ -498,11 +748,11 @@ $Xaml = @"
                                     <Setter Property="BorderThickness" Value="0"/>
                                     <Setter Property="Padding" Value="8,4"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
-                                    <Setter Property="Foreground" Value="#E2E8F0"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
                                     <Style.Triggers>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter Property="Background" Value="#1E3A5F"/>
-                                            <Setter Property="Foreground" Value="#F8FAFC"/>
+                                            <Setter Property="Background" Value="{DynamicResource BrushGridSelectedBg}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                                         </Trigger>
                                     </Style.Triggers>
                                 </Style>
@@ -570,21 +820,21 @@ $Xaml = @"
 
                         <!-- Preset Filters -->
                         <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Name="btnFilterAll" Content="All Users" Padding="10,5" Background="#2DD4BF" Foreground="#042F2E" FontWeight="Bold" BorderThickness="0" Margin="0,0,5,5" Tag="all"/>
-                            <Button Name="btnFilterActive" Content="Active (&lt;=30d)" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="active"/>
-                            <Button Name="btnFilterLicGuests" Content="Licensed + Guests" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="licensed_guests"/>
-                            <Button Name="btnFilterLicensed" Content="Licensed Only" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="licensed"/>
-                            <Button Name="btnFilterGuests" Content="Guests Only" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="guests"/>
-                            <Button Name="btnFilterUnlicensed" Content="Unlicensed" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="unlicensed"/>
-                            <Button Name="btnFilterDisabled" Content="Disabled" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="disabled"/>
-                            <Button Name="btnFilterInactive90d" Content="Inactive (&gt;90d)" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="inactive90d"/>
-                            <Button Name="btnFilterNever" Content="Never Logged In" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="never"/>
+                            <Button Name="btnFilterAll" Content="All Users" Padding="10,5" Background="{DynamicResource BrushAccent}" Foreground="{DynamicResource BrushAccentFg}" FontWeight="Bold" BorderThickness="0" Margin="0,0,5,5" Tag="all"/>
+                            <Button Name="btnFilterActive" Content="Active (&lt;=30d)" Padding="10,5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,5,5" Tag="active"/>
+                            <Button Name="btnFilterLicGuests" Content="Licensed + Guests" Padding="10,5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,5,5" Tag="licensed_guests"/>
+                            <Button Name="btnFilterLicensed" Content="Licensed Only" Padding="10,5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,5,5" Tag="licensed"/>
+                            <Button Name="btnFilterGuests" Content="Guests Only" Padding="10,5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,5,5" Tag="guests"/>
+                            <Button Name="btnFilterUnlicensed" Content="Unlicensed" Padding="10,5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,5,5" Tag="unlicensed"/>
+                            <Button Name="btnFilterDisabled" Content="Disabled" Padding="10,5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,5,5" Tag="disabled"/>
+                            <Button Name="btnFilterInactive90d" Content="Inactive (&gt;90d)" Padding="10,5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,5,5" Tag="inactive90d"/>
+                            <Button Name="btnFilterNever" Content="Never Logged In" Padding="10,5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,5,5" Tag="never"/>
                         </WrapPanel>
 
                         <!-- Search Box -->
                         <Grid Grid.Column="1" VerticalAlignment="Top">
                             <TextBox Name="txtSearch" Height="32" Padding="8,5" FontSize="12" VerticalContentAlignment="Center"/>
-                            <TextBlock Text="Search Name, UPN, SKU..." Foreground="#94A3B8" IsHitTestVisible="False" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11.5">
+                            <TextBlock Text="Search Name, UPN, SKU..." Foreground="{DynamicResource BrushTextMuted}" IsHitTestVisible="False" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11.5">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -600,64 +850,64 @@ $Xaml = @"
                     </Grid>
 
                     <!-- Additive Filter Toolbar -->
-                    <Border Grid.Row="1" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="8,5" Margin="0,0,0,8">
+                    <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="8,5" Margin="0,0,0,8">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="REFINE:" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" FontFamily="Cascadia Mono, Consolas" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <TextBlock Text="REFINE:" Foreground="{DynamicResource BrushTextMuted}" FontSize="10" FontWeight="Bold" FontFamily="Cascadia Mono, Consolas" VerticalAlignment="Center" Margin="0,0,8,0"/>
 
-                                <TextBlock Text="Lic:" Foreground="#94A3B8" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                <Button Name="btnSubLicAll" Content="All" Padding="6,3" FontSize="10.5" Background="#262DD4BF" Foreground="#F8FAFC" BorderBrush="#2DD4BF" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
-                                <Button Name="btnSubLicYes" Content="Yes" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,3,0" Tag="licensed"/>
-                                <Button Name="btnSubLicNo" Content="No" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,8,0" Tag="unlicensed"/>
+                                <TextBlock Text="Lic:" Foreground="{DynamicResource BrushTextMuted}" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <Button Name="btnSubLicAll" Content="All" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushAccentTint}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
+                                <Button Name="btnSubLicYes" Content="Yes" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,3,0" Tag="licensed"/>
+                                <Button Name="btnSubLicNo" Content="No" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,8,0" Tag="unlicensed"/>
 
-                                <Border Width="1" Height="14" Background="#26354D" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <Border Width="1" Height="14" Background="{DynamicResource BrushCardBorder}" Margin="0,0,8,0" VerticalAlignment="Center"/>
 
-                                <TextBlock Text="Type:" Foreground="#94A3B8" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                <Button Name="btnSubTypeAll" Content="All" Padding="6,3" FontSize="10.5" Background="#262DD4BF" Foreground="#F8FAFC" BorderBrush="#2DD4BF" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
-                                <Button Name="btnSubTypeMembers" Content="Members" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,3,0" Tag="members"/>
-                                <Button Name="btnSubTypeGuests" Content="Guests" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,3,0" Tag="guests"/>
-                                <Button Name="btnSubTypeLicGuest" Content="Lic+Guests" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,8,0" Tag="licensed_guests"/>
+                                <TextBlock Text="Type:" Foreground="{DynamicResource BrushTextMuted}" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <Button Name="btnSubTypeAll" Content="All" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushAccentTint}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
+                                <Button Name="btnSubTypeMembers" Content="Members" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,3,0" Tag="members"/>
+                                <Button Name="btnSubTypeGuests" Content="Guests" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,3,0" Tag="guests"/>
+                                <Button Name="btnSubTypeLicGuest" Content="Lic+Guests" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,8,0" Tag="licensed_guests"/>
 
-                                <Border Width="1" Height="14" Background="#26354D" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <Border Width="1" Height="14" Background="{DynamicResource BrushCardBorder}" Margin="0,0,8,0" VerticalAlignment="Center"/>
 
-                                <TextBlock Text="Status:" Foreground="#94A3B8" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                <Button Name="btnSubAccAll" Content="All" Padding="6,3" FontSize="10.5" Background="#262DD4BF" Foreground="#F8FAFC" BorderBrush="#2DD4BF" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
-                                <Button Name="btnSubAccEnabled" Content="Enabled" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,3,0" Tag="enabled"/>
-                                <Button Name="btnSubAccDisabled" Content="Disabled" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,8,0" Tag="disabled"/>
+                                <TextBlock Text="Status:" Foreground="{DynamicResource BrushTextMuted}" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <Button Name="btnSubAccAll" Content="All" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushAccentTint}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
+                                <Button Name="btnSubAccEnabled" Content="Enabled" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,3,0" Tag="enabled"/>
+                                <Button Name="btnSubAccDisabled" Content="Disabled" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,8,0" Tag="disabled"/>
 
-                                <Border Width="1" Height="14" Background="#26354D" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <Border Width="1" Height="14" Background="{DynamicResource BrushCardBorder}" Margin="0,0,8,0" VerticalAlignment="Center"/>
 
-                                <TextBlock Text="Sign-In:" Foreground="#94A3B8" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                <Button Name="btnSubActAll" Content="All" Padding="6,3" FontSize="10.5" Background="#262DD4BF" Foreground="#F8FAFC" BorderBrush="#2DD4BF" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
-                                <Button Name="btnSubActActive" Content="&lt;=30d" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,3,0" Tag="active"/>
-                                <Button Name="btnSubActInactive" Content="&gt;90d" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,3,0" Tag="inactive90d"/>
-                                <Button Name="btnSubActNever" Content="Never" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,8,0" Tag="never"/>
+                                <TextBlock Text="Sign-In:" Foreground="{DynamicResource BrushTextMuted}" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <Button Name="btnSubActAll" Content="All" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushAccentTint}" Foreground="{DynamicResource BrushTextPrimary}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
+                                <Button Name="btnSubActActive" Content="&lt;=30d" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,3,0" Tag="active"/>
+                                <Button Name="btnSubActInactive" Content="&gt;90d" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,3,0" Tag="inactive90d"/>
+                                <Button Name="btnSubActNever" Content="Never" Padding="6,3" FontSize="10.5" Background="{DynamicResource BrushSecBtnBg}" Foreground="{DynamicResource BrushTextMuted}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Margin="0,0,8,0" Tag="never"/>
 
-                                <Button Name="btnResetFilters" Content="Reset All" Padding="8,3" FontSize="10.5" Background="#26EF4444" Foreground="#FCA5A5" BorderBrush="#66EF4444" BorderThickness="1" Margin="4,0,0,0"/>
+                                <Button Name="btnResetFilters" Content="Reset All" Padding="8,3" FontSize="10.5" Background="{DynamicResource BrushDangerBg}" Foreground="{DynamicResource BrushDangerFg}" BorderBrush="{DynamicResource BrushDangerBorder}" BorderThickness="1" Margin="4,0,0,0"/>
                             </WrapPanel>
 
-                            <TextBlock Name="txtFilterCount" Grid.Column="1" Text="Showing 0 of 0 users" Foreground="#2DD4BF" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            <TextBlock Name="txtFilterCount" Grid.Column="1" Text="Showing 0 of 0 users" Foreground="{DynamicResource BrushAccent}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"/>
                         </Grid>
                     </Border>
 
-                    <!-- Dark Data Grid -->
+                    <!-- Data Grid -->
                     <DataGrid Name="gridUsers" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True"
-                              Background="#091122" BorderBrush="#26354D" BorderThickness="1" Foreground="#E2E8F0"
-                              RowBackground="#091122" AlternatingRowBackground="#0C172B"
-                              HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#1A2B44"
+                              Background="{DynamicResource BrushGridRowBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Foreground="{DynamicResource BrushTextSecondary}"
+                              RowBackground="{DynamicResource BrushGridRowBg}" AlternatingRowBackground="{DynamicResource BrushGridAltRowBg}"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{DynamicResource BrushGridLine}"
                               RowHeaderWidth="0" SelectionMode="Single" FontSize="11.5">
                         <DataGrid.ColumnHeaderStyle>
                             <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#0B1528"/>
-                                <Setter Property="Foreground" Value="#94A3B8"/>
+                                <Setter Property="Background" Value="{DynamicResource BrushGridHeaderBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
                                 <Setter Property="Padding" Value="10,8"/>
                                 <Setter Property="FontWeight" Value="Bold"/>
                                 <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                <Setter Property="BorderBrush" Value="#26354D"/>
+                                <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
                             </Style>
                         </DataGrid.ColumnHeaderStyle>
                         <DataGrid.CellStyle>
@@ -668,42 +918,42 @@ $Xaml = @"
                                 <Setter Property="Foreground" Value="{Binding Path=Foreground, RelativeSource={RelativeSource AncestorType=DataGridRow}}"/>
                                 <Style.Triggers>
                                     <Trigger Property="IsSelected" Value="True">
-                                        <Setter Property="Background" Value="#1E3A5F"/>
-                                        <Setter Property="Foreground" Value="#F8FAFC"/>
+                                        <Setter Property="Background" Value="{DynamicResource BrushGridSelectedBg}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
                         </DataGrid.CellStyle>
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow">
-                                <Setter Property="Background" Value="#091122"/>
-                                <Setter Property="Foreground" Value="#E2E8F0"/>
+                                <Setter Property="Background" Value="{DynamicResource BrushGridRowBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
                                 <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                <Setter Property="BorderBrush" Value="#1A2B44"/>
+                                <Setter Property="BorderBrush" Value="{DynamicResource BrushGridLine}"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding StatusCategory}" Value="Active (&lt;=30d)">
-                                        <Setter Property="Background" Value="#1A34D399"/>
-                                        <Setter Property="Foreground" Value="#6EE7B7"/>
+                                        <Setter Property="Background" Value="{DynamicResource BrushRowActiveBg}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource BrushRowActiveFg}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding StatusCategory}" Value="Inactive (30-90d)">
-                                        <Setter Property="Background" Value="#1AFBBF24"/>
-                                        <Setter Property="Foreground" Value="#FDE68A"/>
+                                        <Setter Property="Background" Value="{DynamicResource BrushRowWarnBg}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource BrushRowWarnFg}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding StatusCategory}" Value="Inactive (90-365d)">
-                                        <Setter Property="Background" Value="#1A2DD4BF"/>
-                                        <Setter Property="Foreground" Value="#5EEAD4"/>
+                                        <Setter Property="Background" Value="{DynamicResource BrushRowInactBg}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource BrushRowInactFg}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding StatusCategory}" Value="Inactive (&gt;1yr)">
-                                        <Setter Property="Background" Value="#26EF4444"/>
-                                        <Setter Property="Foreground" Value="#FCA5A5"/>
+                                        <Setter Property="Background" Value="{DynamicResource BrushRowCritBg}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource BrushRowCritFg}"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding StatusCategory}" Value="Never Logged In">
-                                        <Setter Property="Background" Value="#1494A3B8"/>
-                                        <Setter Property="Foreground" Value="#CBD5E1"/>
+                                        <Setter Property="Background" Value="{DynamicResource BrushRowNeverBg}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource BrushRowNeverFg}"/>
                                     </DataTrigger>
                                     <Trigger Property="IsSelected" Value="True">
-                                        <Setter Property="Background" Value="#1E3A5F"/>
-                                        <Setter Property="Foreground" Value="#F8FAFC"/>
+                                        <Setter Property="Background" Value="{DynamicResource BrushGridSelectedBg}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
@@ -718,7 +968,7 @@ $Xaml = @"
                                         <Setter Property="FontWeight" Value="SemiBold"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding UserType}" Value="Guest">
-                                                <Setter Property="Foreground" Value="#2DD4BF"/>
+                                                <Setter Property="Foreground" Value="{DynamicResource BrushAccent}"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -747,7 +997,7 @@ $Xaml = @"
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Results represent audited Entra ID accounts and subscriptions." Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center"/>
+                        <TextBlock Text="Results represent audited Entra ID accounts and subscriptions." Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" VerticalAlignment="Center"/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
                             <Button Name="btnGenEmail" Style="{StaticResource SecBtn}" Content="Generate Email Draft" Height="34" Margin="0,0,8,0"/>
                             <Button Name="btnExportCSV" Style="{StaticResource SecBtn}" Content="Export CSV" Height="34" Margin="0,0,8,0"/>
@@ -761,14 +1011,14 @@ $Xaml = @"
 
             <!-- TAB 4: ACTIVITY LOG -->
             <TabItem Name="tabActivityLog" Header="Activity Log">
-                <Border Margin="20,14,20,12" Background="#CC050A14" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="12">
+                <Border Margin="20,14,20,12" Background="{DynamicResource BrushLogBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="12">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="System Activity Feed" Foreground="#94A3B8" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,8"/>
-                        <TextBox Grid.Row="1" Name="txtLog" Background="Transparent" Foreground="#CBD5E1" BorderThickness="0" Padding="0"
+                        <TextBlock Grid.Row="0" Text="System Activity Feed" Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBox Grid.Row="1" Name="txtLog" Background="Transparent" Foreground="{DynamicResource BrushTextSecondary}" BorderThickness="0" Padding="0"
                                  FontFamily="Cascadia Mono, Consolas" FontSize="11.5" IsReadOnly="True" AcceptsReturn="True"
                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
                     </Grid>
@@ -781,13 +1031,13 @@ $Xaml = @"
                     <!-- Offline Welcome Screen -->
                     <ScrollViewer Name="panelOfflineWelcome" Visibility="Visible" VerticalScrollBarVisibility="Auto">
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="760" Margin="0,8,0,8">
-                            <TextBlock Text="Microsoft 365 Licence Console" Foreground="#F8FAFC" FontSize="21" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4"/>
-                            <TextBlock Text="Select your operational role and authentication method to audit tenant users." Foreground="#94A3B8" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,18"/>
+                            <TextBlock Text="Microsoft 365 Licence Console" Foreground="{DynamicResource BrushTextPrimary}" FontSize="21" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                            <TextBlock Text="Select your operational role and authentication method to audit tenant users." Foreground="{DynamicResource BrushTextMuted}" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,18"/>
 
                             <!-- Step 1: Role Selection Cards -->
-                            <TextBlock Text="STEP 1: SELECT YOUR OPERATING ROLE" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="11" FontWeight="Bold" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+                            <TextBlock Text="STEP 1: SELECT YOUR OPERATING ROLE" Foreground="{DynamicResource BrushAccent}" FontFamily="Cascadia Mono, Consolas" FontSize="11" FontWeight="Bold" Margin="0,0,0,8" HorizontalAlignment="Center"/>
                             <UniformGrid Columns="2" Margin="0,0,0,18" Width="620">
-                                <Button Name="btnRoleSelectServiceDesk" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" Padding="14" Margin="0,0,8,0" Cursor="Hand" Height="92">
+                                <Button Name="btnRoleSelectServiceDesk" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Padding="14" Margin="0,0,8,0" Cursor="Hand" Height="92">
                                     <Button.Style>
                                         <Style TargetType="Button">
                                             <Setter Property="Template">
@@ -802,12 +1052,12 @@ $Xaml = @"
                                         </Style>
                                     </Button.Style>
                                     <StackPanel>
-                                        <TextBlock Text="[Desk] Service Desk" Foreground="#F8FAFC" FontSize="15.5" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Standard view: licences, statuses &amp; accounts. Hides all financials." Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"/>
+                                        <TextBlock Text="[Desk] Service Desk" Foreground="{DynamicResource BrushTextPrimary}" FontSize="15.5" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="Standard view: licences, statuses &amp; accounts. Hides all financials." Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"/>
                                     </StackPanel>
                                 </Button>
 
-                                <Button Name="btnRoleSelectSales" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" Padding="14" Margin="8,0,0,0" Cursor="Hand" Height="92">
+                                <Button Name="btnRoleSelectSales" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" Padding="14" Margin="8,0,0,0" Cursor="Hand" Height="92">
                                     <Button.Style>
                                         <Style TargetType="Button">
                                             <Setter Property="Template">
@@ -822,30 +1072,30 @@ $Xaml = @"
                                         </Style>
                                     </Button.Style>
                                     <StackPanel>
-                                        <TextBlock Text="[$] Sales &amp; Business" Foreground="#F8FAFC" FontSize="15.5" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                        <TextBlock Text="Financial view: savings, wasted costs, and downgrade recommendations." Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"/>
+                                        <TextBlock Text="[$] Sales &amp; Business" Foreground="{DynamicResource BrushTextPrimary}" FontSize="15.5" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="Financial view: savings, wasted costs, and downgrade recommendations." Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"/>
                                     </StackPanel>
                                 </Button>
                             </UniformGrid>
 
                             <!-- Step 2: Connection Panel -->
                             <StackPanel Name="panelConnectionMethods" Visibility="Collapsed" HorizontalAlignment="Center" Width="760">
-                                <TextBlock Text="STEP 2: CHOOSE CONNECTION METHOD" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Center"/>
+                                <TextBlock Text="STEP 2: CHOOSE CONNECTION METHOD" Foreground="{DynamicResource BrushAccent}" FontFamily="Cascadia Mono, Consolas" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Center"/>
 
                                 <UniformGrid Columns="3" Margin="0,0,0,14">
                                     <!-- Option A: Interactive M365 Sign-In -->
-                                    <Border Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,8,0">
+                                    <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,8,0">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="*"/>
                                                 <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
-                                            <TextBlock Grid.Row="0" Text="Interactive Sign-In" Foreground="#F8FAFC" FontSize="13.5" FontWeight="Bold" Margin="0,0,0,6"/>
-                                            <TextBlock Grid.Row="1" Text="Official Microsoft OAuth login prompt. Supports MFA and SSO." Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                            <TextBlock Grid.Row="0" Text="Interactive Sign-In" Foreground="{DynamicResource BrushTextPrimary}" FontSize="13.5" FontWeight="Bold" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="1" Text="Official Microsoft OAuth login prompt. Supports MFA and SSO." Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
                                             <StackPanel Grid.Row="2">
-                                                <TextBlock Text="Tenant (Optional):" Foreground="#94A3B8" FontSize="10.5" Margin="0,0,0,3"/>
+                                                <TextBlock Text="Tenant (Optional):" Foreground="{DynamicResource BrushTextMuted}" FontSize="10.5" Margin="0,0,0,3"/>
                                                 <TextBox Name="txtUserTenant" Padding="6,5" Margin="0,0,0,8" FontSize="11.5"/>
                                                 <Button Name="btnConnectM365" Style="{StaticResource BrandBtn}" Content="M365 Sign-In" Height="34" FontSize="12"/>
                                             </StackPanel>
@@ -853,22 +1103,22 @@ $Xaml = @"
                                     </Border>
 
                                     <!-- Option B: App Client Secret -->
-                                    <Border Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="14" Margin="4,0,4,0">
+                                    <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="4,0,4,0">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="*"/>
                                                 <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
-                                            <TextBlock Grid.Row="0" Text="App Client Secret" Foreground="#F8FAFC" FontSize="13.5" FontWeight="Bold" Margin="0,0,0,6"/>
-                                            <TextBlock Grid.Row="1" Text="Automated connection using Entra App Registration client credentials." Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                                            <TextBlock Grid.Row="0" Text="App Client Secret" Foreground="{DynamicResource BrushTextPrimary}" FontSize="13.5" FontWeight="Bold" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="1" Text="Automated connection using Entra App Registration client credentials." Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,10"/>
 
                                             <StackPanel Grid.Row="2">
-                                                <TextBlock Text="Tenant ID/Domain:" Foreground="#94A3B8" FontSize="10" Margin="0,0,0,2"/>
+                                                <TextBlock Text="Tenant ID/Domain:" Foreground="{DynamicResource BrushTextMuted}" FontSize="10" Margin="0,0,0,2"/>
                                                 <TextBox Name="txtAppTenant" Padding="5,4" Margin="0,0,0,4" FontSize="11"/>
-                                                <TextBlock Text="Client ID:" Foreground="#94A3B8" FontSize="10" Margin="0,0,0,2"/>
+                                                <TextBlock Text="Client ID:" Foreground="{DynamicResource BrushTextMuted}" FontSize="10" Margin="0,0,0,2"/>
                                                 <TextBox Name="txtAppClient" Padding="5,4" Margin="0,0,0,4" FontSize="11"/>
-                                                <TextBlock Text="Client Secret:" Foreground="#94A3B8" FontSize="10" Margin="0,0,0,2"/>
+                                                <TextBlock Text="Client Secret:" Foreground="{DynamicResource BrushTextMuted}" FontSize="10" Margin="0,0,0,2"/>
                                                 <PasswordBox Name="txtAppSecret" Padding="5,4" Margin="0,0,0,8" FontSize="11"/>
                                                 <Button Name="btnConnectApp" Style="{StaticResource BrandBtn}" Content="Connect App" Height="34" FontSize="12"/>
                                             </StackPanel>
@@ -876,21 +1126,21 @@ $Xaml = @"
                                     </Border>
 
                                     <!-- Option C: Import CSV -->
-                                    <Border Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="14" Margin="8,0,0,0">
+                                    <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="8,0,0,0">
                                         <Grid>
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="*"/>
                                                 <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
-                                            <TextBlock Grid.Row="0" Text="Offline CSV Import" Foreground="#F8FAFC" FontSize="13.5" FontWeight="Bold" Margin="0,0,0,6"/>
-                                            <TextBlock Grid.Row="1" Text="Load previously exported user reports directly into the console." Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                                            <TextBlock Grid.Row="0" Text="Offline CSV Import" Foreground="{DynamicResource BrushTextPrimary}" FontSize="13.5" FontWeight="Bold" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="1" Text="Load previously exported user reports directly into the console." Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
                                             <Button Grid.Row="2" Name="btnBrowseCSV" Style="{StaticResource SecBtn}" Height="86">
                                                 <StackPanel VerticalAlignment="Center">
-                                                    <TextBlock Text="[CSV]" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4"/>
-                                                    <TextBlock Text="Browse CSV File" Foreground="#F8FAFC" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                                                    <TextBlock Text="Click to select file" Foreground="#94A3B8" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                                    <TextBlock Text="[CSV]" Foreground="{DynamicResource BrushAccent}" FontFamily="Cascadia Mono, Consolas" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                                    <TextBlock Text="Browse CSV File" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                                    <TextBlock Text="Click to select file" Foreground="{DynamicResource BrushTextMuted}" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                                 </StackPanel>
                                             </Button>
                                         </Grid>
@@ -899,8 +1149,8 @@ $Xaml = @"
 
                                 <!-- Demo Sandbox Option -->
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
-                                    <TextBlock Text="Need to test without credentials?" Foreground="#94A3B8" FontSize="12" VerticalAlignment="Center"/>
-                                    <Button Name="btnDemoMode" Background="Transparent" BorderThickness="0" Foreground="#2DD4BF" Content="Launch Demo Sandbox Mode" FontWeight="Bold" Cursor="Hand" Margin="8,0,0,0">
+                                    <TextBlock Text="Need to test without credentials?" Foreground="{DynamicResource BrushTextMuted}" FontSize="12" VerticalAlignment="Center"/>
+                                    <Button Name="btnDemoMode" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushAccent}" Content="Launch Demo Sandbox Mode" FontWeight="Bold" Cursor="Hand" Margin="8,0,0,0">
                                         <Button.Style>
                                             <Style TargetType="Button">
                                                 <Setter Property="Template">
@@ -920,26 +1170,26 @@ $Xaml = @"
 
                     <!-- Connected Session Info Screen -->
                     <StackPanel Name="panelConnectedSession" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Width="460">
-                        <Border Background="#660D192E" BorderBrush="#2DD4BF" BorderThickness="1" CornerRadius="8" Padding="24">
+                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" CornerRadius="8" Padding="24">
                             <StackPanel>
-                                <TextBlock Text="Active Session Established" Foreground="#F8FAFC" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4"/>
-                                <TextBlock Text="You are successfully authenticated and auditing the tenant." Foreground="#94A3B8" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,18"/>
+                                <TextBlock Text="Active Session Established" Foreground="{DynamicResource BrushTextPrimary}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                <TextBlock Text="You are successfully authenticated and auditing the tenant." Foreground="{DynamicResource BrushTextMuted}" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,18"/>
 
                                 <Grid Margin="0,6">
-                                    <TextBlock Text="Tenant Domain:" Foreground="#94A3B8" FontSize="12"/>
-                                    <TextBlock Name="txtSessionTenant" Text="N/A" Foreground="#F8FAFC" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                    <TextBlock Text="Tenant Domain:" Foreground="{DynamicResource BrushTextMuted}" FontSize="12"/>
+                                    <TextBlock Name="txtSessionTenant" Text="N/A" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
                                 </Grid>
                                 <Grid Margin="0,6">
-                                    <TextBlock Text="Connected As:" Foreground="#94A3B8" FontSize="12"/>
-                                    <TextBlock Name="txtSessionUser" Text="N/A" Foreground="#F8FAFC" FontSize="12" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="250"/>
+                                    <TextBlock Text="Connected As:" Foreground="{DynamicResource BrushTextMuted}" FontSize="12"/>
+                                    <TextBlock Name="txtSessionUser" Text="N/A" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="250"/>
                                 </Grid>
                                 <Grid Margin="0,6">
-                                    <TextBlock Text="Uptime:" Foreground="#94A3B8" FontSize="12"/>
-                                    <TextBlock Name="txtSessionUptime" Text="00:00:00" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="12" HorizontalAlignment="Right" FontWeight="Bold"/>
+                                    <TextBlock Text="Uptime:" Foreground="{DynamicResource BrushTextMuted}" FontSize="12"/>
+                                    <TextBlock Name="txtSessionUptime" Text="00:00:00" Foreground="{DynamicResource BrushAccent}" FontFamily="Cascadia Mono, Consolas" FontSize="12" HorizontalAlignment="Right" FontWeight="Bold"/>
                                 </Grid>
                                 <Grid Margin="0,6,0,18">
-                                    <TextBlock Text="Mode:" Foreground="#94A3B8" FontSize="12"/>
-                                    <TextBlock Name="txtSessionMode" Text="N/A" Foreground="#F8FAFC" FontSize="12" HorizontalAlignment="Right"/>
+                                    <TextBlock Text="Mode:" Foreground="{DynamicResource BrushTextMuted}" FontSize="12"/>
+                                    <TextBlock Name="txtSessionMode" Text="N/A" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" HorizontalAlignment="Right"/>
                                 </Grid>
 
                                 <Button Name="btnDisconnect" Style="{StaticResource SecBtn}" Content="Disconnect Session" Height="38" FontSize="13"/>
@@ -951,7 +1201,7 @@ $Xaml = @"
         </TabControl>
 
         <!-- SINGLE-ROW FOOTER -->
-        <Border Grid.Row="2" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="20,10">
+        <Border Grid.Row="2" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,1,0,0" Padding="20,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -959,7 +1209,7 @@ $Xaml = @"
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0" Text="Logs: C:\Logs\UserLicenceCheck · Use horizontal tabs to switch between Overview, Licences, Directory, Logs, and Connection"
-                           Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
+                           Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Name="btnFooterActivity" Style="{StaticResource SecBtn}" Content="View Activity Log" Height="34" Margin="0,0,10,0"/>
@@ -1005,6 +1255,58 @@ $Xml.SelectNodes("//*[@Name]") | ForEach-Object {
         $Val = Find-WpfChildByName -Parent $Window -Name $_.Name
     }
     Set-Variable -Name "wpf_$($_.Name)" -Value $Val -Scope Script
+}
+
+function Update-ConsoleThemeElements {
+    if ($Script:UnassignedLicenses -and $Window.Resources) {
+        $okBrush   = $Window.Resources['BrushOk']
+        $errBrush  = $Window.Resources['BrushErr']
+        $muteBrush = $Window.Resources['BrushTextMuted']
+        foreach ($item in $Script:UnassignedLicenses) {
+            if ($item.PSObject.Properties['UnassignedTone']) {
+                $item.UnassignedBrush = switch ($item.UnassignedTone) { 'Ok' { $okBrush } 'Err' { $errBrush } default { $muteBrush } }
+            }
+            if ($item.PSObject.Properties['WastedTone']) {
+                $item.WastedBrush = switch ($item.WastedTone) { 'Err' { $errBrush } 'Ok' { $okBrush } default { $muteBrush } }
+            }
+        }
+        if ($wpf_gridUnassigned) {
+            try { $wpf_gridUnassigned.Items.Refresh() } catch {}
+        }
+    }
+}
+
+# Theme State + Painted Win11 Chrome Hook
+$Script:IsDarkTheme = Get-SystemIsDarkTheme
+$Script:IsSystemThemeAuto = $true
+Set-StandardGuiTheme -Window $Window -IsDark $Script:IsDarkTheme -ThemeLabel $wpf_TxtThemeLabel -IsSystemAuto $true
+
+$Window.Add_SourceInitialized({
+    Set-StandardGuiTheme -Window $Window -IsDark $Script:IsDarkTheme -ThemeLabel $wpf_TxtThemeLabel -IsSystemAuto $Script:IsSystemThemeAuto
+})
+
+$userPrefHandler = [Microsoft.Win32.UserPreferenceChangedEventHandler]{
+    param($sender, $e)
+    if ($e.Category -eq [Microsoft.Win32.UserPreferenceCategory]::General -and $Script:IsSystemThemeAuto) {
+        $Window.Dispatcher.Invoke([Action]{
+            $Script:IsDarkTheme = Get-SystemIsDarkTheme
+            Set-StandardGuiTheme -Window $Window -IsDark $Script:IsDarkTheme -ThemeLabel $wpf_TxtThemeLabel -IsSystemAuto $true
+            Update-ConsoleThemeElements
+        })
+    }
+}
+[Microsoft.Win32.SystemEvents]::add_UserPreferenceChanged($userPrefHandler)
+$Window.Add_Closed({
+    try { [Microsoft.Win32.SystemEvents]::remove_UserPreferenceChanged($userPrefHandler) } catch {}
+})
+
+if ($wpf_BtnThemeToggle) {
+    $wpf_BtnThemeToggle.Add_Click({
+        $Script:IsSystemThemeAuto = $false
+        $Script:IsDarkTheme = -not $Script:IsDarkTheme
+        Set-StandardGuiTheme -Window $Window -IsDark $Script:IsDarkTheme -ThemeLabel $wpf_TxtThemeLabel -IsSystemAuto $false
+        Update-ConsoleThemeElements
+    })
 }
 
 # 5. Global State & Mocks
@@ -1057,12 +1359,12 @@ $Script:MockData = @(
 )
 
 $Script:ActivityColors = @{
-    "Active (<=30d)"          = "#34D399"
-    "Inactive (30-90d)"        = "#FBBF24"
-    "Inactive (90-365d)"       = "#2DD4BF"
-    "Inactive (>1yr)"          = "#F87171"
-    "Never Logged In"          = "#94A3B8"
-    "Requires Entra ID P1/P2" = "#38BDF8"
+    "Active (<=30d)"          = "BrushOk"
+    "Inactive (30-90d)"        = "BrushWarn"
+    "Inactive (90-365d)"       = "BrushAccent"
+    "Inactive (>1yr)"          = "BrushErr"
+    "Never Logged In"          = "BrushTextMuted"
+    "Requires Entra ID P1/P2" = "BrushInfo"
 }
 
 # Determine script directory
@@ -1516,19 +1818,23 @@ function Show-VerificationSelectorDialog {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Exclude Verification Accounts" Height="360" Width="460"
-        WindowStartupLocation="CenterOwner" Foreground="#F8FAFC"
+        WindowStartupLocation="CenterOwner" Background="#091122" Foreground="{DynamicResource BrushTextPrimary}"
         ResizeMode="NoResize" ShowInTaskbar="False">
-    <Window.Background>
-        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
-            <GradientStop Color="#0F1F3D" Offset="0.0"/>
-            <GradientStop Color="#091122" Offset="0.55"/>
-            <GradientStop Color="#05070C" Offset="1.0"/>
-        </RadialGradientBrush>
-    </Window.Background>
     <Window.Resources>
+        <SolidColorBrush x:Key="BrushCanvas" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushLogBg" Color="#E6050A14"/>
+        <SolidColorBrush x:Key="BrushCardBorder" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushTextPrimary" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="BrushTextSecondary" Color="#CBD5E1"/>
+        <SolidColorBrush x:Key="BrushTextMuted" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BrushAccent" Color="#2DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentHover" Color="#5EEAD4"/>
+        <SolidColorBrush x:Key="BrushAccentFg" Color="#042F2E"/>
+        <SolidColorBrush x:Key="BrushSecBtnBg" Color="#14FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnHover" Color="#24FFFFFF"/>
         <Style x:Key="DialogBtn" TargetType="Button">
-            <Setter Property="Background" Value="#2DD4BF"/>
-            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccentFg}"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -1540,7 +1846,7 @@ function Show-VerificationSelectorDialog {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#5EEAD4"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushAccentHover}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -1548,9 +1854,9 @@ function Show-VerificationSelectorDialog {
             </Setter>
         </Style>
         <Style x:Key="DialogSecBtn" TargetType="Button">
-            <Setter Property="Background" Value="#14FFFFFF"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
@@ -1561,7 +1867,7 @@ function Show-VerificationSelectorDialog {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#24FFFFFF"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushSecBtnHover}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -1578,12 +1884,12 @@ function Show-VerificationSelectorDialog {
         </Grid.RowDefinitions>
         
         <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="Verification Accounts Detected" Foreground="#2DD4BF" FontSize="15" FontWeight="Bold"/>
+            <TextBlock Text="Verification Accounts Detected" Foreground="{DynamicResource BrushAccent}" FontSize="15" FontWeight="Bold"/>
             <TextBlock Text="The following Test/Admin accounts were found in the list. Uncheck any accounts you want to remove from the exported file." 
-                       Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                       Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" TextWrapping="Wrap" Margin="0,4,0,0"/>
         </StackPanel>
         
-        <Border Grid.Row="1" Background="#CC050A14" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="10">
+        <Border Grid.Row="1" Background="{DynamicResource BrushLogBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="10">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Name="panelCheckBoxes"/>
             </ScrollViewer>
@@ -1601,6 +1907,12 @@ function Show-VerificationSelectorDialog {
     $DlgWindow = [System.Windows.Markup.XamlReader]::Load($Reader)
     $DlgWindow.Owner = $Window
     if ($Window -and $Window.FontFamily) { $DlgWindow.FontFamily = $Window.FontFamily }
+    $dlgIsDark = if ($null -ne $Script:IsDarkTheme) { [bool]$Script:IsDarkTheme } else { Get-SystemIsDarkTheme }
+    Set-StandardGuiTheme -Window $DlgWindow -IsDark $dlgIsDark
+    $DlgWindow.Add_SourceInitialized({
+        $curDark = if ($null -ne $Script:IsDarkTheme) { [bool]$Script:IsDarkTheme } else { Get-SystemIsDarkTheme }
+        Set-StandardGuiTheme -Window $DlgWindow -IsDark $curDark
+    })
     
     $Panel = $DlgWindow.FindName("panelCheckBoxes")
     $BtnProceed = $DlgWindow.FindName("btnProceed")
@@ -1610,7 +1922,7 @@ function Show-VerificationSelectorDialog {
     foreach ($user in $Users) {
         $CB = [System.Windows.Controls.CheckBox]::new()
         $CB.Content = "$($user.DisplayName) ($($user.UserPrincipalName))"
-        $CB.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F8FAFC")
+        $CB.SetResourceReference([System.Windows.Controls.Control]::ForegroundProperty, 'BrushTextPrimary')
         $CB.IsChecked = $true
         $CB.Margin = "0,4,0,4"
         $CB.Tag = $user.UserPrincipalName
@@ -1654,20 +1966,25 @@ function Show-EmailTemplateDialog {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Generated Email Draft" Height="500" Width="650"
-        WindowStartupLocation="CenterOwner" Foreground="#F8FAFC"
+        WindowStartupLocation="CenterOwner" Background="#091122" Foreground="{DynamicResource BrushTextPrimary}"
         ResizeMode="NoResize" ShowInTaskbar="False">
-    <Window.Background>
-        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
-            <GradientStop Color="#0F1F3D" Offset="0.0"/>
-            <GradientStop Color="#091122" Offset="0.55"/>
-            <GradientStop Color="#05070C" Offset="1.0"/>
-        </RadialGradientBrush>
-    </Window.Background>
     <Window.Resources>
+        <SolidColorBrush x:Key="BrushCanvas" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushLogBg" Color="#E6050A14"/>
+        <SolidColorBrush x:Key="BrushCardBorder" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushTextPrimary" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="BrushTextSecondary" Color="#CBD5E1"/>
+        <SolidColorBrush x:Key="BrushTextMuted" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BrushAccent" Color="#2DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentHover" Color="#5EEAD4"/>
+        <SolidColorBrush x:Key="BrushAccentFg" Color="#042F2E"/>
+        <SolidColorBrush x:Key="BrushSecBtnBg" Color="#14FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnHover" Color="#24FFFFFF"/>
+        <SolidColorBrush x:Key="BrushOk" Color="#34D399"/>
         <Style x:Key="DialogBtn" TargetType="Button">
-            <Setter Property="Background" Value="#14FFFFFF"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="15,6"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -1682,7 +1999,7 @@ function Show-EmailTemplateDialog {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#24FFFFFF"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushSecBtnHover}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -1690,8 +2007,8 @@ function Show-EmailTemplateDialog {
             </Setter>
         </Style>
         <Style x:Key="BrandDialogBtn" TargetType="Button" BasedOn="{StaticResource DialogBtn}">
-            <Setter Property="Background" Value="#2DD4BF"/>
-            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccentFg}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Template">
@@ -1702,7 +2019,7 @@ function Show-EmailTemplateDialog {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="#5EEAD4"/>
+                                <Setter TargetName="Border" Property="Background" Value="{DynamicResource BrushAccentHover}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -1720,13 +2037,13 @@ function Show-EmailTemplateDialog {
         
         <!-- Header -->
         <StackPanel Margin="0,0,0,15">
-            <TextBlock Text="GENERATED EMAIL DRAFT" Foreground="#2DD4BF" FontSize="14" FontWeight="Bold"/>
-            <TextBlock Text="Review the generated draft below. You can copy it directly to your clipboard." Foreground="#94A3B8" FontSize="11.5" Margin="0,3,0,0"/>
+            <TextBlock Text="GENERATED EMAIL DRAFT" Foreground="{DynamicResource BrushAccent}" FontSize="14" FontWeight="Bold"/>
+            <TextBlock Text="Review the generated draft below. You can copy it directly to your clipboard." Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" Margin="0,3,0,0"/>
         </StackPanel>
         
         <!-- Scrollable TextBox -->
-        <Border Grid.Row="1" Background="#CC050A14" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="6">
-            <TextBox Name="txtEmailBody" Background="Transparent" Foreground="#F8FAFC" BorderThickness="0"
+        <Border Grid.Row="1" Background="{DynamicResource BrushLogBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="6">
+            <TextBox Name="txtEmailBody" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" BorderThickness="0"
                      TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
                      FontSize="12" Padding="8"/>
         </Border>
@@ -1738,7 +2055,7 @@ function Show-EmailTemplateDialog {
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             
-            <TextBlock Name="txtStatusMessage" Text="" Foreground="#34D399" FontSize="12" VerticalAlignment="Center" FontWeight="SemiBold"/>
+            <TextBlock Name="txtStatusMessage" Text="" Foreground="{DynamicResource BrushOk}" FontSize="12" VerticalAlignment="Center" FontWeight="SemiBold"/>
             
             <StackPanel Grid.Column="1" Orientation="Horizontal">
                 <Button Name="btnCopy" Style="{StaticResource BrandDialogBtn}" Content="Copy to Clipboard"/>
@@ -1760,6 +2077,12 @@ function Show-EmailTemplateDialog {
     $DlgWindow = [System.Windows.Markup.XamlReader]::Load($Reader)
     $DlgWindow.Owner = $WpfWindow
     if ($WpfWindow -and $WpfWindow.FontFamily) { $DlgWindow.FontFamily = $WpfWindow.FontFamily }
+    $dlgIsDark = if ($null -ne $Script:IsDarkTheme) { [bool]$Script:IsDarkTheme } else { Get-SystemIsDarkTheme }
+    Set-StandardGuiTheme -Window $DlgWindow -IsDark $dlgIsDark
+    $DlgWindow.Add_SourceInitialized({
+        $curDark = if ($null -ne $Script:IsDarkTheme) { [bool]$Script:IsDarkTheme } else { Get-SystemIsDarkTheme }
+        Set-StandardGuiTheme -Window $DlgWindow -IsDark $curDark
+    })
     
     # Bind dialog controls
     $TxtEmailBody = $DlgWindow.FindName("txtEmailBody")
@@ -1824,21 +2147,21 @@ function Invoke-AuditReport {
         Update-UI
         Start-Sleep -Milliseconds 400
         
-        $GreenBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#34D399")
-        $RedBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F87171")
-        $GrayBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#94A3B8")
+        $GreenBrush = $Window.Resources['BrushOk']
+        $RedBrush = $Window.Resources['BrushErr']
+        $GrayBrush = $Window.Resources['BrushTextMuted']
         
         $Script:TotalPoolWaste = 186.70
         $Script:TotalUnassignedCount = 7
         $Script:UnassignedLicenses = @(
-            [PSCustomObject]@{ SkuPartName = "Microsoft 365 E5"; SkuId = "078d10ee-6995-4851-8043-334f610f49b3"; ActiveUnits = 10; ConsumedUnits = 8; UnassignedUnits = 2; UnassignedBrush = $GreenBrush; WastedBrush = $RedBrush; MonthlyPrice = 48.10; MonthlyPriceText = "£48.10"; WastedCost = 96.20; WastedCostText = "£96.20"; AssignedText = "8 of 10" }
-            [PSCustomObject]@{ SkuPartName = "Microsoft 365 Business Premium"; SkuId = "cbdc14ab-d96c-4c30-b9f4-6ada7cdc1d46"; ActiveUnits = 25; ConsumedUnits = 20; UnassignedUnits = 5; UnassignedBrush = $GreenBrush; WastedBrush = $RedBrush; MonthlyPrice = 18.10; MonthlyPriceText = "£18.10"; WastedCost = 90.50; WastedCostText = "£90.50"; AssignedText = "20 of 25" }
-            [PSCustomObject]@{ SkuPartName = "Microsoft 365 Copilot"; SkuId = "639dec6b-bb19-468b-871c-c5c441c4b0cb"; ActiveUnits = 5; ConsumedUnits = 5; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 24.70; MonthlyPriceText = "£24.70"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "5 of 5" }
-            [PSCustomObject]@{ SkuPartName = "Power BI Pro"; SkuId = "f8a1db68-be16-40ed-86d5-cb42ce701560"; ActiveUnits = 10; ConsumedUnits = 10; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 8.20; MonthlyPriceText = "£8.20"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "10 of 10" }
-            [PSCustomObject]@{ SkuPartName = "Microsoft 365 Business Standard"; SkuId = "f245ecc8-75af-4f8e-b61f-27d8114de5f3"; ActiveUnits = 15; ConsumedUnits = 15; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 10.30; MonthlyPriceText = "£10.30"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "15 of 15" }
-            [PSCustomObject]@{ SkuPartName = "Microsoft 365 Business Basic"; SkuId = "bd251394-b1ed-487b-a1aa-ee198c62c938"; ActiveUnits = 30; ConsumedUnits = 30; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 4.90; MonthlyPriceText = "£4.90"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "30 of 30" }
-            [PSCustomObject]@{ SkuPartName = "Office 365 E3"; SkuId = "6fd2c87f-b296-42f0-b197-1e91e994b900"; ActiveUnits = 12; ConsumedUnits = 12; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 22.00; MonthlyPriceText = "£22.00"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "12 of 12" }
-            [PSCustomObject]@{ SkuPartName = "Microsoft Teams Exploratory"; SkuId = "710779e8-3d4a-4c88-adb9-386c958d1fdf"; ActiveUnits = 50; ConsumedUnits = 50; UnassignedUnits = 0; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 0.00; MonthlyPriceText = "£0.00"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "50 of 50" }
+            [PSCustomObject]@{ SkuPartName = "Microsoft 365 E5"; SkuId = "078d10ee-6995-4851-8043-334f610f49b3"; ActiveUnits = 10; ConsumedUnits = 8; UnassignedUnits = 2; UnassignedTone = "Ok"; WastedTone = "Err"; UnassignedBrush = $GreenBrush; WastedBrush = $RedBrush; MonthlyPrice = 48.10; MonthlyPriceText = "£48.10"; WastedCost = 96.20; WastedCostText = "£96.20"; AssignedText = "8 of 10" }
+            [PSCustomObject]@{ SkuPartName = "Microsoft 365 Business Premium"; SkuId = "cbdc14ab-d96c-4c30-b9f4-6ada7cdc1d46"; ActiveUnits = 25; ConsumedUnits = 20; UnassignedUnits = 5; UnassignedTone = "Ok"; WastedTone = "Err"; UnassignedBrush = $GreenBrush; WastedBrush = $RedBrush; MonthlyPrice = 18.10; MonthlyPriceText = "£18.10"; WastedCost = 90.50; WastedCostText = "£90.50"; AssignedText = "20 of 25" }
+            [PSCustomObject]@{ SkuPartName = "Microsoft 365 Copilot"; SkuId = "639dec6b-bb19-468b-871c-c5c441c4b0cb"; ActiveUnits = 5; ConsumedUnits = 5; UnassignedUnits = 0; UnassignedTone = "Muted"; WastedTone = "Muted"; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 24.70; MonthlyPriceText = "£24.70"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "5 of 5" }
+            [PSCustomObject]@{ SkuPartName = "Power BI Pro"; SkuId = "f8a1db68-be16-40ed-86d5-cb42ce701560"; ActiveUnits = 10; ConsumedUnits = 10; UnassignedUnits = 0; UnassignedTone = "Muted"; WastedTone = "Muted"; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 8.20; MonthlyPriceText = "£8.20"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "10 of 10" }
+            [PSCustomObject]@{ SkuPartName = "Microsoft 365 Business Standard"; SkuId = "f245ecc8-75af-4f8e-b61f-27d8114de5f3"; ActiveUnits = 15; ConsumedUnits = 15; UnassignedUnits = 0; UnassignedTone = "Muted"; WastedTone = "Muted"; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 10.30; MonthlyPriceText = "£10.30"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "15 of 15" }
+            [PSCustomObject]@{ SkuPartName = "Microsoft 365 Business Basic"; SkuId = "bd251394-b1ed-487b-a1aa-ee198c62c938"; ActiveUnits = 30; ConsumedUnits = 30; UnassignedUnits = 0; UnassignedTone = "Muted"; WastedTone = "Muted"; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 4.90; MonthlyPriceText = "£4.90"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "30 of 30" }
+            [PSCustomObject]@{ SkuPartName = "Office 365 E3"; SkuId = "6fd2c87f-b296-42f0-b197-1e91e994b900"; ActiveUnits = 12; ConsumedUnits = 12; UnassignedUnits = 0; UnassignedTone = "Muted"; WastedTone = "Muted"; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 22.00; MonthlyPriceText = "£22.00"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "12 of 12" }
+            [PSCustomObject]@{ SkuPartName = "Microsoft Teams Exploratory"; SkuId = "710779e8-3d4a-4c88-adb9-386c958d1fdf"; ActiveUnits = 50; ConsumedUnits = 50; UnassignedUnits = 0; UnassignedTone = "Muted"; WastedTone = "Muted"; UnassignedBrush = $GrayBrush; WastedBrush = $GrayBrush; MonthlyPrice = 0.00; MonthlyPriceText = "£0.00"; WastedCost = 0.00; WastedCostText = "£0.00"; AssignedText = "50 of 50" }
         )
         $Users = $Script:MockData
         Process-UserData $Users
@@ -2039,10 +2362,12 @@ function Invoke-AuditReport {
                         $Script:TotalUnassignedCount += $Unassigned
                     }
                     
-                    $GreenBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#34D399")
-                    $RedBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F87171")
-                    $GrayBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#94A3B8")
+                    $GreenBrush = $Window.Resources['BrushOk']
+                    $RedBrush = $Window.Resources['BrushErr']
+                    $GrayBrush = $Window.Resources['BrushTextMuted']
                     
+                    $UnassignedTone = if ($Unassigned -gt 0) { "Ok" } elseif ($Unassigned -lt 0) { "Err" } else { "Muted" }
+                    $WastedTone = if ($Unassigned -gt 0) { "Err" } elseif ($Unassigned -lt 0) { "Ok" } else { "Muted" }
                     $UnassignedBrush = if ($Unassigned -gt 0) { $GreenBrush } elseif ($Unassigned -lt 0) { $RedBrush } else { $GrayBrush }
                     $WastedBrush = if ($Unassigned -gt 0) { $RedBrush } elseif ($Unassigned -lt 0) { $GreenBrush } else { $GrayBrush }
                     
@@ -2052,6 +2377,8 @@ function Invoke-AuditReport {
                         ActiveUnits      = $ActiveUnits
                         ConsumedUnits    = $sku.ConsumedUnits
                         UnassignedUnits  = $Unassigned
+                        UnassignedTone   = $UnassignedTone
+                        WastedTone       = $WastedTone
                         UnassignedBrush  = $UnassignedBrush
                         WastedBrush      = $WastedBrush
                         MonthlyPrice     = $UnitPrice
@@ -2224,7 +2551,7 @@ function Format-LastSignIn($DateStr) {
 }
 
 # 8. Charting Layout Engines (WPF Native Shapes)
-function UpdateBarChart($Panel, $DataMap, $ColorHex) {
+function UpdateBarChart($Panel, $DataMap, $ColorKeyOrHex) {
     $Panel.Children.Clear()
     if ($null -eq $DataMap -or $DataMap.Count -eq 0) { return }
     
@@ -2252,7 +2579,7 @@ function UpdateBarChart($Panel, $DataMap, $ColorHex) {
         
         $Label = [System.Windows.Controls.TextBlock]::new()
         $Label.Text = $Key
-        $Label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#94A3B8")
+        $Label.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextMuted')
         $Label.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
         $Label.FontSize = 11
         $Label.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
@@ -2260,8 +2587,8 @@ function UpdateBarChart($Panel, $DataMap, $ColorHex) {
         $Grid.Children.Add($Label)
         
         $BarOuter = [System.Windows.Controls.Border]::new()
-        $BarOuter.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#99070D1A")
-        $BarOuter.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#26354D")
+        $BarOuter.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushInputBg')
+        $BarOuter.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushCardBorder')
         $BarOuter.BorderThickness = 1
         $BarOuter.CornerRadius = 3
         $BarOuter.Height = 14
@@ -2272,7 +2599,11 @@ function UpdateBarChart($Panel, $DataMap, $ColorHex) {
         $BarWidth = [Math]::Round(($Val / $MaxVal) * 198)
         if ($BarWidth -lt 2) { $BarWidth = 2 }
         $BarInner = [System.Windows.Shapes.Rectangle]::new()
-        $BarInner.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString($ColorHex)
+        if ($ColorKeyOrHex -like 'Brush*') {
+            $BarInner.SetResourceReference([System.Windows.Shapes.Shape]::FillProperty, $ColorKeyOrHex)
+        } else {
+            $BarInner.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString($ColorKeyOrHex)
+        }
         $BarInner.Width = $BarWidth
         $BarInner.Height = 12
         $BarInner.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Left
@@ -2283,7 +2614,7 @@ function UpdateBarChart($Panel, $DataMap, $ColorHex) {
         
         $ValLabel = [System.Windows.Controls.TextBlock]::new()
         $ValLabel.Text = $Val.ToString()
-        $ValLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F8FAFC")
+        $ValLabel.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextPrimary')
         $ValLabel.FontWeight = [System.Windows.FontWeights]::Bold
         $ValLabel.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
         $ValLabel.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Right
@@ -2295,7 +2626,7 @@ function UpdateBarChart($Panel, $DataMap, $ColorHex) {
     }
 }
 
-function AddActivityBarChartRow($Panel, $LabelText, $Val, $Total, $ColorHex) {
+function AddActivityBarChartRow($Panel, $LabelText, $Val, $Total, $ColorKeyOrHex) {
     if ($Total -eq 0) { $Total = 1 }
     
     $Grid = [System.Windows.Controls.Grid]::new()
@@ -2314,15 +2645,15 @@ function AddActivityBarChartRow($Panel, $LabelText, $Val, $Total, $ColorHex) {
     
     $Label = [System.Windows.Controls.TextBlock]::new()
     $Label.Text = $LabelText
-    $Label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#94A3B8")
+    $Label.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextMuted')
     $Label.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
     $Label.FontSize = 11
     [System.Windows.Controls.Grid]::SetColumn($Label, 0)
     $Grid.Children.Add($Label)
     
     $BarOuter = [System.Windows.Controls.Border]::new()
-    $BarOuter.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#99070D1A")
-    $BarOuter.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#26354D")
+    $BarOuter.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushInputBg')
+    $BarOuter.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushCardBorder')
     $BarOuter.BorderThickness = 1
     $BarOuter.CornerRadius = 3
     $BarOuter.Height = 14
@@ -2333,7 +2664,11 @@ function AddActivityBarChartRow($Panel, $LabelText, $Val, $Total, $ColorHex) {
     $BarWidth = [Math]::Round(($Val / $Total) * 198)
     if ($BarWidth -lt 2) { $BarWidth = 2 }
     $BarInner = [System.Windows.Shapes.Rectangle]::new()
-    $BarInner.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString($ColorHex)
+    if ($ColorKeyOrHex -like 'Brush*') {
+        $BarInner.SetResourceReference([System.Windows.Shapes.Shape]::FillProperty, $ColorKeyOrHex)
+    } else {
+        $BarInner.Fill = [System.Windows.Media.BrushConverter]::new().ConvertFromString($ColorKeyOrHex)
+    }
     $BarInner.Width = $BarWidth
     $BarInner.Height = 12
     $BarInner.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Left
@@ -2344,7 +2679,7 @@ function AddActivityBarChartRow($Panel, $LabelText, $Val, $Total, $ColorHex) {
     
     $ValLabel = [System.Windows.Controls.TextBlock]::new()
     $ValLabel.Text = $Val.ToString()
-    $ValLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F8FAFC")
+    $ValLabel.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextPrimary')
     $ValLabel.FontWeight = [System.Windows.FontWeights]::Bold
     $ValLabel.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
     $ValLabel.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Right
@@ -2628,7 +2963,7 @@ function Process-UserData($Users) {
     $wpf_kpiPoolWasteCount.Text = "$PoolWasteCountVal unused licenses"
     
     # Draw License Bar Chart
-    if ($wpf_panelLicenseChart) { UpdateBarChart $wpf_panelLicenseChart $LicenseMap "#2DD4BF" }
+    if ($wpf_panelLicenseChart) { UpdateBarChart $wpf_panelLicenseChart $LicenseMap "BrushAccent" }
     
     # Draw Activity Bar Chart with distinct colors
     $wpf_panelActivityChart.Children.Clear()
@@ -2730,16 +3065,15 @@ function Show-Page($PageName) {
 
 function Show-ConnectionMethod($MethodName) {
     if ($null -eq $wpf_panelMethodM365 -or $null -eq $wpf_panelMethodApp -or $null -eq $wpf_panelMethodCSV) { return }
-    $bc = [System.Windows.Media.BrushConverter]::new()
     $wpf_panelMethodM365.Visibility = [System.Windows.Visibility]::Collapsed
     $wpf_panelMethodApp.Visibility = [System.Windows.Visibility]::Collapsed
     $wpf_panelMethodCSV.Visibility = [System.Windows.Visibility]::Collapsed
 
     foreach ($btn in @($wpf_btnMethodM365, $wpf_btnMethodApp, $wpf_btnMethodCSV)) {
         if ($btn) {
-            $btn.Background = $bc.ConvertFromString("#14FFFFFF")
-            $btn.Foreground = $bc.ConvertFromString("#94A3B8")
-            $btn.BorderBrush = $bc.ConvertFromString("#26354D")
+            $btn.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushSecBtnBg')
+            $btn.SetResourceReference([System.Windows.Controls.Control]::ForegroundProperty, 'BrushTextMuted')
+            $btn.SetResourceReference([System.Windows.Controls.Control]::BorderBrushProperty, 'BrushCardBorder')
             $btn.BorderThickness = 1
         }
     }
@@ -2747,22 +3081,22 @@ function Show-ConnectionMethod($MethodName) {
     if ($MethodName -eq "M365") {
         $wpf_panelMethodM365.Visibility = [System.Windows.Visibility]::Visible
         if ($wpf_btnMethodM365) {
-            $wpf_btnMethodM365.Background = $bc.ConvertFromString("#2DD4BF")
-            $wpf_btnMethodM365.Foreground = $bc.ConvertFromString("#042F2E")
+            $wpf_btnMethodM365.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushAccent')
+            $wpf_btnMethodM365.SetResourceReference([System.Windows.Controls.Control]::ForegroundProperty, 'BrushAccentFg')
             $wpf_btnMethodM365.BorderThickness = 0
         }
     } elseif ($MethodName -eq "App") {
         $wpf_panelMethodApp.Visibility = [System.Windows.Visibility]::Visible
         if ($wpf_btnMethodApp) {
-            $wpf_btnMethodApp.Background = $bc.ConvertFromString("#2DD4BF")
-            $wpf_btnMethodApp.Foreground = $bc.ConvertFromString("#042F2E")
+            $wpf_btnMethodApp.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushAccent')
+            $wpf_btnMethodApp.SetResourceReference([System.Windows.Controls.Control]::ForegroundProperty, 'BrushAccentFg')
             $wpf_btnMethodApp.BorderThickness = 0
         }
     } elseif ($MethodName -eq "CSV") {
         $wpf_panelMethodCSV.Visibility = [System.Windows.Visibility]::Visible
         if ($wpf_btnMethodCSV) {
-            $wpf_btnMethodCSV.Background = $bc.ConvertFromString("#2DD4BF")
-            $wpf_btnMethodCSV.Foreground = $bc.ConvertFromString("#042F2E")
+            $wpf_btnMethodCSV.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushAccent')
+            $wpf_btnMethodCSV.SetResourceReference([System.Windows.Controls.Control]::ForegroundProperty, 'BrushAccentFg')
             $wpf_btnMethodCSV.BorderThickness = 0
         }
     }
@@ -2770,20 +3104,19 @@ function Show-ConnectionMethod($MethodName) {
 
 function Select-Role($Role) {
     $Script:UserRole = $Role
-    $bc = [System.Windows.Media.BrushConverter]::new()
 
     if ($Role -eq "ServiceDesk") {
-        $wpf_btnRoleSelectServiceDesk.Background = $bc.ConvertFromString("#262DD4BF")
-        $wpf_btnRoleSelectServiceDesk.BorderBrush = $bc.ConvertFromString("#2DD4BF")
+        $wpf_btnRoleSelectServiceDesk.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushAccentTint')
+        $wpf_btnRoleSelectServiceDesk.SetResourceReference([System.Windows.Controls.Control]::BorderBrushProperty, 'BrushAccent')
 
-        $wpf_btnRoleSelectSales.Background = $bc.ConvertFromString("#660D192E")
-        $wpf_btnRoleSelectSales.BorderBrush = $bc.ConvertFromString("#26354D")
+        $wpf_btnRoleSelectSales.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushCardBg')
+        $wpf_btnRoleSelectSales.SetResourceReference([System.Windows.Controls.Control]::BorderBrushProperty, 'BrushCardBorder')
     } else {
-        $wpf_btnRoleSelectServiceDesk.Background = $bc.ConvertFromString("#660D192E")
-        $wpf_btnRoleSelectServiceDesk.BorderBrush = $bc.ConvertFromString("#26354D")
+        $wpf_btnRoleSelectServiceDesk.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushCardBg')
+        $wpf_btnRoleSelectServiceDesk.SetResourceReference([System.Windows.Controls.Control]::BorderBrushProperty, 'BrushCardBorder')
 
-        $wpf_btnRoleSelectSales.Background = $bc.ConvertFromString("#262DD4BF")
-        $wpf_btnRoleSelectSales.BorderBrush = $bc.ConvertFromString("#2DD4BF")
+        $wpf_btnRoleSelectSales.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushAccentTint')
+        $wpf_btnRoleSelectSales.SetResourceReference([System.Windows.Controls.Control]::BorderBrushProperty, 'BrushAccent')
     }
 
     Configure-RoleUI
@@ -2833,12 +3166,11 @@ $wpf_btnConnectM365.Add_Click({
         if ($null -eq $Context) { throw "Graph connection context could not be established." }
         
         $Script:SessionMode = "Real"
-        $bcStatus = [System.Windows.Media.BrushConverter]::new()
         $wpf_txtStatusLabel.Text = "Connected to Graph"
-        $wpf_txtStatusLabel.Foreground = $bcStatus.ConvertFromString("#F8FAFC")
+        $wpf_txtStatusLabel.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextPrimary')
         if ($wpf_bdgSessionStatus) {
-            $wpf_bdgSessionStatus.Background = $bcStatus.ConvertFromString("#1F34D399")
-            $wpf_bdgSessionStatus.BorderBrush = $bcStatus.ConvertFromString("#34D399")
+            $wpf_bdgSessionStatus.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushOkTint')
+            $wpf_bdgSessionStatus.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushOk')
         }
         
         $TenantName = "UnknownTenant"
@@ -2903,12 +3235,11 @@ $wpf_btnConnectApp.Add_Click({
         if ($null -eq $Context) { throw "Graph connection context could not be established." }
         
         $Script:SessionMode = "AppRegistration"
-        $bcStatus = [System.Windows.Media.BrushConverter]::new()
         $wpf_txtStatusLabel.Text = "Connected (App Secret)"
-        $wpf_txtStatusLabel.Foreground = $bcStatus.ConvertFromString("#F8FAFC")
+        $wpf_txtStatusLabel.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextPrimary')
         if ($wpf_bdgSessionStatus) {
-            $wpf_bdgSessionStatus.Background = $bcStatus.ConvertFromString("#1F34D399")
-            $wpf_bdgSessionStatus.BorderBrush = $bcStatus.ConvertFromString("#34D399")
+            $wpf_bdgSessionStatus.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushOkTint')
+            $wpf_bdgSessionStatus.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushOk')
         }
         
         $TenantName = "UnknownTenant"
@@ -3001,13 +3332,15 @@ $wpf_btnBrowseCSV.Add_Click({
                 }
                 
                 $Count = $CsvSkuCounts[$SkuName]
-                $GrayBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#94A3B8")
+                $GrayBrush = $Window.Resources['BrushTextMuted']
                 $UnassignedList.Add([PSCustomObject]@{
                     SkuPartName      = $SkuName
                     SkuId            = $ResolvedSkuId
                     ActiveUnits      = $Count
                     ConsumedUnits    = $Count
                     UnassignedUnits  = 0
+                    UnassignedTone   = "Muted"
+                    WastedTone       = "Muted"
                     UnassignedBrush  = $GrayBrush
                     WastedBrush      = $GrayBrush
                     MonthlyPrice     = $UnitPrice
@@ -3023,12 +3356,11 @@ $wpf_btnBrowseCSV.Add_Click({
             $Script:TotalUnassignedCount = 0
             
             $Script:SessionMode = "CSVImport"
-            $bcStatus = [System.Windows.Media.BrushConverter]::new()
             $wpf_txtStatusLabel.Text = "Loaded Local CSV"
-            $wpf_txtStatusLabel.Foreground = $bcStatus.ConvertFromString("#F8FAFC")
+            $wpf_txtStatusLabel.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextPrimary')
             if ($wpf_bdgSessionStatus) {
-                $wpf_bdgSessionStatus.Background = $bcStatus.ConvertFromString("#1F34D399")
-                $wpf_bdgSessionStatus.BorderBrush = $bcStatus.ConvertFromString("#34D399")
+                $wpf_bdgSessionStatus.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushOkTint')
+                $wpf_bdgSessionStatus.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushOk')
             }
             
             $TenantName = "Local CSV"
@@ -3086,12 +3418,11 @@ $wpf_btnBrowseCSV.Add_Click({
 # Connect: Demo Sandbox Mode
 $wpf_btnDemoMode.Add_Click({
     $Script:SessionMode = "Demo"
-    $bcStatus = [System.Windows.Media.BrushConverter]::new()
     $wpf_txtStatusLabel.Text = "Active Sandbox Session"
-    $wpf_txtStatusLabel.Foreground = $bcStatus.ConvertFromString("#F8FAFC")
+    $wpf_txtStatusLabel.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextPrimary')
     if ($wpf_bdgSessionStatus) {
-        $wpf_bdgSessionStatus.Background = $bcStatus.ConvertFromString("#1F34D399")
-        $wpf_bdgSessionStatus.BorderBrush = $bcStatus.ConvertFromString("#34D399")
+        $wpf_bdgSessionStatus.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushOkTint')
+        $wpf_bdgSessionStatus.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushOk')
     }
     
     $wpf_txtSessionTenant.Text = "contoso.com (Demo)"
@@ -3126,12 +3457,11 @@ $wpf_btnDisconnect.Add_Click({
     $Script:GridRows = $null
     $Script:UserRole = ""
     
-    $bcStatus = [System.Windows.Media.BrushConverter]::new()
     $wpf_txtStatusLabel.Text = "Offline Session"
-    $wpf_txtStatusLabel.Foreground = $bcStatus.ConvertFromString("#94A3B8")
+    $wpf_txtStatusLabel.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushTextMuted')
     if ($wpf_bdgSessionStatus) {
-        $wpf_bdgSessionStatus.Background = $bcStatus.ConvertFromString("#14FFFFFF")
-        $wpf_bdgSessionStatus.BorderBrush = $bcStatus.ConvertFromString("#26354D")
+        $wpf_bdgSessionStatus.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushSecBtnBg')
+        $wpf_bdgSessionStatus.SetResourceReference([System.Windows.Controls.Border]::BorderBrushProperty, 'BrushCardBorder')
     }
     
     $wpf_txtSessionTenant.Text = "N/A"
@@ -3160,10 +3490,10 @@ $wpf_btnDisconnect.Add_Click({
     $wpf_panelConnectedSession.Visibility = [System.Windows.Visibility]::Collapsed
     
     $wpf_panelConnectionMethods.Visibility = [System.Windows.Visibility]::Collapsed
-    $wpf_btnRoleSelectServiceDesk.Background = $bcStatus.ConvertFromString("#660D192E")
-    $wpf_btnRoleSelectServiceDesk.BorderBrush = $bcStatus.ConvertFromString("#26354D")
-    $wpf_btnRoleSelectSales.Background = $bcStatus.ConvertFromString("#660D192E")
-    $wpf_btnRoleSelectSales.BorderBrush = $bcStatus.ConvertFromString("#26354D")
+    $wpf_btnRoleSelectServiceDesk.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushCardBg')
+    $wpf_btnRoleSelectServiceDesk.SetResourceReference([System.Windows.Controls.Control]::BorderBrushProperty, 'BrushCardBorder')
+    $wpf_btnRoleSelectSales.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushCardBg')
+    $wpf_btnRoleSelectSales.SetResourceReference([System.Windows.Controls.Control]::BorderBrushProperty, 'BrushCardBorder')
     
     Clear-MgGraphCache
     
@@ -3198,18 +3528,17 @@ $Script:PresetButtons = @(
 )
 
 function Set-PresetButtonActive($ActiveButton) {
-    $bc = [System.Windows.Media.BrushConverter]::new()
     foreach ($btn in $Script:PresetButtons) {
         if ($null -ne $btn) {
-            $btn.Background = $bc.ConvertFromString("#14FFFFFF")
-            $btn.Foreground = $bc.ConvertFromString("#94A3B8")
-            $btn.BorderBrush = $bc.ConvertFromString("#26354D")
+            $btn.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushSecBtnBg')
+            $btn.SetResourceReference([System.Windows.Controls.Control]::ForegroundProperty, 'BrushTextMuted')
+            $btn.SetResourceReference([System.Windows.Controls.Control]::BorderBrushProperty, 'BrushCardBorder')
             $btn.BorderThickness = 1
         }
     }
     if ($null -ne $ActiveButton) {
-        $ActiveButton.Background = $bc.ConvertFromString("#2DD4BF")
-        $ActiveButton.Foreground = $bc.ConvertFromString("#042F2E")
+        $ActiveButton.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushAccent')
+        $ActiveButton.SetResourceReference([System.Windows.Controls.Control]::ForegroundProperty, 'BrushAccentFg')
         $ActiveButton.BorderThickness = 0
     }
 }
@@ -3220,19 +3549,18 @@ $Script:SubAccButtons = @($wpf_btnSubAccAll, $wpf_btnSubAccEnabled, $wpf_btnSubA
 $Script:SubActButtons = @($wpf_btnSubActAll, $wpf_btnSubActActive, $wpf_btnSubActInactive, $wpf_btnSubActNever)
 
 function Set-SubButtonGroupActive($ButtonGroup, $ActiveBtn) {
-    $bc = [System.Windows.Media.BrushConverter]::new()
     foreach ($btn in $ButtonGroup) {
         if ($null -ne $btn) {
-            $btn.Background = $bc.ConvertFromString("#14FFFFFF")
-            $btn.Foreground = $bc.ConvertFromString("#94A3B8")
-            $btn.BorderBrush = $bc.ConvertFromString("#26354D")
+            $btn.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushSecBtnBg')
+            $btn.SetResourceReference([System.Windows.Controls.Control]::ForegroundProperty, 'BrushTextMuted')
+            $btn.SetResourceReference([System.Windows.Controls.Control]::BorderBrushProperty, 'BrushCardBorder')
             $btn.BorderThickness = 1
         }
     }
     if ($null -ne $ActiveBtn) {
-        $ActiveBtn.Background = $bc.ConvertFromString("#262DD4BF")
-        $ActiveBtn.Foreground = $bc.ConvertFromString("#F8FAFC")
-        $ActiveBtn.BorderBrush = $bc.ConvertFromString("#2DD4BF")
+        $ActiveBtn.SetResourceReference([System.Windows.Controls.Control]::BackgroundProperty, 'BrushAccentTint')
+        $ActiveBtn.SetResourceReference([System.Windows.Controls.Control]::ForegroundProperty, 'BrushTextPrimary')
+        $ActiveBtn.SetResourceReference([System.Windows.Controls.Control]::BorderBrushProperty, 'BrushAccent')
         $ActiveBtn.BorderThickness = 1
     }
 }

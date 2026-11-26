@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     WPF GUI utility for building, staging, and packaging corporate Desktop Background and Lock Screen deployments for Intune.
 .DESCRIPTION

@@ -3,21 +3,66 @@
         Title="Edge Profile Shortcut Builder v1.0.0"
         Height="780" Width="1120" MinHeight="640" MinWidth="860"
         WindowStartupLocation="Manual"
-        Foreground="#F8FAFC">
-    <Window.Background>
-        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
-            <GradientStop Color="#0F1F3D" Offset="0.0"/>
-            <GradientStop Color="#091122" Offset="0.55"/>
-            <GradientStop Color="#05070C" Offset="1.0"/>
-        </RadialGradientBrush>
-    </Window.Background>
+        Background="#091122"
+        Foreground="{DynamicResource BrushTextPrimary}">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <SolidColorBrush x:Key="BrushCanvas" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushChromeBar" Color="#CC070D19"/>
+        <SolidColorBrush x:Key="BrushHairline" Color="#1CFFFFFF"/>
+        <SolidColorBrush x:Key="BrushCardBg" Color="#B30D192E"/>
+        <SolidColorBrush x:Key="BrushCardBorder" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushInputBg" Color="#C7070D1A"/>
+        <SolidColorBrush x:Key="BrushLogBg" Color="#E6050A14"/>
+        <SolidColorBrush x:Key="BrushTextPrimary" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="BrushTextSecondary" Color="#CBD5E1"/>
+        <SolidColorBrush x:Key="BrushTextMuted" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BrushAccent" Color="#2DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentHover" Color="#5EEAD4"/>
+        <SolidColorBrush x:Key="BrushAccentPressed" Color="#14B8A6"/>
+        <SolidColorBrush x:Key="BrushAccentFg" Color="#042F2E"/>
+        <SolidColorBrush x:Key="BrushAccentTint" Color="#242DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentBorder" Color="#6B2DD4BF"/>
+        <SolidColorBrush x:Key="BrushSecBtnBg" Color="#14FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnHover" Color="#24FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnPressed" Color="#0DFFFFFF"/>
+        <SolidColorBrush x:Key="BrushScrollThumb" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushOk" Color="#34D399"/>
+        <SolidColorBrush x:Key="BrushErr" Color="#F87171"/>
+        <SolidColorBrush x:Key="BrushDangerBg" Color="#26EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerHover" Color="#45EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerBorder" Color="#66EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerFg" Color="#FCA5A5"/>
+        <SolidColorBrush x:Key="BrushDangerHoverFg" Color="#FFFFFF"/>
+
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="{DynamicResource BrushScrollThumb}" CornerRadius="4" Margin="1"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <Style TargetType="Button">
-            <Setter Property="Background" Value="#14FFFFFF"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="13,7"/>
             <Setter Property="FontSize" Value="12.5"/>
@@ -34,11 +79,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#24FFFFFF"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSecBtnHover}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#0DFFFFFF"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSecBtnPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="border" Property="Opacity" Value="0.45"/>
@@ -50,8 +95,8 @@
         </Style>
 
         <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#2DD4BF"/>
-            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccentFg}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -61,10 +106,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#5EEAD4"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushAccentHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#14B8A6"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushAccentPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="border" Property="Opacity" Value="0.45"/>
@@ -97,10 +142,10 @@
         </Style>
 
         <Style x:Key="RemoveCardButton" TargetType="Button">
-            <Setter Property="Background" Value="#26EF4444"/>
-            <Setter Property="BorderBrush" Value="#66EF4444"/>
+            <Setter Property="Background" Value="{DynamicResource BrushDangerBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushDangerBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Foreground" Value="#FCA5A5"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushDangerFg}"/>
             <Setter Property="Width" Value="20"/>
             <Setter Property="Height" Value="20"/>
             <Setter Property="FontSize" Value="11"/>
@@ -117,7 +162,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#45EF4444"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushDangerHover}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -125,19 +170,19 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushDangerHoverFg}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
 
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#99070D1A"/>
-            <Setter Property="Foreground" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushInputBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="8,5"/>
             <Setter Property="FontSize" Value="12.5"/>
-            <Setter Property="CaretBrush" Value="#2DD4BF"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource BrushAccent}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -149,7 +194,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -158,25 +203,25 @@
         </Style>
 
         <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#CBD5E1"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
 
         <Style TargetType="RadioButton">
-            <Setter Property="Foreground" Value="#CBD5E1"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
 
         <Style x:Key="EdgeIconCardStyle" TargetType="Border">
-            <Setter Property="Background" Value="#99070D1A"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushInputBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                    <Setter Property="Background" Value="#242DD4BF"/>
-                    <Setter Property="BorderBrush" Value="#2DD4BF"/>
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentTint}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                     <Setter Property="BorderThickness" Value="1.5"/>
                 </DataTrigger>
             </Style.Triggers>
@@ -194,27 +239,32 @@
         </Grid.RowDefinitions>
 
         <!-- Row 0: Header -->
-        <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="20,14">
+        <Border Grid.Row="0" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,0,0,1" Padding="20,14">
             <DockPanel>
-                <Border DockPanel.Dock="Right" Background="#660D192E" BorderBrush="#2DD4BF" BorderThickness="1"
-                        CornerRadius="14" Padding="14,5" VerticalAlignment="Center">
-                    <TextBlock x:Name="TxtSelectedBadge" Text="0 Selected" Foreground="#2DD4BF" FontWeight="Bold" FontSize="12.5"/>
-                </Border>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="BtnThemeToggle" Margin="0,0,10,0" ToolTip="Follows Windows system light/dark theme automatically; click to toggle.">
+                        <TextBlock x:Name="TxtThemeLabel" Text="Theme: System (Dark)"/>
+                    </Button>
+                    <Border Background="{DynamicResource BrushAccentTint}" BorderBrush="{DynamicResource BrushAccentBorder}" BorderThickness="1"
+                            CornerRadius="14" Padding="14,5" VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtSelectedBadge" Text="0 Selected" Foreground="{DynamicResource BrushAccent}" FontWeight="Bold" FontSize="12.5"/>
+                    </Border>
+                </StackPanel>
                 <StackPanel>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="Edge Profile Shortcut Builder" FontSize="20" FontWeight="Bold" Foreground="#F8FAFC"/>
-                        <Border Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="v1.0.0" FontSize="11" FontWeight="SemiBold" Foreground="#2DD4BF"/>
+                        <TextBlock Text="Edge Profile Shortcut Builder" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="v1.0.0" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushAccent}"/>
                         </Border>
                     </StackPanel>
                     <TextBlock Text="Tick icons from the default pack or upload/drop your own images to build isolated Edge profiles and taskbar-pinnable shortcuts."
-                               FontSize="12.5" Foreground="#94A3B8" Margin="0,3,0,0"/>
+                               FontSize="12.5" Foreground="{DynamicResource BrushTextMuted}" Margin="0,3,0,0"/>
                 </StackPanel>
             </DockPanel>
         </Border>
 
         <!-- Row 1: Action Toolbar -->
-        <Border Grid.Row="1" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="10" Margin="20,12,20,10">
+        <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="20,12,20,10">
             <DockPanel>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
                     <Button x:Name="BtnUploadIcons" Content="+ Upload Icons..." Style="{StaticResource PrimaryButton}" Margin="0,0,8,0"/>
@@ -222,7 +272,7 @@
                     <Button x:Name="BtnDefaultPack" Content="Default Pack" Margin="0,0,8,0"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
-                    <TextBlock Text="Drag &amp; drop PNG/JPG/ICO onto grid" Foreground="#94A3B8" FontSize="11.5"
+                    <TextBlock Text="Drag &amp; drop PNG/JPG/ICO onto grid" Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5"
                                VerticalAlignment="Center" Margin="0,0,14,0"/>
                     <Button x:Name="BtnSelectAll" Content="Select All" Margin="0,0,8,0"/>
                     <Button x:Name="BtnClearAll" Content="Clear Selection"/>
@@ -231,7 +281,7 @@
         </Border>
 
         <!-- Row 2: Visual Icon Grid -->
-        <Border x:Name="DropZoneBorder" Grid.Row="2" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1"
+        <Border x:Name="DropZoneBorder" Grid.Row="2" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1"
                 CornerRadius="8" Padding="8" AllowDrop="True" Margin="20,0,20,10">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl x:Name="IcIcons">
@@ -256,8 +306,8 @@
                                         <CheckBox DockPanel.Dock="Left" VerticalAlignment="Center"
                                                   IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
                                         <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
-                                            <Border Background="#99070D1A" BorderBrush="#26354D" BorderThickness="1" CornerRadius="4" Padding="5,2" VerticalAlignment="Center" Margin="0,0,4,0">
-                                                <TextBlock Text="{Binding FormatBadge}" FontSize="10" FontWeight="SemiBold" Foreground="#CBD5E1"/>
+                                            <Border Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="4" Padding="5,2" VerticalAlignment="Center" Margin="0,0,4,0">
+                                                <TextBlock Text="{Binding FormatBadge}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
                                             </Border>
                                             <Button Content="x" Tag="{Binding Id}" Style="{StaticResource RemoveCardButton}"
                                                     Visibility="{Binding IsUploaded, Converter={StaticResource BoolToVis}}"
@@ -273,7 +323,7 @@
 
                                     <!-- Source Label -->
                                     <TextBlock Grid.Row="2" Text="{Binding SourceBadge}" FontSize="10" FontWeight="SemiBold"
-                                               Foreground="#94A3B8" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                               Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center" Margin="0,0,0,4"/>
 
                                     <!-- Editable Profile Name -->
                                     <TextBox Grid.Row="3" Text="{Binding ProfileName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -287,7 +337,7 @@
         </Border>
 
         <!-- Row 3: Profile & Output Options -->
-        <Border Grid.Row="3" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="20,0,20,10">
+        <Border Grid.Row="3" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="20,0,20,10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="1.2*"/>
@@ -296,7 +346,7 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="PROFILE MODE &amp; SHORTCUT OPTIONS" FontSize="11" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,0,0,6"/>
+                    <TextBlock Text="PROFILE MODE &amp; SHORTCUT OPTIONS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" Margin="0,0,0,6"/>
                     <RadioButton x:Name="RbIsolated" IsChecked="True" Margin="0,0,0,5"
                                  Content="Isolated User-Data-Dir (separate cookies &amp; sessions per icon)"/>
                     <RadioButton x:Name="RbStandard" Margin="0,0,0,8"
@@ -308,7 +358,7 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="OUTPUT ROOT FOLDER (SHORTCUTS, PROFILES &amp; CONVERTEDICONS)" FontSize="11" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,0,0,6"/>
+                    <TextBlock Text="OUTPUT ROOT FOLDER (SHORTCUTS, PROFILES &amp; CONVERTEDICONS)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" Margin="0,0,0,6"/>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -319,18 +369,18 @@
                         <Button x:Name="BtnBrowseOutput" Grid.Column="2" Content="Browse..."/>
                     </Grid>
                     <TextBlock Text="Converted .ico files and isolated profiles stay here so pinned shortcuts never break."
-                               FontSize="11" Foreground="#94A3B8" Margin="0,5,0,0"/>
+                               FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,5,0,0"/>
                 </StackPanel>
             </Grid>
         </Border>
 
         <!-- Row 4: Log Console -->
         <TextBox x:Name="TxtLog" Grid.Row="4" Height="68" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Auto" Background="#CC050A14" BorderBrush="#26354D" Foreground="#CBD5E1"
+                 HorizontalScrollBarVisibility="Auto" Background="{DynamicResource BrushLogBg}" BorderBrush="{DynamicResource BrushCardBorder}" Foreground="{DynamicResource BrushTextSecondary}"
                  FontFamily="Cascadia Mono, Consolas" FontSize="11.5" Margin="20,0,20,12" AcceptsReturn="True"/>
 
         <!-- Row 5: Footer Buttons -->
-        <Border Grid.Row="5" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="20,12">
+        <Border Grid.Row="5" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,1,0,0" Padding="20,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -338,7 +388,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0"
                            Text="Tip: Right-click any generated shortcut &#x2192; Show more options &#x2192; Pin to taskbar to keep profiles separate."
-                           Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center"
+                           Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="BtnOpenShortcuts" Content="Open Shortcuts Folder" Margin="0,0,10,0"/>

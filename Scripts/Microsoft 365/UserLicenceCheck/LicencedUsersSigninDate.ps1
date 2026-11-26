@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Retrieves all Entra ID / M365 users alongside their assigned licenses, user types, and last successful sign-in date.
 .DESCRIPTION

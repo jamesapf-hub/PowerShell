@@ -254,6 +254,193 @@ if (-not $NoGui -and [System.Threading.Thread]::CurrentThread.GetApartmentState(
 # Import GUI assemblies
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
+# Painted Windows 11 Chrome Helper (Frame / DwmSetWindowAttribute Pattern)
+if (-not ('Win11ChromeHelper' -as [type])) {
+    $chromeCSharp = @'
+using System;
+using System.Runtime.InteropServices;
+
+public class Win11ChromeHelper
+{
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const int DWMWA_CAPTION_COLOR = 35;
+    private const int DWMWA_TEXT_COLOR = 36;
+    private const int DWMWCP_ROUND = 2;
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
+
+    public static void ApplyWindowChrome(IntPtr hwnd, bool isDark)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        try
+        {
+            int darkVal = isDark ? 1 : 0;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkVal, sizeof(int));
+
+            int cornerVal = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerVal, sizeof(int));
+
+            uint captionBgr = isDark ? 0x0026160Fu : 0x00FFFFFFu; // #0F1626 dark / #FFFFFF light
+            uint textBgr    = isDark ? 0x00FCFAF8u : 0x002A170Fu; // #F8FAFC dark / #0F172A light
+            uint borderBgr  = isDark ? 0x003B291Eu : 0x00E1D5CBu; // #1E293B dark / #CBD5E1 light
+
+            DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref captionBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref textBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderBgr, sizeof(uint));
+        }
+        catch
+        {
+            // Ignore gracefully on Windows 10 hosts lacking Win11 DWM attributes
+        }
+    }
+}
+'@
+    try { Add-Type -TypeDefinition $chromeCSharp -Language CSharp -ErrorAction Stop } catch {}
+}
+
+function Get-SystemIsDarkTheme {
+    [CmdletBinding()]
+    param()
+    try {
+        $regPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+        if (Test-Path -Path $regPath) {
+            $val = Get-ItemPropertyValue -Path $regPath -Name 'AppsUseLightTheme' -ErrorAction Stop
+            return ([int]$val -eq 0)
+        }
+    } catch {}
+    return $true
+}
+
+function Set-StandardGuiTheme {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$IsDark,
+
+        [System.Windows.Controls.TextBlock]$ThemeLabel = $null,
+        [bool]$IsSystemAuto = $true
+    )
+
+    $conv = New-Object System.Windows.Media.BrushConverter
+    if ($IsDark) {
+        $canvasBrush = New-Object System.Windows.Media.RadialGradientBrush
+        $canvasBrush.Center = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.GradientOrigin = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.RadiusX = 0.95
+        $canvasBrush.RadiusY = 0.9
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#0F1F3D')), 0.0))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#091122')), 0.52))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#05070C')), 1.0))
+
+        $map = @{
+            BrushChromeBar            = '#CC070D19'
+            BrushHairline             = '#1CFFFFFF'
+            BrushCardBg               = '#B30D192E'
+            BrushCardHoverBg          = '#CC13223A'
+            BrushCardBorder           = '#26354D'
+            BrushInputBg              = '#C7070D1A'
+            BrushLogBg                = '#E6050A14'
+            BrushConsoleHeaderBg      = '#660D192E'
+            BrushTextPrimary          = '#F8FAFC'
+            BrushTextSecondary        = '#CBD5E1'
+            BrushTextMuted            = '#94A3B8'
+            BrushTextDisabled         = '#64748B'
+            BrushAccent               = '#2DD4BF'
+            BrushAccentHover          = '#5EEAD4'
+            BrushAccentPressed        = '#14B8A6'
+            BrushAccentFg             = '#042F2E'
+            BrushAccentTint           = '#242DD4BF'
+            BrushAccentBorder         = '#6B2DD4BF'
+            BrushSecBtnBg             = '#14FFFFFF'
+            BrushSecBtnHover          = '#24FFFFFF'
+            BrushSecBtnPressed        = '#1FFFFFFF'
+            BrushBtnDisabledBg        = '#13223A'
+            BrushSecBtnDisabledBg     = '#0DFFFFFF'
+            BrushSecBtnDisabledBorder = '#1A26354D'
+            BrushScrollThumb          = '#26354D'
+            BrushProgressTrack        = '#99070D1A'
+            BrushBadgePendingBg       = '#99070D1A'
+            BrushBadgePendingFg       = '#94A3B8'
+            BrushBadgeRunningBg       = '#1A2DD4BF'
+            BrushBadgeRunningFg       = '#2DD4BF'
+            BrushBadgeSuccessBg       = '#064E3B'
+            BrushBadgeSuccessFg       = '#34D399'
+            BrushBadgeFailedBg        = '#7F1D1D'
+            BrushBadgeFailedFg        = '#F87171'
+        }
+    } else {
+        $canvasBrush = $conv.ConvertFromString('#F8F9FF')
+        $map = @{
+            BrushChromeBar            = '#F2FFFFFF'
+            BrushHairline             = '#190F172A'
+            BrushCardBg               = '#FFFFFFFF'
+            BrushCardHoverBg          = '#FFF1F5F9'
+            BrushCardBorder           = '#CBD5E1'
+            BrushInputBg              = '#F8FAFC'
+            BrushLogBg                = '#F1F5F9'
+            BrushConsoleHeaderBg      = '#F8FAFC'
+            BrushTextPrimary          = '#0F172A'
+            BrushTextSecondary        = '#334155'
+            BrushTextMuted            = '#64748B'
+            BrushTextDisabled         = '#94A3B8'
+            BrushAccent               = '#2563EB'
+            BrushAccentHover          = '#1D4ED8'
+            BrushAccentPressed        = '#1E40AF'
+            BrushAccentFg             = '#FFFFFF'
+            BrushAccentTint           = '#DBEAFE'
+            BrushAccentBorder         = '#592563EB'
+            BrushSecBtnBg             = '#FFFFFF'
+            BrushSecBtnHover          = '#F1F5F9'
+            BrushSecBtnPressed        = '#E2E8F0'
+            BrushBtnDisabledBg        = '#E2E8F0'
+            BrushSecBtnDisabledBg     = '#F1F5F9'
+            BrushSecBtnDisabledBorder = '#CBD5E1'
+            BrushScrollThumb          = '#CBD5E1'
+            BrushProgressTrack        = '#E2E8F0'
+            BrushBadgePendingBg       = '#F1F5F9'
+            BrushBadgePendingFg       = '#475569'
+            BrushBadgeRunningBg       = '#DBEAFE'
+            BrushBadgeRunningFg       = '#1D4ED8'
+            BrushBadgeSuccessBg       = '#DCFCE7'
+            BrushBadgeSuccessFg       = '#15803D'
+            BrushBadgeFailedBg        = '#FEE2E2'
+            BrushBadgeFailedFg        = '#B91C1C'
+        }
+    }
+
+    if ($canvasBrush.CanFreeze) { $canvasBrush.Freeze() }
+    $Window.Background = $canvasBrush
+    $Window.Resources['BrushCanvas'] = $canvasBrush
+    foreach ($key in $map.Keys) {
+        $b = $conv.ConvertFromString($map[$key])
+        if ($b.CanFreeze) { $b.Freeze() }
+        $Window.Resources[$key] = $b
+    }
+
+    if ($null -ne $ThemeLabel) {
+        $modeTag = if ($IsSystemAuto) { 'System' } else { 'Manual' }
+        $toneTag = if ($IsDark) { 'Dark' } else { 'Light' }
+        $ThemeLabel.Text = "Theme: $modeTag ($toneTag)"
+    }
+
+    try {
+        $helper = New-Object System.Windows.Interop.WindowInteropHelper($Window)
+        if ($helper.Handle -ne [IntPtr]::Zero -and ('Win11ChromeHelper' -as [type])) {
+            [Win11ChromeHelper]::ApplyWindowChrome($helper.Handle, $IsDark)
+        }
+    } catch {}
+}
+
 function Initialize-StandardGuiWindow {
     [CmdletBinding()]
     param(
@@ -338,20 +525,77 @@ function Initialize-StandardGuiWindow {
         Title="Ultimate PC CleanUp Utility v1.1"
         Height="720" Width="1120"
         WindowStartupLocation="Manual"
-        ResizeMode="CanResize">
-    <Window.Background>
-        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
-            <GradientStop Color="#0F1F3D" Offset="0.0"/>
-            <GradientStop Color="#091122" Offset="0.55"/>
-            <GradientStop Color="#05070C" Offset="1.0"/>
-        </RadialGradientBrush>
-    </Window.Background>
-
+        ResizeMode="CanResize"
+        Background="#091122"
+        Foreground="{DynamicResource BrushTextPrimary}"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
     <Window.Resources>
-        <!-- Primary Action Button Style (Obsidian Teal CTA) -->
+        <SolidColorBrush x:Key="BrushCanvas" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushChromeBar" Color="#CC070D19"/>
+        <SolidColorBrush x:Key="BrushHairline" Color="#1CFFFFFF"/>
+        <SolidColorBrush x:Key="BrushCardBg" Color="#B30D192E"/>
+        <SolidColorBrush x:Key="BrushCardHoverBg" Color="#CC13223A"/>
+        <SolidColorBrush x:Key="BrushCardBorder" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushInputBg" Color="#C7070D1A"/>
+        <SolidColorBrush x:Key="BrushLogBg" Color="#E6050A14"/>
+        <SolidColorBrush x:Key="BrushConsoleHeaderBg" Color="#660D192E"/>
+        <SolidColorBrush x:Key="BrushTextPrimary" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="BrushTextSecondary" Color="#CBD5E1"/>
+        <SolidColorBrush x:Key="BrushTextMuted" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BrushTextDisabled" Color="#64748B"/>
+        <SolidColorBrush x:Key="BrushAccent" Color="#2DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentHover" Color="#5EEAD4"/>
+        <SolidColorBrush x:Key="BrushAccentPressed" Color="#14B8A6"/>
+        <SolidColorBrush x:Key="BrushAccentFg" Color="#042F2E"/>
+        <SolidColorBrush x:Key="BrushAccentTint" Color="#242DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentBorder" Color="#6B2DD4BF"/>
+        <SolidColorBrush x:Key="BrushSecBtnBg" Color="#14FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnHover" Color="#24FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnPressed" Color="#1FFFFFFF"/>
+        <SolidColorBrush x:Key="BrushBtnDisabledBg" Color="#13223A"/>
+        <SolidColorBrush x:Key="BrushSecBtnDisabledBg" Color="#0DFFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnDisabledBorder" Color="#1A26354D"/>
+        <SolidColorBrush x:Key="BrushScrollThumb" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushProgressTrack" Color="#99070D1A"/>
+        <SolidColorBrush x:Key="BrushBadgePendingBg" Color="#99070D1A"/>
+        <SolidColorBrush x:Key="BrushBadgePendingFg" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BrushBadgeRunningBg" Color="#1A2DD4BF"/>
+        <SolidColorBrush x:Key="BrushBadgeRunningFg" Color="#2DD4BF"/>
+        <SolidColorBrush x:Key="BrushBadgeSuccessBg" Color="#064E3B"/>
+        <SolidColorBrush x:Key="BrushBadgeSuccessFg" Color="#34D399"/>
+        <SolidColorBrush x:Key="BrushBadgeFailedBg" Color="#7F1D1D"/>
+        <SolidColorBrush x:Key="BrushBadgeFailedFg" Color="#F87171"/>
+
+        <!-- Slim ScrollBar -->
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="{DynamicResource BrushScrollThumb}" CornerRadius="4" Margin="1"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Primary Action Button Style -->
         <Style TargetType="Button" x:Key="PrimaryBtn">
-            <Setter Property="Background" Value="#2DD4BF"/>
-            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccentFg}"/>
             <Setter Property="Padding" Value="16,8"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontWeight" Value="Bold"/>
@@ -364,14 +608,14 @@ function Initialize-StandardGuiWindow {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#5EEAD4"/>
+                                <Setter TargetName="BtnBorder" Property="Background" Value="{DynamicResource BrushAccentHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#14B8A6"/>
+                                <Setter TargetName="BtnBorder" Property="Background" Value="{DynamicResource BrushAccentPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#13223A"/>
-                                <Setter Property="Foreground" Value="#64748B"/>
+                                <Setter TargetName="BtnBorder" Property="Background" Value="{DynamicResource BrushBtnDisabledBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextDisabled}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -381,10 +625,10 @@ function Initialize-StandardGuiWindow {
 
         <!-- Secondary Accent Outline Button Style -->
         <Style TargetType="Button" x:Key="AccentBtn">
-            <Setter Property="Background" Value="#14FFFFFF"/>
-            <Setter Property="Foreground" Value="#2DD4BF"/>
+            <Setter Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccent}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#2DD4BF"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
             <Setter Property="Padding" Value="16,8"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="13"/>
@@ -396,18 +640,18 @@ function Initialize-StandardGuiWindow {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#24FFFFFF"/>
-                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#5EEAD4"/>
-                                <Setter Property="Foreground" Value="#5EEAD4"/>
+                                <Setter TargetName="BtnBorder" Property="Background" Value="{DynamicResource BrushSecBtnHover}"/>
+                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="{DynamicResource BrushAccentHover}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushAccentHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#1A2DD4BF"/>
-                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#14B8A6"/>
+                                <Setter TargetName="BtnBorder" Property="Background" Value="{DynamicResource BrushAccentTint}"/>
+                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="{DynamicResource BrushAccentPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#0DFFFFFF"/>
-                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#26354D"/>
-                                <Setter Property="Foreground" Value="#64748B"/>
+                                <Setter TargetName="BtnBorder" Property="Background" Value="{DynamicResource BrushSecBtnDisabledBg}"/>
+                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextDisabled}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -417,11 +661,11 @@ function Initialize-StandardGuiWindow {
 
         <!-- General Secondary Button Style -->
         <Style TargetType="Button" x:Key="DefaultBtn">
-            <Setter Property="Background" Value="#14FFFFFF"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
             <Setter Property="Padding" Value="12,6"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="11.5"/>
             <Setter Property="Template">
@@ -432,17 +676,17 @@ function Initialize-StandardGuiWindow {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#24FFFFFF"/>
-                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#2DD4BF"/>
-                                <Setter Property="Foreground" Value="#F8FAFC"/>
+                                <Setter TargetName="BtnBorder" Property="Background" Value="{DynamicResource BrushSecBtnHover}"/>
+                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#1FFFFFFF"/>
+                                <Setter TargetName="BtnBorder" Property="Background" Value="{DynamicResource BrushSecBtnPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#0DFFFFFF"/>
-                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#1A26354D"/>
-                                <Setter Property="Foreground" Value="#64748B"/>
+                                <Setter TargetName="BtnBorder" Property="Background" Value="{DynamicResource BrushSecBtnDisabledBg}"/>
+                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="{DynamicResource BrushSecBtnDisabledBorder}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextDisabled}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -450,25 +694,25 @@ function Initialize-StandardGuiWindow {
             </Setter>
         </Style>
 
-        <!-- Dark-Themed CheckBox Style -->
+        <!-- Dynamic CheckBox Style -->
         <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
                         <Grid Background="Transparent">
-                            <Border x:Name="CheckBoxBorder" Width="18" Height="18" Background="#99070D1A" BorderBrush="#26354D" BorderThickness="1.5" CornerRadius="4" VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <Path x:Name="CheckMark" Data="M 3,8.5 L 6.5,12 L 13,4.5" Stroke="#042F2E" StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Visibility="Collapsed"/>
+                            <Border x:Name="CheckBoxBorder" Width="18" Height="18" Background="{DynamicResource BrushInputBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1.5" CornerRadius="4" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <Path x:Name="CheckMark" Data="M 3,8.5 L 6.5,12 L 13,4.5" Stroke="{DynamicResource BrushAccentFg}" StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Visibility="Collapsed"/>
                             </Border>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="CheckBoxBorder" Property="Background" Value="#2DD4BF"/>
-                                <Setter TargetName="CheckBoxBorder" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="CheckBoxBorder" Property="Background" Value="{DynamicResource BrushAccent}"/>
+                                <Setter TargetName="CheckBoxBorder" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                                 <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="CheckBoxBorder" Property="BorderBrush" Value="#5EEAD4"/>
+                                <Setter TargetName="CheckBoxBorder" Property="BorderBrush" Value="{DynamicResource BrushAccentHover}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -476,18 +720,18 @@ function Initialize-StandardGuiWindow {
             </Setter>
         </Style>
 
-        <!-- Script Card Item Style (Obsidian Surface) -->
+        <!-- Script Card Item Style -->
         <Style TargetType="Border" x:Key="ScriptCardStyle">
-            <Setter Property="Background" Value="#660D192E"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushCardBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="12"/>
             <Setter Property="Margin" Value="0,0,0,8"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#880D192E"/>
-                    <Setter Property="BorderBrush" Value="#2DD4BF"/>
+                    <Setter Property="Background" Value="{DynamicResource BrushCardHoverBg}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -504,7 +748,7 @@ function Initialize-StandardGuiWindow {
         </Grid.RowDefinitions>
 
         <!-- Header Panel -->
-        <Border Grid.Row="0" Background="#B3070D19" BorderThickness="0,0,0,1" BorderBrush="#1FFFFFFF" Padding="24,14">
+        <Border Grid.Row="0" Background="{DynamicResource BrushChromeBar}" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BrushHairline}" Padding="24,14">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -512,14 +756,19 @@ function Initialize-StandardGuiWindow {
                 </Grid.ColumnDefinitions>
                 <StackPanel VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Ultimate PC CleanUp" FontSize="20" FontWeight="Bold" Foreground="#F8FAFC" VerticalAlignment="Center"/>
-                        <Border Background="#1A2DD4BF" BorderBrush="#402DD4BF" BorderThickness="1" CornerRadius="4" Padding="7,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="v1.1" FontSize="11" FontWeight="SemiBold" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas"/>
+                        <TextBlock Text="Ultimate PC CleanUp" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource BrushAccentTint}" BorderBrush="{DynamicResource BrushAccentBorder}" BorderThickness="1" CornerRadius="4" Padding="7,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="v1.1" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushAccent}" FontFamily="Cascadia Mono, Consolas"/>
                         </Border>
                     </StackPanel>
-                    <TextBlock Text="Run custom PC tidy-up scripts safely, monitor outputs, and keep Windows clean." FontSize="12.5" Foreground="#94A3B8" Margin="0,4,0,0"/>
+                    <TextBlock Text="Run custom PC tidy-up scripts safely, monitor outputs, and keep Windows clean." FontSize="12.5" Foreground="{DynamicResource BrushTextMuted}" Margin="0,4,0,0"/>
                 </StackPanel>
-                <Button Name="BtnRefresh" Grid.Column="1" Style="{StaticResource DefaultBtn}" Content="Scan Folder" MinWidth="106" Height="34" Cursor="Hand" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Name="BtnThemeToggle" Style="{StaticResource DefaultBtn}" Height="34" Margin="0,0,10,0" Cursor="Hand" ToolTip="Follows Windows system light/dark theme automatically; click to toggle.">
+                        <TextBlock Name="TxtThemeLabel" Text="Theme: System (Dark)"/>
+                    </Button>
+                    <Button Name="BtnRefresh" Style="{StaticResource DefaultBtn}" Content="Scan Folder" MinWidth="106" Height="34" Cursor="Hand" VerticalAlignment="Center"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -542,7 +791,7 @@ function Initialize-StandardGuiWindow {
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Text="DISCOVERED CLEANUP TASKS" FontSize="11" FontWeight="Bold" Foreground="#94A3B8" Margin="0,0,0,10"/>
+                <TextBlock Text="DISCOVERED CLEANUP TASKS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,10"/>
 
                 <!-- Scrollable Checklist -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -574,7 +823,7 @@ function Initialize-StandardGuiWindow {
                 </Grid>
 
                 <!-- Monospaced Log Console -->
-                <Border Grid.Row="1" Background="#CC050A14" CornerRadius="6" BorderThickness="1" BorderBrush="#26354D">
+                <Border Grid.Row="1" Background="{DynamicResource BrushLogBg}" CornerRadius="6" BorderThickness="1" BorderBrush="{DynamicResource BrushCardBorder}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -582,30 +831,30 @@ function Initialize-StandardGuiWindow {
                         </Grid.RowDefinitions>
 
                         <!-- Console Header -->
-                        <Border Background="#660D192E" Padding="14,8" BorderThickness="0,0,0,1" BorderBrush="#26354D">
+                        <Border Background="{DynamicResource BrushConsoleHeaderBg}" Padding="14,8" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BrushCardBorder}">
                             <Grid>
-                                <TextBlock Text="REAL-TIME EXECUTION LOG" FontSize="11" FontWeight="Bold" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                <TextBlock Text="REAL-TIME EXECUTION LOG" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
                                 <Button Name="BtnClearLog" Content="Clear Console" Style="{StaticResource DefaultBtn}" HorizontalAlignment="Right" Padding="10,4" FontSize="11" Cursor="Hand"/>
                             </Grid>
                         </Border>
 
                         <!-- Console Textbox -->
-                        <TextBox Name="TxtConsole" Grid.Row="1" Background="Transparent" Foreground="#F8FAFC" CaretBrush="#2DD4BF" SelectionBrush="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="12.5" BorderThickness="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Margin="12,10" Padding="2"/>
+                        <TextBox Name="TxtConsole" Grid.Row="1" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" CaretBrush="{DynamicResource BrushAccent}" SelectionBrush="{DynamicResource BrushAccent}" FontFamily="Cascadia Mono, Consolas" FontSize="12.5" BorderThickness="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Margin="12,10" Padding="2"/>
                     </Grid>
                 </Border>
             </Grid>
         </Grid>
 
         <!-- Footer Panel -->
-        <Border Grid.Row="2" Background="#B3070D19" BorderThickness="0,1,0,0" BorderBrush="#26354D" Padding="24,12">
+        <Border Grid.Row="2" Background="{DynamicResource BrushChromeBar}" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BrushHairline}" Padding="24,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Name="TxtProgress" Text="Ready to begin cleanup" Foreground="#94A3B8" VerticalAlignment="Center" FontSize="12"/>
-                <ProgressBar Name="ProgressIndicator" Grid.Column="1" Margin="20,0" Height="8" Background="#99070D1A" Foreground="#2DD4BF" Minimum="0" Maximum="100" Value="0" BorderThickness="0">
+                <TextBlock Name="TxtProgress" Text="Ready to begin cleanup" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center" FontSize="12"/>
+                <ProgressBar Name="ProgressIndicator" Grid.Column="1" Margin="20,0" Height="8" Background="{DynamicResource BrushProgressTrack}" Foreground="{DynamicResource BrushAccent}" Minimum="0" Maximum="100" Value="0" BorderThickness="0">
                     <ProgressBar.Template>
                         <ControlTemplate TargetType="ProgressBar">
                             <Border Background="{TemplateBinding Background}" CornerRadius="4" ClipToBounds="True">
@@ -617,7 +866,7 @@ function Initialize-StandardGuiWindow {
                         </ControlTemplate>
                     </ProgressBar.Template>
                 </ProgressBar>
-                <TextBlock Name="TxtStatusCount" Grid.Column="2" Text="0 / 0 Completed" Foreground="#CBD5E1" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" FontFamily="Cascadia Mono, Consolas"/>
+                <TextBlock Name="TxtStatusCount" Grid.Column="2" Text="0 / 0 Completed" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" FontFamily="Cascadia Mono, Consolas"/>
             </Grid>
         </Border>
     </Grid>
@@ -633,6 +882,35 @@ Initialize-StandardGuiWindow -Window $window -ScriptRoot $PSScriptRoot
 $xaml.SelectNodes("//*[@Name]") | ForEach-Object {
     Set-Variable -Name $_.Name -Value $window.FindName($_.Name) -Scope Script
 }
+
+# Theme State + Painted Win11 Chrome Hook
+$Script:IsDarkTheme = Get-SystemIsDarkTheme
+$Script:IsSystemThemeAuto = $true
+Set-StandardGuiTheme -Window $window -IsDark $Script:IsDarkTheme -ThemeLabel $TxtThemeLabel -IsSystemAuto $true
+
+$window.Add_SourceInitialized({
+    Set-StandardGuiTheme -Window $window -IsDark $Script:IsDarkTheme -ThemeLabel $TxtThemeLabel -IsSystemAuto $Script:IsSystemThemeAuto
+})
+
+$userPrefHandler = [Microsoft.Win32.UserPreferenceChangedEventHandler]{
+    param($sender, $e)
+    if ($e.Category -eq [Microsoft.Win32.UserPreferenceCategory]::General -and $Script:IsSystemThemeAuto) {
+        $window.Dispatcher.Invoke([Action]{
+            $Script:IsDarkTheme = Get-SystemIsDarkTheme
+            Set-StandardGuiTheme -Window $window -IsDark $Script:IsDarkTheme -ThemeLabel $TxtThemeLabel -IsSystemAuto $true
+        })
+    }
+}
+[Microsoft.Win32.SystemEvents]::add_UserPreferenceChanged($userPrefHandler)
+$window.Add_Closed({
+    try { [Microsoft.Win32.SystemEvents]::remove_UserPreferenceChanged($userPrefHandler) } catch {}
+})
+
+$BtnThemeToggle.Add_Click({
+    $Script:IsSystemThemeAuto = $false
+    $Script:IsDarkTheme = -not $Script:IsDarkTheme
+    Set-StandardGuiTheme -Window $window -IsDark $Script:IsDarkTheme -ThemeLabel $TxtThemeLabel -IsSystemAuto $false
+})
 
 # Synchronized hashtable to share state with background execution thread safely
 $syncHash = [hashtable]::Synchronized(@{})
@@ -678,12 +956,12 @@ function Update-ScriptList {
         <CheckBox Name="ChkSelect" VerticalAlignment="Center" Margin="0,0,12,0" IsChecked="True" Cursor="Hand"/>
         
         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
-            <TextBlock Name="TxtTitle" Text="$safeTitle" FontWeight="SemiBold" FontSize="13.5" Foreground="#F8FAFC"/>
-            <TextBlock Name="TxtDesc" Text="$safeDescription" FontSize="11.5" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,3,0,0"/>
+            <TextBlock Name="TxtTitle" Text="$safeTitle" FontWeight="SemiBold" FontSize="13.5" Foreground="{DynamicResource BrushTextPrimary}"/>
+            <TextBlock Name="TxtDesc" Text="$safeDescription" FontSize="11.5" Foreground="{DynamicResource BrushTextMuted}" TextWrapping="Wrap" Margin="0,3,0,0"/>
         </StackPanel>
         
-        <Border Grid.Column="2" Name="StatusBadge" CornerRadius="4" Padding="8,4" VerticalAlignment="Center" Background="#99070D1A" BorderBrush="#26354D" BorderThickness="1" MinWidth="75">
-            <TextBlock Name="TxtStatus" Text="Pending" Foreground="#94A3B8" FontWeight="Bold" FontSize="10.5" HorizontalAlignment="Center"/>
+        <Border Grid.Column="2" Name="StatusBadge" CornerRadius="4" Padding="8,4" VerticalAlignment="Center" Background="{DynamicResource BrushBadgePendingBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" MinWidth="75">
+            <TextBlock Name="TxtStatus" Text="Pending" Foreground="{DynamicResource BrushBadgePendingFg}" FontWeight="Bold" FontSize="10.5" HorizontalAlignment="Center"/>
         </Border>
     </Grid>
 </Border>
@@ -714,14 +992,13 @@ function Update-ScriptList {
 function Start-Execution {
     param([bool]$onlySelected)
     
-    $brushConverter = New-Object System.Windows.Media.BrushConverter
     # Identify scripts to execute
     $selectedScripts = [System.Collections.Generic.List[PSCustomObject]]::new()
     foreach ($script in $scriptList) {
         # Reset card status visually
         $script.StatusText.Text = "Pending"
-        $script.StatusBadge.Background = $brushConverter.ConvertFromString("#99070D1A")
-        $script.StatusText.Foreground = $brushConverter.ConvertFromString("#94A3B8")
+        $script.StatusBadge.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushBadgePendingBg')
+        $script.StatusText.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushBadgePendingFg')
         
         if (-not $onlySelected -or $script.Checkbox.IsChecked) {
             $selectedScripts.Add($script) | Out-Null
@@ -756,7 +1033,6 @@ function Start-Execution {
     
     $runscript = {
         $scripts = $syncHash.Scripts
-        $bgBrushConverter = New-Object System.Windows.Media.BrushConverter
         
         for ($i = 0; $i -lt $scripts.Count; $i++) {
             $script = $scripts[$i]
@@ -764,8 +1040,8 @@ function Start-Execution {
             # Transition task card UI status to 'Running'
             $syncHash.Window.Dispatcher.Invoke([Action]{
                 $script.StatusText.Text = "Running"
-                $script.StatusBadge.Background = $bgBrushConverter.ConvertFromString("#1A2DD4BF")
-                $script.StatusText.Foreground = $bgBrushConverter.ConvertFromString("#2DD4BF")
+                $script.StatusBadge.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushBadgeRunningBg')
+                $script.StatusText.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushBadgeRunningFg')
                 
                 $syncHash.TxtConsole.AppendText("======================================================================`r`n")
                 $syncHash.TxtConsole.AppendText("TASK: $($script.Title)`r`n")
@@ -821,13 +1097,13 @@ function Start-Execution {
                 
                 if ($exitCode -eq 0) {
                     $script.StatusText.Text = "Success"
-                    $script.StatusBadge.Background = $bgBrushConverter.ConvertFromString("#064E3B")
-                    $script.StatusText.Foreground = $bgBrushConverter.ConvertFromString("#34D399")
+                    $script.StatusBadge.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushBadgeSuccessBg')
+                    $script.StatusText.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushBadgeSuccessFg')
                     $syncHash.TxtConsole.AppendText("`r`n[+] Task completed successfully.`r`n`r`n")
                 } else {
                     $script.StatusText.Text = "Failed"
-                    $script.StatusBadge.Background = $bgBrushConverter.ConvertFromString("#7F1D1D")
-                    $script.StatusText.Foreground = $bgBrushConverter.ConvertFromString("#F87171")
+                    $script.StatusBadge.SetResourceReference([System.Windows.Controls.Border]::BackgroundProperty, 'BrushBadgeFailedBg')
+                    $script.StatusText.SetResourceReference([System.Windows.Controls.TextBlock]::ForegroundProperty, 'BrushBadgeFailedFg')
                     if (-not [string]::IsNullOrEmpty($errors)) {
                         $syncHash.TxtConsole.AppendText("`r`n[!] Errors reported:`r`n$errors`r`n")
                     }

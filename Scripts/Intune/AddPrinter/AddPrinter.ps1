@@ -25,6 +25,178 @@ if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
+if (-not ('Win11ChromeHelper' -as [type])) {
+    $chromeCSharp = @'
+using System;
+using System.Runtime.InteropServices;
+
+public class Win11ChromeHelper
+{
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const int DWMWA_CAPTION_COLOR = 35;
+    private const int DWMWA_TEXT_COLOR = 36;
+    private const int DWMWCP_ROUND = 2;
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
+
+    public static void ApplyWindowChrome(IntPtr hwnd, bool isDark)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        try
+        {
+            int darkVal = isDark ? 1 : 0;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkVal, sizeof(int));
+
+            int cornerVal = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerVal, sizeof(int));
+
+            uint captionBgr = isDark ? 0x0026160Fu : 0x00FFFFFFu; // #0F1626 dark / #FFFFFF light
+            uint textBgr    = isDark ? 0x00FCFAF8u : 0x002A170Fu; // #F8FAFC dark / #0F172A light
+            uint borderBgr  = isDark ? 0x003B291Eu : 0x00E1D5CBu; // #1E293B dark / #CBD5E1 light
+
+            DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref captionBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref textBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderBgr, sizeof(uint));
+        }
+        catch
+        {
+            // Ignore gracefully on Windows 10 hosts lacking Win11 DWM attributes
+        }
+    }
+}
+'@
+    try { Add-Type -TypeDefinition $chromeCSharp -Language CSharp -ErrorAction Stop } catch {}
+}
+
+function Get-SystemIsDarkTheme {
+    [CmdletBinding()]
+    param()
+    try {
+        $regPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+        if (Test-Path -Path $regPath) {
+            $val = Get-ItemPropertyValue -Path $regPath -Name 'AppsUseLightTheme' -ErrorAction Stop
+            return ([int]$val -eq 0)
+        }
+    } catch {}
+    return $true
+}
+
+function Set-StandardGuiTheme {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$IsDark,
+
+        [System.Windows.Controls.TextBlock]$ThemeLabel = $null,
+        [bool]$IsSystemAuto = $true
+    )
+
+    $conv = New-Object System.Windows.Media.BrushConverter
+    if ($IsDark) {
+        $canvasBrush = New-Object System.Windows.Media.RadialGradientBrush
+        $canvasBrush.Center = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.GradientOrigin = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.RadiusX = 0.95
+        $canvasBrush.RadiusY = 0.9
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#0F1F3D')), 0.0))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#091122')), 0.52))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#05070C')), 1.0))
+
+        $map = @{
+            BrushChromeBar     = '#CC070D19'
+            BrushHairline      = '#1CFFFFFF'
+            BrushCardBg        = '#B30D192E'
+            BrushCardBorder    = '#26354D'
+            BrushInputBg       = '#C7070D1A'
+            BrushLogBg         = '#E6050A14'
+            BrushTextPrimary   = '#F8FAFC'
+            BrushTextSecondary = '#CBD5E1'
+            BrushTextMuted     = '#94A3B8'
+            BrushAccent        = '#2DD4BF'
+            BrushAccentHover   = '#5EEAD4'
+            BrushAccentPressed = '#14B8A6'
+            BrushAccentFg      = '#042F2E'
+            BrushAccentTint    = '#242DD4BF'
+            BrushAccentBorder  = '#6B2DD4BF'
+            BrushSecBtnBg      = '#14FFFFFF'
+            BrushSecBtnHover   = '#24FFFFFF'
+            BrushSecBtnPressed = '#0DFFFFFF'
+            BrushScrollThumb   = '#26354D'
+            BrushOk            = '#34D399'
+            BrushErr           = '#F87171'
+            BrushWarn          = '#FBBF24'
+            BrushDangerBg      = '#26EF4444'
+            BrushDangerHover   = '#45EF4444'
+            BrushDangerBorder  = '#66EF4444'
+            BrushDangerFg      = '#FCA5A5'
+            BrushDangerHoverFg = '#FFFFFF'
+        }
+    } else {
+        $canvasBrush = $conv.ConvertFromString('#F8F9FF')
+        $map = @{
+            BrushChromeBar     = '#F2FFFFFF'
+            BrushHairline      = '#190F172A'
+            BrushCardBg        = '#FFFFFFFF'
+            BrushCardBorder    = '#CBD5E1'
+            BrushInputBg       = '#F8FAFC'
+            BrushLogBg         = '#F1F5F9'
+            BrushTextPrimary   = '#0F172A'
+            BrushTextSecondary = '#334155'
+            BrushTextMuted     = '#64748B'
+            BrushAccent        = '#2563EB'
+            BrushAccentHover   = '#1D4ED8'
+            BrushAccentPressed = '#1E40AF'
+            BrushAccentFg      = '#FFFFFF'
+            BrushAccentTint    = '#DBEAFE'
+            BrushAccentBorder  = '#592563EB'
+            BrushSecBtnBg      = '#FFFFFF'
+            BrushSecBtnHover   = '#F1F5F9'
+            BrushSecBtnPressed = '#E2E8F0'
+            BrushScrollThumb   = '#CBD5E1'
+            BrushOk            = '#059669'
+            BrushErr           = '#DC2626'
+            BrushWarn          = '#D97706'
+            BrushDangerBg      = '#FEE2E2'
+            BrushDangerHover   = '#FECACA'
+            BrushDangerBorder  = '#EF4444'
+            BrushDangerFg      = '#B91C1C'
+            BrushDangerHoverFg = '#7F1D1D'
+        }
+    }
+
+    if ($canvasBrush.CanFreeze) { $canvasBrush.Freeze() }
+    $Window.Background = $canvasBrush
+    $Window.Resources['BrushCanvas'] = $canvasBrush
+    foreach ($key in $map.Keys) {
+        $b = $conv.ConvertFromString($map[$key])
+        if ($b.CanFreeze) { $b.Freeze() }
+        $Window.Resources[$key] = $b
+    }
+
+    if ($null -ne $ThemeLabel) {
+        $modeTag = if ($IsSystemAuto) { 'System' } else { 'Manual' }
+        $toneTag = if ($IsDark) { 'Dark' } else { 'Light' }
+        $ThemeLabel.Text = "Theme: $modeTag ($toneTag)"
+    }
+
+    try {
+        $helper = New-Object System.Windows.Interop.WindowInteropHelper($Window)
+        if ($helper.Handle -ne [IntPtr]::Zero -and ('Win11ChromeHelper' -as [type])) {
+            [Win11ChromeHelper]::ApplyWindowChrome($helper.Handle, $IsDark)
+        }
+    } catch {}
+}
+
 function Initialize-StandardGuiWindow {
     [CmdletBinding()]
     param(
@@ -127,19 +299,66 @@ $xaml = @'
         Title="Intune Printer Packager v1.4.3" Height="740" Width="1060"
         MinHeight="640" MinWidth="860"
         ResizeMode="CanResize" WindowStartupLocation="Manual"
-        Foreground="#F8FAFC">
-    <Window.Background>
-        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
-            <GradientStop Color="#0F1F3D" Offset="0.0"/>
-            <GradientStop Color="#091122" Offset="0.55"/>
-            <GradientStop Color="#05070C" Offset="1.0"/>
-        </RadialGradientBrush>
-    </Window.Background>
+        Background="#091122"
+        Foreground="{DynamicResource BrushTextPrimary}">
     <Window.Resources>
-        <!-- Primary Teal CTA Button Style -->
+        <SolidColorBrush x:Key="BrushCanvas" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushChromeBar" Color="#CC070D19"/>
+        <SolidColorBrush x:Key="BrushHairline" Color="#1CFFFFFF"/>
+        <SolidColorBrush x:Key="BrushCardBg" Color="#B30D192E"/>
+        <SolidColorBrush x:Key="BrushCardBorder" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushInputBg" Color="#C7070D1A"/>
+        <SolidColorBrush x:Key="BrushLogBg" Color="#E6050A14"/>
+        <SolidColorBrush x:Key="BrushTextPrimary" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="BrushTextSecondary" Color="#CBD5E1"/>
+        <SolidColorBrush x:Key="BrushTextMuted" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BrushAccent" Color="#2DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentHover" Color="#5EEAD4"/>
+        <SolidColorBrush x:Key="BrushAccentPressed" Color="#14B8A6"/>
+        <SolidColorBrush x:Key="BrushAccentFg" Color="#042F2E"/>
+        <SolidColorBrush x:Key="BrushAccentTint" Color="#242DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentBorder" Color="#6B2DD4BF"/>
+        <SolidColorBrush x:Key="BrushSecBtnBg" Color="#14FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnHover" Color="#24FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnPressed" Color="#0DFFFFFF"/>
+        <SolidColorBrush x:Key="BrushScrollThumb" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushOk" Color="#34D399"/>
+        <SolidColorBrush x:Key="BrushErr" Color="#F87171"/>
+        <SolidColorBrush x:Key="BrushWarn" Color="#FBBF24"/>
+        <SolidColorBrush x:Key="BrushDangerBg" Color="#26EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerHover" Color="#45EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerBorder" Color="#66EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerFg" Color="#FCA5A5"/>
+        <SolidColorBrush x:Key="BrushDangerHoverFg" Color="#FFFFFF"/>
+
+        <Style TargetType="ScrollBar">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="{DynamicResource BrushScrollThumb}" CornerRadius="4" Margin="1"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Primary CTA Button Style -->
         <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#2DD4BF"/>
-            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccentFg}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Padding" Value="16,8"/>
@@ -154,10 +373,10 @@ $xaml = @'
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#5EEAD4"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushAccentHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#14B8A6"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushAccentPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="border" Property="Opacity" Value="0.4"/>
@@ -170,9 +389,9 @@ $xaml = @'
 
         <!-- Secondary Button Style -->
         <Style x:Key="SecondaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#14FFFFFF"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="12.5"/>
@@ -190,11 +409,11 @@ $xaml = @'
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#24FFFFFF"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSecBtnHover}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#0DFFFFFF"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSecBtnPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="border" Property="Opacity" Value="0.4"/>
@@ -214,14 +433,14 @@ $xaml = @'
 
         <!-- Input Field Border Style -->
         <Style x:Key="InputBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="#99070D1A"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushInputBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="6,3"/>
             <Style.Triggers>
                 <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                    <Setter Property="BorderBrush" Value="#2DD4BF"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -235,16 +454,21 @@ $xaml = @'
         </Grid.RowDefinitions>
 
         <!-- Header Bar -->
-        <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="24,14">
+        <Border Grid.Row="0" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,0,0,1" Padding="24,14">
             <DockPanel>
-                <Border DockPanel.Dock="Right" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1"
-                        CornerRadius="12" Padding="12,4" VerticalAlignment="Center">
-                    <TextBlock Text="v1.4.3 | Win32 App" FontSize="11.5" FontWeight="SemiBold" Foreground="#2DD4BF"/>
-                </Border>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="BtnThemeToggle" Style="{StaticResource SecondaryButton}" Padding="12,6" Margin="0,0,10,0" ToolTip="Follows Windows system light/dark theme automatically; click to toggle.">
+                        <TextBlock x:Name="TxtThemeLabel" Text="Theme: System (Dark)"/>
+                    </Button>
+                    <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1"
+                            CornerRadius="12" Padding="12,4" VerticalAlignment="Center">
+                        <TextBlock Text="v1.4.3 | Win32 App" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushAccent}"/>
+                    </Border>
+                </StackPanel>
                 <StackPanel>
-                    <TextBlock Text="Intune Printer Packager" FontSize="20" FontWeight="Bold" Foreground="#F8FAFC"/>
+                    <TextBlock Text="Intune Printer Packager" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
                     <TextBlock Text="Validate printer INF drivers, configure TCP/IP ports, and export production-ready .intunewin bundles"
-                               FontSize="12.5" Foreground="#94A3B8" Margin="0,3,0,0"/>
+                               FontSize="12.5" Foreground="{DynamicResource BrushTextMuted}" Margin="0,3,0,0"/>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -260,48 +484,48 @@ $xaml = @'
             <!-- Left Column: Inputs -->
             <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,18">
                 <StackPanel>
-                    <TextBlock Text="PRINTER &amp; DRIVER CONFIGURATION" FontSize="11" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,0,0,14"/>
+                    <TextBlock Text="PRINTER &amp; DRIVER CONFIGURATION" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" Margin="0,0,0,14"/>
 
                     <!-- Printer Name Input -->
-                    <TextBlock Text="Printer Name (e.g., Showroom | Upstairs | Sharp MX-4061)" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Printer Name (e.g., Showroom | Upstairs | Sharp MX-4061)" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <Border Style="{StaticResource InputBorderStyle}" Margin="0,0,0,14">
-                        <TextBox Name="txtPrinterName" BorderThickness="0" Background="Transparent" Foreground="#F8FAFC" FontSize="13" Padding="4" VerticalContentAlignment="Center" CaretBrush="#2DD4BF"/>
+                        <TextBox Name="txtPrinterName" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" FontSize="13" Padding="4" VerticalContentAlignment="Center" CaretBrush="{DynamicResource BrushAccent}"/>
                     </Border>
 
                     <!-- Driver Name Input -->
-                    <TextBlock Text="Driver Name (e.g., SHARP MX-4061 PCL6)" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Driver Name (e.g., SHARP MX-4061 PCL6)" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <Border Style="{StaticResource InputBorderStyle}" Margin="0,0,0,14">
-                        <TextBox Name="txtDriverName" BorderThickness="0" Background="Transparent" Foreground="#F8FAFC" FontSize="13" Padding="4" VerticalContentAlignment="Center" CaretBrush="#2DD4BF"/>
+                        <TextBox Name="txtDriverName" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" FontSize="13" Padding="4" VerticalContentAlignment="Center" CaretBrush="{DynamicResource BrushAccent}"/>
                     </Border>
 
                     <!-- IP Address Input -->
-                    <TextBlock Text="Printer IPv4 Address (Port 9100, e.g., 192.168.0.20)" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Printer IPv4 Address (Port 9100, e.g., 192.168.0.20)" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <Border Style="{StaticResource InputBorderStyle}" Margin="0,0,0,14">
-                        <TextBox Name="txtPrinterIP" BorderThickness="0" Background="Transparent" Foreground="#F8FAFC" FontSize="13" Padding="4" VerticalContentAlignment="Center" CaretBrush="#2DD4BF"/>
+                        <TextBox Name="txtPrinterIP" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource BrushTextPrimary}" FontSize="13" Padding="4" VerticalContentAlignment="Center" CaretBrush="{DynamicResource BrushAccent}"/>
                     </Border>
 
                     <!-- Driver Source Folder Browse -->
-                    <TextBlock Text="Printer Driver Folder (Source containing .inf &amp; .cat files)" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Printer Driver Folder (Source containing .inf &amp; .cat files)" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <Grid Margin="0,0,0,14">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Style="{StaticResource InputBorderStyle}" Margin="0,0,10,0">
-                            <TextBox Name="txtDriverPath" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="#94A3B8" FontSize="12" Padding="4" VerticalContentAlignment="Center"/>
+                            <TextBox Name="txtDriverPath" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource BrushTextMuted}" FontSize="12" Padding="4" VerticalContentAlignment="Center"/>
                         </Border>
                         <Button Name="btnBrowseDriver" Grid.Column="1" Content="Browse..." Style="{StaticResource SecondaryButton}"/>
                     </Grid>
 
                     <!-- Output Folder Browse -->
-                    <TextBlock Text="Output Folder (Where .intunewin bundle &amp; guide will be saved)" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Output Folder (Where .intunewin bundle &amp; guide will be saved)" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <Grid Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <Border Grid.Column="0" Style="{StaticResource InputBorderStyle}" Margin="0,0,10,0">
-                            <TextBox Name="txtOutputPath" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="#94A3B8" FontSize="12" Padding="4" VerticalContentAlignment="Center"/>
+                            <TextBox Name="txtOutputPath" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource BrushTextMuted}" FontSize="12" Padding="4" VerticalContentAlignment="Center"/>
                         </Border>
                         <Button Name="btnBrowseOutput" Grid.Column="1" Content="Browse..." Style="{StaticResource SecondaryButton}"/>
                     </Grid>
@@ -309,7 +533,7 @@ $xaml = @'
             </ScrollViewer>
 
             <!-- 1px Crisp Hairline Divider -->
-            <Border Grid.Column="1" Background="#1FFFFFFF"/>
+            <Border Grid.Column="1" Background="{DynamicResource BrushHairline}"/>
 
             <!-- Right Column: Bundle Artifacts + Console -->
             <Grid Grid.Column="2" Margin="20,18,24,18">
@@ -318,13 +542,13 @@ $xaml = @'
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="14,12" Margin="0,0,0,14">
+                <Border Grid.Row="0" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Padding="14,12" Margin="0,0,0,14">
                     <StackPanel>
-                        <TextBlock Text="GENERATED BUNDLE ARTIFACTS" FontSize="11" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,0,0,8"/>
-                        <TextBlock Text="&#x2022; &lt;Printer&gt;.intunewin (SYSTEM installer + driver store staging)" Foreground="#CBD5E1" FontSize="12" Margin="0,0,0,3"/>
-                        <TextBlock Text="&#x2022; &lt;Printer&gt;_Detection.ps1 (registry + Get-Printer verification)" Foreground="#CBD5E1" FontSize="12" Margin="0,0,0,3"/>
-                        <TextBlock Text="&#x2022; &lt;Printer&gt;_macOS_Install.sh (lpadmin LPD queue script)" Foreground="#CBD5E1" FontSize="12" Margin="0,0,0,3"/>
-                        <TextBlock Text="&#x2022; &lt;Printer&gt;_Instructions.txt (5-step Intune upload wizard guide)" Foreground="#CBD5E1" FontSize="12"/>
+                        <TextBlock Text="GENERATED BUNDLE ARTIFACTS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" Margin="0,0,0,8"/>
+                        <TextBlock Text="&#x2022; &lt;Printer&gt;.intunewin (SYSTEM installer + driver store staging)" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="0,0,0,3"/>
+                        <TextBlock Text="&#x2022; &lt;Printer&gt;_Detection.ps1 (registry + Get-Printer verification)" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="0,0,0,3"/>
+                        <TextBlock Text="&#x2022; &lt;Printer&gt;_macOS_Install.sh (lpadmin LPD queue script)" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="0,0,0,3"/>
+                        <TextBlock Text="&#x2022; &lt;Printer&gt;_Instructions.txt (5-step Intune upload wizard guide)" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12"/>
                     </StackPanel>
                 </Border>
 
@@ -333,10 +557,10 @@ $xaml = @'
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="BUILD LOG CONSOLE (SELECTABLE)" Foreground="#2DD4BF" FontSize="11" FontWeight="Bold" Margin="0,0,0,6"/>
-                    <Border Grid.Row="1" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Background="#CC050A14" Padding="10">
+                    <TextBlock Grid.Row="0" Text="BUILD LOG CONSOLE (SELECTABLE)" Foreground="{DynamicResource BrushAccent}" FontSize="11" FontWeight="Bold" Margin="0,0,0,6"/>
+                    <Border Grid.Row="1" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Background="{DynamicResource BrushLogBg}" Padding="10">
                         <ScrollViewer Name="scrollConsole" VerticalScrollBarVisibility="Auto">
-                            <TextBox Name="txtStatus" Text="Ready to configure..." IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="#34D399" FontFamily="Cascadia Mono, Consolas" FontSize="11.5" TextWrapping="Wrap" CaretBrush="#2DD4BF"/>
+                            <TextBox Name="txtStatus" Text="Ready to configure..." IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource BrushOk}" FontFamily="Cascadia Mono, Consolas" FontSize="11.5" TextWrapping="Wrap" CaretBrush="{DynamicResource BrushAccent}"/>
                         </ScrollViewer>
                     </Border>
                 </Grid>
@@ -344,7 +568,7 @@ $xaml = @'
         </Grid>
 
         <!-- Single-Row Footer -->
-        <Border Grid.Row="2" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="24,12">
+        <Border Grid.Row="2" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,1,0,0" Padding="24,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -352,7 +576,7 @@ $xaml = @'
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0"
                            Text="Endpoint logs: C:\Logs\Printer_&lt;Name&gt;\ (Install-Printer.log, Detect-Printer.log, Uninstall-Printer.log)"
-                           Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center"
+                           Foreground="{DynamicResource BrushTextMuted}" FontSize="11.5" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Name="btnOpenOutput" Content="Open Output Folder" Style="{StaticResource SecondaryButton}" Margin="0,0,10,0"/>
@@ -370,6 +594,8 @@ $Form = [Windows.Markup.XamlReader]::Load($reader)
 Initialize-StandardGuiWindow -Window $Form
 
 # Get UI element handles
+$btnThemeToggle  = $Form.FindName("BtnThemeToggle")
+$txtThemeLabel   = $Form.FindName("TxtThemeLabel")
 $txtPrinterName  = $Form.FindName("txtPrinterName")
 $txtDriverName   = $Form.FindName("txtDriverName")
 $txtPrinterIP    = $Form.FindName("txtPrinterIP")
@@ -381,6 +607,34 @@ $btnOpenOutput   = $Form.FindName("btnOpenOutput")
 $btnBuild        = $Form.FindName("btnBuild")
 $txtStatus       = $Form.FindName("txtStatus")
 $scrollConsole   = $Form.FindName("scrollConsole")
+
+$Script:IsDarkTheme = Get-SystemIsDarkTheme
+$Script:IsSystemThemeAuto = $true
+Set-StandardGuiTheme -Window $Form -IsDark $Script:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $true
+
+$Form.Add_SourceInitialized({
+    Set-StandardGuiTheme -Window $Form -IsDark $Script:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $Script:IsSystemThemeAuto
+})
+
+$userPrefHandler = [Microsoft.Win32.UserPreferenceChangedEventHandler]{
+    param($sender, $e)
+    if ($e.Category -eq [Microsoft.Win32.UserPreferenceCategory]::General -and $Script:IsSystemThemeAuto) {
+        $Form.Dispatcher.Invoke([Action]{
+            $Script:IsDarkTheme = Get-SystemIsDarkTheme
+            Set-StandardGuiTheme -Window $Form -IsDark $Script:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $true
+        })
+    }
+}
+[Microsoft.Win32.SystemEvents]::add_UserPreferenceChanged($userPrefHandler)
+$Form.Add_Closed({
+    try { [Microsoft.Win32.SystemEvents]::remove_UserPreferenceChanged($userPrefHandler) } catch {}
+})
+
+$btnThemeToggle.Add_Click({
+    $Script:IsSystemThemeAuto = $false
+    $Script:IsDarkTheme = -not $Script:IsDarkTheme
+    Set-StandardGuiTheme -Window $Form -IsDark $Script:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $false
+})
 
 # Autofill default output folder to the script directory if it runs locally, or Downloads if running in-memory
 $defaultOutput = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot) -and (Test-Path -Path $PSScriptRoot)) {
@@ -397,8 +651,14 @@ function Update-Log ($message, $color = "#34D399") {
     } else {
         $txtStatus.Text = $txtStatus.Text + "`r`n" + $message
     }
-    $converter = New-Object System.Windows.Media.BrushConverter
-    $txtStatus.Foreground = $converter.ConvertFromString($color)
+    if ($color -eq "#34D399" -and $Form.Resources.Contains('BrushOk')) {
+        $txtStatus.Foreground = $Form.Resources['BrushOk']
+    } elseif ($color -eq "#F87171" -and $Form.Resources.Contains('BrushErr')) {
+        $txtStatus.Foreground = $Form.Resources['BrushErr']
+    } else {
+        $converter = New-Object System.Windows.Media.BrushConverter
+        $txtStatus.Foreground = $converter.ConvertFromString($color)
+    }
     $scrollConsole.ScrollToEnd()
     $null = [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Background, [Action]{})
 }
@@ -659,18 +919,39 @@ $btnBuild.Add_Click({
         Title="Driver Name Mismatch" Height="460" Width="540"
         MinHeight="380" MinWidth="460"
         ResizeMode="CanResize" WindowStartupLocation="CenterOwner"
-        Foreground="#F8FAFC">
-    <Window.Background>
-        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
-            <GradientStop Color="#0F1F3D" Offset="0.0"/>
-            <GradientStop Color="#091122" Offset="0.55"/>
-            <GradientStop Color="#05070C" Offset="1.0"/>
-        </RadialGradientBrush>
-    </Window.Background>
+        Background="#091122"
+        Foreground="{DynamicResource BrushTextPrimary}">
     <Window.Resources>
+        <SolidColorBrush x:Key="BrushCanvas" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushChromeBar" Color="#CC070D19"/>
+        <SolidColorBrush x:Key="BrushHairline" Color="#1CFFFFFF"/>
+        <SolidColorBrush x:Key="BrushCardBg" Color="#B30D192E"/>
+        <SolidColorBrush x:Key="BrushCardBorder" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushInputBg" Color="#C7070D1A"/>
+        <SolidColorBrush x:Key="BrushLogBg" Color="#E6050A14"/>
+        <SolidColorBrush x:Key="BrushTextPrimary" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="BrushTextSecondary" Color="#CBD5E1"/>
+        <SolidColorBrush x:Key="BrushTextMuted" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BrushAccent" Color="#2DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentHover" Color="#5EEAD4"/>
+        <SolidColorBrush x:Key="BrushAccentPressed" Color="#14B8A6"/>
+        <SolidColorBrush x:Key="BrushAccentFg" Color="#042F2E"/>
+        <SolidColorBrush x:Key="BrushAccentTint" Color="#242DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentBorder" Color="#6B2DD4BF"/>
+        <SolidColorBrush x:Key="BrushSecBtnBg" Color="#14FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnHover" Color="#24FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnPressed" Color="#0DFFFFFF"/>
+        <SolidColorBrush x:Key="BrushScrollThumb" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushWarn" Color="#FBBF24"/>
+        <SolidColorBrush x:Key="BrushDangerBg" Color="#26EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerHover" Color="#45EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerBorder" Color="#66EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerFg" Color="#FCA5A5"/>
+        <SolidColorBrush x:Key="BrushDangerHoverFg" Color="#FFFFFF"/>
+
         <Style TargetType="ListBoxItem">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="Margin" Value="0,1"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -682,10 +963,10 @@ $btnBuild.Add_Click({
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#14FFFFFF"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#242DD4BF"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushAccentTint}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -693,14 +974,14 @@ $btnBuild.Add_Click({
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Foreground" Value="#2DD4BF"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushAccent}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
 
         <Style x:Key="DialogPrimaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#2DD4BF"/>
-            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccentFg}"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -713,10 +994,10 @@ $btnBuild.Add_Click({
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#5EEAD4"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushAccentHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#14B8A6"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushAccentPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="border" Property="Opacity" Value="0.4"/>
@@ -728,9 +1009,9 @@ $btnBuild.Add_Click({
         </Style>
 
         <Style x:Key="DialogSecondaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#14FFFFFF"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -746,8 +1027,8 @@ $btnBuild.Add_Click({
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#24FFFFFF"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSecBtnHover}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -756,9 +1037,9 @@ $btnBuild.Add_Click({
         </Style>
 
         <Style x:Key="DialogDangerButton" TargetType="Button">
-            <Setter Property="Background" Value="#26EF4444"/>
-            <Setter Property="Foreground" Value="#FCA5A5"/>
-            <Setter Property="BorderBrush" Value="#66EF4444"/>
+            <Setter Property="Background" Value="{DynamicResource BrushDangerBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushDangerFg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushDangerBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -774,7 +1055,7 @@ $btnBuild.Add_Click({
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#45EF4444"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushDangerHover}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -782,7 +1063,7 @@ $btnBuild.Add_Click({
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushDangerHoverFg}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -796,20 +1077,20 @@ $btnBuild.Add_Click({
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="20,14">
+        <Border Grid.Row="0" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,0,0,1" Padding="20,14">
             <StackPanel>
-                <TextBlock Text="Driver Name Mismatch" FontSize="16" FontWeight="Bold" Foreground="#FBBF24"/>
-                <TextBlock Name="lblDescription" Text="The driver name entered was not found. Select a detected driver below to use, or choose to proceed anyway." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                <TextBlock Text="Driver Name Mismatch" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource BrushWarn}"/>
+                <TextBlock Name="lblDescription" Text="The driver name entered was not found. Select a detected driver below to use, or choose to proceed anyway." FontSize="12" Foreground="{DynamicResource BrushTextMuted}" TextWrapping="Wrap" Margin="0,4,0,0"/>
             </StackPanel>
         </Border>
 
         <!-- Candidates ListBox -->
-        <Border Grid.Row="1" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Background="#CC050A14" Margin="20,14,20,14" Padding="4">
-            <ListBox Name="lstCandidates" Background="Transparent" BorderThickness="0" Foreground="#F8FAFC" FontSize="12.5" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+        <Border Grid.Row="1" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="6" Background="{DynamicResource BrushLogBg}" Margin="20,14,20,14" Padding="4">
+            <ListBox Name="lstCandidates" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12.5" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
         </Border>
 
         <!-- Action Buttons -->
-        <Border Grid.Row="2" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="20,12">
+        <Border Grid.Row="2" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,1,0,0" Padding="20,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -829,6 +1110,10 @@ $btnBuild.Add_Click({
         $dialogReader = (New-Object System.Xml.XmlNodeReader ([xml]$dialogXaml))
         $DialogForm = [Windows.Markup.XamlReader]::Load($dialogReader)
         Initialize-StandardGuiWindow -Window $DialogForm -PreserveSize
+        Set-StandardGuiTheme -Window $DialogForm -IsDark $Script:IsDarkTheme
+        $DialogForm.Add_SourceInitialized({
+            Set-StandardGuiTheme -Window $DialogForm -IsDark $Script:IsDarkTheme
+        })
         
         # Set Owner to parent window to center correctly
         $DialogForm.Owner = $Form
@@ -1690,7 +1975,8 @@ LOG FILES IN THIS FOLDER:
 ======================================================================
 
 Publisher:
-Pheneox
+Ph
+eneox
 
 App Version:
 1.4.3

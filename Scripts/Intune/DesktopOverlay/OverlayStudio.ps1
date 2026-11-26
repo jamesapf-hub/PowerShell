@@ -35,6 +35,111 @@ public class StudioDpiHelper {
 }
 try { [StudioDpiHelper]::SetProcessDPIAware() | Out-Null } catch {}
 
+# Painted Windows 11 Chrome Helper
+if (-not ('Win11ChromeHelper' -as [type])) {
+    $chromeCSharp = @'
+using System;
+using System.Runtime.InteropServices;
+
+public class Win11ChromeHelper
+{
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const int DWMWA_CAPTION_COLOR = 35;
+    private const int DWMWA_TEXT_COLOR = 36;
+    private const int DWMWCP_ROUND = 2;
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
+
+    public static void ApplyWindowChrome(IntPtr hwnd, bool isDark)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        try
+        {
+            int darkVal = isDark ? 1 : 0;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkVal, sizeof(int));
+
+            int cornerVal = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerVal, sizeof(int));
+
+            uint captionBgr = isDark ? 0x0026160Fu : 0x00FFFFFFu; // #0F1626 dark / #FFFFFF light
+            uint textBgr    = isDark ? 0x00FCFAF8u : 0x002A170Fu; // #F8FAFC dark / #0F172A light
+            uint borderBgr  = isDark ? 0x003B291Eu : 0x00E1D5CBu; // #1E293B dark / #CBD5E1 light
+
+            DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref captionBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref textBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderBgr, sizeof(uint));
+        }
+        catch
+        {
+            // Ignore gracefully on Windows 10 hosts lacking Win11 DWM attributes
+        }
+    }
+}
+'@
+    try { Add-Type -TypeDefinition $chromeCSharp -Language CSharp -ErrorAction Stop } catch {}
+}
+
+function Get-SystemIsDarkTheme {
+    [CmdletBinding()]
+    param()
+    try {
+        $regPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+        if (Test-Path -Path $regPath) {
+            $val = Get-ItemPropertyValue -Path $regPath -Name 'AppsUseLightTheme' -ErrorAction Stop
+            return ([int]$val -eq 0)
+        }
+    } catch {}
+    return $true
+}
+
+$Script:IsDarkTheme = Get-SystemIsDarkTheme
+if ($Script:IsDarkTheme) {
+    $clrCanvas    = [System.Drawing.Color]::FromArgb(9, 17, 34)     # #091122
+    $clrSurface   = [System.Drawing.Color]::FromArgb(13, 25, 46)    # #0D192E
+    $clrInput     = [System.Drawing.Color]::FromArgb(11, 21, 40)    # #0B1528
+    $clrLog       = [System.Drawing.Color]::FromArgb(5, 10, 20)     # #050A14
+    $clrChrome    = [System.Drawing.Color]::FromArgb(7, 13, 25)     # #070D19
+    $clrBorder    = [System.Drawing.Color]::FromArgb(38, 53, 77)    # #26354D
+    $clrTeal      = [System.Drawing.Color]::FromArgb(45, 212, 191)  # #2DD4BF
+    $clrTealText  = [System.Drawing.Color]::FromArgb(4, 47, 46)     # #042F2E
+    $clrSecBtn    = [System.Drawing.Color]::FromArgb(19, 34, 58)    # #13223A
+    $clrSecBtnFg  = [System.Drawing.Color]::FromArgb(226, 232, 240) # #E2E8F0
+    $clrTextPrim  = [System.Drawing.Color]::FromArgb(248, 250, 252) # #F8FAFC
+    $clrTextSec   = [System.Drawing.Color]::FromArgb(203, 213, 225) # #CBD5E1
+    $clrTextMuted = [System.Drawing.Color]::FromArgb(148, 163, 184) # #94A3B8
+    $clrOk        = [System.Drawing.Color]::FromArgb(52, 211, 153)  # #34D399
+    $clrErr       = [System.Drawing.Color]::FromArgb(248, 113, 113) # #F87171
+    $clrDangerBg  = [System.Drawing.Color]::FromArgb(46, 23, 36)
+    $clrDangerBr  = [System.Drawing.Color]::FromArgb(153, 27, 27)
+    $clrDangerFg  = [System.Drawing.Color]::FromArgb(252, 165, 165) # #FCA5A5
+} else {
+    $clrCanvas    = [System.Drawing.Color]::FromArgb(248, 249, 255) # #F8F9FF
+    $clrSurface   = [System.Drawing.Color]::FromArgb(255, 255, 255) # #FFFFFF
+    $clrInput     = [System.Drawing.Color]::FromArgb(248, 250, 252) # #F8FAFC
+    $clrLog       = [System.Drawing.Color]::FromArgb(241, 245, 249) # #F1F5F9
+    $clrChrome    = [System.Drawing.Color]::FromArgb(255, 255, 255) # #FFFFFF
+    $clrBorder    = [System.Drawing.Color]::FromArgb(203, 213, 225) # #CBD5E1
+    $clrTeal      = [System.Drawing.Color]::FromArgb(37, 99, 235)   # #2563EB
+    $clrTealText  = [System.Drawing.Color]::FromArgb(255, 255, 255) # #FFFFFF
+    $clrSecBtn    = [System.Drawing.Color]::FromArgb(248, 250, 252) # #F8FAFC
+    $clrSecBtnFg  = [System.Drawing.Color]::FromArgb(51, 65, 85)    # #334155
+    $clrTextPrim  = [System.Drawing.Color]::FromArgb(15, 23, 42)    # #0F172A
+    $clrTextSec   = [System.Drawing.Color]::FromArgb(51, 65, 85)    # #334155
+    $clrTextMuted = [System.Drawing.Color]::FromArgb(100, 116, 139) # #64748B
+    $clrOk        = [System.Drawing.Color]::FromArgb(5, 150, 105)   # #059669
+    $clrErr       = [System.Drawing.Color]::FromArgb(220, 38, 38)   # #DC2626
+    $clrDangerBg  = [System.Drawing.Color]::FromArgb(254, 226, 226) # #FEE2E2
+    $clrDangerBr  = [System.Drawing.Color]::FromArgb(239, 68, 68)   # #EF4444
+    $clrDangerFg  = [System.Drawing.Color]::FromArgb(185, 28, 28)   # #B91C1C
+}
+
 # --- Config State ---
 $Config = [ordered]@{
     Title        = "IT SUPPORT HELPDESK"
@@ -182,28 +287,10 @@ function Initialize-StandardWinForm {
     $left = [int][Math]::Round($workArea.Left + (($workArea.Width - $targetWidth) / 2))
     $top  = [int][Math]::Round($workArea.Top + (($workArea.Height - $targetHeight) / 2))
     $Form.Location        = New-Object System.Drawing.Point($left, $top)
-    $Form.BackColor       = [System.Drawing.Color]::FromArgb(9, 17, 34)
-    $Form.ForeColor       = [System.Drawing.Color]::FromArgb(248, 250, 252)
+    $Form.BackColor       = $clrCanvas
+    $Form.ForeColor       = $clrTextPrim
     $Form.Font            = New-UiFont -Size 9.5
 }
-
-$clrCanvas    = [System.Drawing.Color]::FromArgb(9, 17, 34)     # #091122
-$clrSurface   = [System.Drawing.Color]::FromArgb(13, 25, 46)    # #0D192E
-$clrInput     = [System.Drawing.Color]::FromArgb(11, 21, 40)    # #0B1528
-$clrLog       = [System.Drawing.Color]::FromArgb(5, 10, 20)     # #050A14
-$clrChrome    = [System.Drawing.Color]::FromArgb(7, 13, 25)     # #070D19
-$clrBorder    = [System.Drawing.Color]::FromArgb(38, 53, 77)    # #26354D
-$clrTeal      = [System.Drawing.Color]::FromArgb(45, 212, 191)  # #2DD4BF
-$clrTealText  = [System.Drawing.Color]::FromArgb(4, 47, 46)     # #042F2E
-$clrSecBtn    = [System.Drawing.Color]::FromArgb(19, 34, 58)    # #13223A
-$clrTextPrim  = [System.Drawing.Color]::FromArgb(248, 250, 252) # #F8FAFC
-$clrTextSec   = [System.Drawing.Color]::FromArgb(203, 213, 225) # #CBD5E1
-$clrTextMuted = [System.Drawing.Color]::FromArgb(148, 163, 184) # #94A3B8
-$clrOk        = [System.Drawing.Color]::FromArgb(52, 211, 153)  # #34D399
-$clrErr       = [System.Drawing.Color]::FromArgb(248, 113, 113) # #F87171
-$clrDangerBg  = [System.Drawing.Color]::FromArgb(46, 23, 36)
-$clrDangerBr  = [System.Drawing.Color]::FromArgb(153, 27, 27)
-$clrDangerFg  = [System.Drawing.Color]::FromArgb(252, 165, 165) # #FCA5A5
 
 function New-BorderedPanel {
     param([int]$PaddingAll = 14)
@@ -233,6 +320,13 @@ function Set-InputStyle {
 $studio = New-Object System.Windows.Forms.Form
 $studio.Text = "IT Support Overlay Studio v1.0"
 Initialize-StandardWinForm -Form $studio
+$studio.Add_HandleCreated({
+    try {
+        if ('Win11ChromeHelper' -as [type]) {
+            [Win11ChromeHelper]::ApplyWindowChrome($studio.Handle, $Script:IsDarkTheme)
+        }
+    } catch {}
+})
 
 # --- Header ---
 $headerPanel = New-Object System.Windows.Forms.Panel
@@ -307,7 +401,7 @@ $btnOpenOutput.Text      = "Open Output Folder"
 $btnOpenOutput.Size      = New-Object System.Drawing.Size(150, 34)
 $btnOpenOutput.Margin    = New-Object System.Windows.Forms.Padding(0, 0, 10, 0)
 $btnOpenOutput.BackColor = $clrSecBtn
-$btnOpenOutput.ForeColor = [System.Drawing.Color]::FromArgb(226, 232, 240)
+$btnOpenOutput.ForeColor = $clrSecBtnFg
 $btnOpenOutput.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $btnOpenOutput.FlatAppearance.BorderSize = 1
 $btnOpenOutput.FlatAppearance.BorderColor = $clrBorder
@@ -591,7 +685,7 @@ $btnTest.Dock      = [System.Windows.Forms.DockStyle]::Fill
 $btnTest.Height    = 36
 $btnTest.Margin    = New-Object System.Windows.Forms.Padding(0, 0, 8, 0)
 $btnTest.BackColor = $clrSecBtn
-$btnTest.ForeColor = [System.Drawing.Color]::FromArgb(226, 232, 240)
+$btnTest.ForeColor = $clrSecBtnFg
 $btnTest.Font      = New-UiFont -Size 9 -Style ([System.Drawing.FontStyle]::Bold)
 $btnTest.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
 $btnTest.FlatAppearance.BorderSize = 1

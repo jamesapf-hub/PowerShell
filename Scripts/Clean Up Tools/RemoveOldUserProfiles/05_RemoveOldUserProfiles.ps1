@@ -57,6 +57,70 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     return
 }
 
+# Painted Windows 11 Chrome Helper (Frame / DwmSetWindowAttribute Pattern)
+if (-not ('Win11ChromeHelper' -as [type])) {
+    $chromeCSharp = @'
+using System;
+using System.Runtime.InteropServices;
+
+public class Win11ChromeHelper
+{
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const int DWMWA_CAPTION_COLOR = 35;
+    private const int DWMWA_TEXT_COLOR = 36;
+    private const int DWMWCP_ROUND = 2;
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
+
+    public static void ApplyWindowChrome(IntPtr hwnd, bool isDark)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        try
+        {
+            int darkVal = isDark ? 1 : 0;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkVal, sizeof(int));
+
+            int cornerVal = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerVal, sizeof(int));
+
+            uint captionBgr = isDark ? 0x0026160Fu : 0x00FFFFFFu; // #0F1626 dark / #FFFFFF light
+            uint textBgr    = isDark ? 0x00FCFAF8u : 0x002A170Fu; // #F8FAFC dark / #0F172A light
+            uint borderBgr  = isDark ? 0x003B291Eu : 0x00E1D5CBu; // #1E293B dark / #CBD5E1 light
+
+            DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref captionBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref textBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderBgr, sizeof(uint));
+        }
+        catch
+        {
+            // Ignore gracefully on Windows 10 hosts lacking Win11 DWM attributes
+        }
+    }
+}
+'@
+    try { Add-Type -TypeDefinition $chromeCSharp -Language CSharp -ErrorAction Stop } catch {}
+}
+
+function Get-SystemIsDarkTheme {
+    [CmdletBinding()]
+    param()
+    try {
+        $regPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+        if (Test-Path -Path $regPath) {
+            $val = Get-ItemPropertyValue -Path $regPath -Name 'AppsUseLightTheme' -ErrorAction Stop
+            return ([int]$val -eq 0)
+        }
+    } catch {}
+    return $true
+}
+
 # Helper to query profiles
 function Get-UserProfileList {
     $fso = New-Object -ComObject Scripting.FileSystemObject
@@ -227,7 +291,8 @@ function Initialize-StandardWinForm {
     param(
         [Parameter(Mandatory = $true)]
         [System.Windows.Forms.Form]$Form,
-        [string]$ScriptRoot = $PSScriptRoot
+        [string]$ScriptRoot = $PSScriptRoot,
+        [bool]$IsDark = $true
     )
 
     $fontFiles = @('Figtree-Regular.ttf', 'Figtree-SemiBold.ttf', 'Figtree-Bold.ttf')
@@ -315,8 +380,13 @@ function Initialize-StandardWinForm {
         ($workArea.Left + [Math]::Round(($workArea.Width - $targetWidth) / 2)),
         ($workArea.Top  + [Math]::Round(($workArea.Height - $targetHeight) / 2))
     )
-    $Form.BackColor = [System.Drawing.ColorTranslator]::FromHtml('#091122')
-    $Form.ForeColor = [System.Drawing.ColorTranslator]::FromHtml('#F8FAFC')
+    if ($IsDark) {
+        $Form.BackColor = [System.Drawing.ColorTranslator]::FromHtml('#091122')
+        $Form.ForeColor = [System.Drawing.ColorTranslator]::FromHtml('#F8FAFC')
+    } else {
+        $Form.BackColor = [System.Drawing.ColorTranslator]::FromHtml('#F8F9FF')
+        $Form.ForeColor = [System.Drawing.ColorTranslator]::FromHtml('#0F172A')
+    }
 
     $bodyFont = & $makeFont 10 ([System.Drawing.FontStyle]::Regular)
     $Form.Font = $bodyFont
@@ -391,24 +461,44 @@ if ($Force) {
     Add-Type -AssemblyName System.Drawing
     [System.Windows.Forms.Application]::EnableVisualStyles()
 
-    $colorHeaderFooter = [System.Drawing.ColorTranslator]::FromHtml('#070D19')
-    $colorCanvas       = [System.Drawing.ColorTranslator]::FromHtml('#091122')
-    $colorListBg       = [System.Drawing.ColorTranslator]::FromHtml('#0B1528')
-    $colorBorder       = [System.Drawing.ColorTranslator]::FromHtml('#26354D')
-    $colorTextPrimary  = [System.Drawing.ColorTranslator]::FromHtml('#F8FAFC')
-    $colorTextSecondary= [System.Drawing.ColorTranslator]::FromHtml('#E2E8F0')
-    $colorTextMuted    = [System.Drawing.ColorTranslator]::FromHtml('#94A3B8')
-    $colorSecondaryBtn = [System.Drawing.ColorTranslator]::FromHtml('#13223A')
-    $colorSecondaryHov = [System.Drawing.ColorTranslator]::FromHtml('#1E3252')
-    $colorDangerBg     = [System.Drawing.ColorTranslator]::FromHtml('#7F1D1D')
-    $colorDangerHov    = [System.Drawing.ColorTranslator]::FromHtml('#991B1B')
-    $colorDangerBorder = [System.Drawing.ColorTranslator]::FromHtml('#EF4444')
-    $colorDangerText   = [System.Drawing.ColorTranslator]::FromHtml('#FEE2E2')
+    $Script:IsDarkTheme = Get-SystemIsDarkTheme
+    if ($Script:IsDarkTheme) {
+        $colorHeaderFooter = [System.Drawing.ColorTranslator]::FromHtml('#070D19')
+        $colorCanvas       = [System.Drawing.ColorTranslator]::FromHtml('#091122')
+        $colorListBg       = [System.Drawing.ColorTranslator]::FromHtml('#0B1528')
+        $colorBorder       = [System.Drawing.ColorTranslator]::FromHtml('#26354D')
+        $colorTextPrimary  = [System.Drawing.ColorTranslator]::FromHtml('#F8FAFC')
+        $colorTextMuted    = [System.Drawing.ColorTranslator]::FromHtml('#94A3B8')
+        $colorAccent       = [System.Drawing.ColorTranslator]::FromHtml('#2DD4BF')
+        $colorSecondaryBtn = [System.Drawing.ColorTranslator]::FromHtml('#13223A')
+        $colorSecondaryFg  = [System.Drawing.ColorTranslator]::FromHtml('#E2E8F0')
+        $colorSecondaryHov = [System.Drawing.ColorTranslator]::FromHtml('#1E3252')
+        $colorDangerBg     = [System.Drawing.ColorTranslator]::FromHtml('#7F1D1D')
+        $colorDangerHov    = [System.Drawing.ColorTranslator]::FromHtml('#991B1B')
+        $colorDangerBorder = [System.Drawing.ColorTranslator]::FromHtml('#EF4444')
+        $colorDangerText   = [System.Drawing.ColorTranslator]::FromHtml('#FEE2E2')
+    } else {
+        $colorHeaderFooter = [System.Drawing.ColorTranslator]::FromHtml('#FFFFFF')
+        $colorCanvas       = [System.Drawing.ColorTranslator]::FromHtml('#F8F9FF')
+        $colorListBg       = [System.Drawing.ColorTranslator]::FromHtml('#F8FAFC')
+        $colorBorder       = [System.Drawing.ColorTranslator]::FromHtml('#CBD5E1')
+        $colorTextPrimary  = [System.Drawing.ColorTranslator]::FromHtml('#0F172A')
+        $colorTextMuted    = [System.Drawing.ColorTranslator]::FromHtml('#475569')
+        $colorAccent       = [System.Drawing.ColorTranslator]::FromHtml('#2563EB')
+        $colorSecondaryBtn = [System.Drawing.ColorTranslator]::FromHtml('#F1F5F9')
+        $colorSecondaryFg  = [System.Drawing.ColorTranslator]::FromHtml('#13223A')
+        $colorSecondaryHov = [System.Drawing.ColorTranslator]::FromHtml('#E2E8F0')
+        $colorDangerBg     = [System.Drawing.ColorTranslator]::FromHtml('#DC2626')
+        $colorDangerHov    = [System.Drawing.ColorTranslator]::FromHtml('#B91C1C')
+        $colorDangerBorder = [System.Drawing.ColorTranslator]::FromHtml('#B91C1C')
+        $colorDangerText   = [System.Drawing.ColorTranslator]::FromHtml('#FFFFFF')
+    }
 
     $form = New-Object System.Windows.Forms.Form
     $form.Text = 'Remove Old User Profiles'
     $form.Topmost = $true
-    $uiFonts = Initialize-StandardWinForm -Form $form -ScriptRoot $PSScriptRoot
+    $uiFonts = Initialize-StandardWinForm -Form $form -ScriptRoot $PSScriptRoot -IsDark $Script:IsDarkTheme
+    $form.Add_HandleCreated({ try { if ('Win11ChromeHelper' -as [type]) { [Win11ChromeHelper]::ApplyWindowChrome($form.Handle, $Script:IsDarkTheme) } } catch {} })
 
     # Header Banner
     $headerPanel = New-Object System.Windows.Forms.Panel
@@ -477,7 +567,7 @@ if ($Force) {
     $selectAllButton.Font = $uiFonts.Button
     $selectAllButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $selectAllButton.BackColor = $colorSecondaryBtn
-    $selectAllButton.ForeColor = $colorTextSecondary
+    $selectAllButton.ForeColor = $colorSecondaryFg
     $selectAllButton.FlatAppearance.BorderColor = $colorBorder
     $selectAllButton.FlatAppearance.BorderSize = 1
     $selectAllButton.FlatAppearance.MouseOverBackColor = $colorSecondaryHov
@@ -490,7 +580,7 @@ if ($Force) {
     $clearButton.Font = $uiFonts.Button
     $clearButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $clearButton.BackColor = $colorSecondaryBtn
-    $clearButton.ForeColor = $colorTextSecondary
+    $clearButton.ForeColor = $colorSecondaryFg
     $clearButton.FlatAppearance.BorderColor = $colorBorder
     $clearButton.FlatAppearance.BorderSize = 1
     $clearButton.FlatAppearance.MouseOverBackColor = $colorSecondaryHov
@@ -503,7 +593,7 @@ if ($Force) {
     $cancelButton.Font = $uiFonts.Button
     $cancelButton.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
     $cancelButton.BackColor = $colorSecondaryBtn
-    $cancelButton.ForeColor = $colorTextSecondary
+    $cancelButton.ForeColor = $colorSecondaryFg
     $cancelButton.FlatAppearance.BorderColor = $colorBorder
     $cancelButton.FlatAppearance.BorderSize = 1
     $cancelButton.FlatAppearance.MouseOverBackColor = $colorSecondaryHov
@@ -545,7 +635,7 @@ if ($Force) {
     $sectionLabel.Height = 24
     $sectionLabel.Text = "ORPHANED PROFILES DETECTED ($($profilesToRemove.Count))"
     $sectionLabel.Font = $uiFonts.Section
-    $sectionLabel.ForeColor = $colorTextMuted
+    $sectionLabel.ForeColor = $colorAccent
 
     $listBorderPanel = New-Object System.Windows.Forms.Panel
     $listBorderPanel.Dock = [System.Windows.Forms.DockStyle]::Fill

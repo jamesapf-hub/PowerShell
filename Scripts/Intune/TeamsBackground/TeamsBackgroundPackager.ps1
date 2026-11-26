@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Microsoft Teams Custom Background Win32 App Packager for Intune
 .DESCRIPTION
@@ -63,6 +63,178 @@ public class TeamsImageItem
     public BitmapImage Thumbnail { get; set; }
 }
 "@ -ReferencedAssemblies "PresentationCore", "WindowsBase", "PresentationFramework", "System.Xaml"
+}
+
+if (-not ('Win11ChromeHelper' -as [type])) {
+    $chromeCSharp = @'
+using System;
+using System.Runtime.InteropServices;
+
+public class Win11ChromeHelper
+{
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const int DWMWA_CAPTION_COLOR = 35;
+    private const int DWMWA_TEXT_COLOR = 36;
+    private const int DWMWCP_ROUND = 2;
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
+
+    public static void ApplyWindowChrome(IntPtr hwnd, bool isDark)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        try
+        {
+            int darkVal = isDark ? 1 : 0;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkVal, sizeof(int));
+
+            int cornerVal = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerVal, sizeof(int));
+
+            uint captionBgr = isDark ? 0x0026160Fu : 0x00FFFFFFu; // #0F1626 dark / #FFFFFF light
+            uint textBgr    = isDark ? 0x00FCFAF8u : 0x002A170Fu; // #F8FAFC dark / #0F172A light
+            uint borderBgr  = isDark ? 0x003B291Eu : 0x00E1D5CBu; // #1E293B dark / #CBD5E1 light
+
+            DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref captionBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref textBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderBgr, sizeof(uint));
+        }
+        catch
+        {
+            // Ignore gracefully on Windows 10 hosts lacking Win11 DWM attributes
+        }
+    }
+}
+'@
+    try { Add-Type -TypeDefinition $chromeCSharp -Language CSharp -ErrorAction Stop } catch {}
+}
+
+function Get-SystemIsDarkTheme {
+    [CmdletBinding()]
+    param()
+    try {
+        $regPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+        if (Test-Path -Path $regPath) {
+            $val = Get-ItemPropertyValue -Path $regPath -Name 'AppsUseLightTheme' -ErrorAction Stop
+            return ([int]$val -eq 0)
+        }
+    } catch {}
+    return $true
+}
+
+function Set-StandardGuiTheme {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$IsDark,
+
+        [System.Windows.Controls.TextBlock]$ThemeLabel = $null,
+        [bool]$IsSystemAuto = $true
+    )
+
+    $conv = New-Object System.Windows.Media.BrushConverter
+    if ($IsDark) {
+        $canvasBrush = New-Object System.Windows.Media.RadialGradientBrush
+        $canvasBrush.Center = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.GradientOrigin = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.RadiusX = 0.95
+        $canvasBrush.RadiusY = 0.9
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#0F1F3D')), 0.0))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#091122')), 0.52))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#05070C')), 1.0))
+
+        $map = @{
+            BrushChromeBar     = '#CC070D19'
+            BrushHairline      = '#1CFFFFFF'
+            BrushCardBg        = '#B30D192E'
+            BrushCardBorder    = '#26354D'
+            BrushInputBg       = '#C7070D1A'
+            BrushLogBg         = '#E6050A14'
+            BrushTextPrimary   = '#F8FAFC'
+            BrushTextSecondary = '#CBD5E1'
+            BrushTextMuted     = '#94A3B8'
+            BrushAccent        = '#2DD4BF'
+            BrushAccentHover   = '#5EEAD4'
+            BrushAccentPressed = '#14B8A6'
+            BrushAccentFg      = '#042F2E'
+            BrushAccentTint    = '#242DD4BF'
+            BrushAccentBorder  = '#6B2DD4BF'
+            BrushSecBtnBg      = '#14FFFFFF'
+            BrushSecBtnHover   = '#24FFFFFF'
+            BrushSecBtnPressed = '#0DFFFFFF'
+            BrushScrollThumb   = '#26354D'
+            BrushOk            = '#34D399'
+            BrushErr           = '#F87171'
+            BrushDangerBg      = '#26EF4444'
+            BrushDangerHover   = '#45EF4444'
+            BrushDangerPressed = '#66EF4444'
+            BrushDangerBorder  = '#66EF4444'
+            BrushDangerFg      = '#FCA5A5'
+            BrushDangerHoverFg = '#FFFFFF'
+        }
+    } else {
+        $canvasBrush = $conv.ConvertFromString('#F8F9FF')
+        $map = @{
+            BrushChromeBar     = '#F2FFFFFF'
+            BrushHairline      = '#190F172A'
+            BrushCardBg        = '#FFFFFFFF'
+            BrushCardBorder    = '#CBD5E1'
+            BrushInputBg       = '#F8FAFC'
+            BrushLogBg         = '#F1F5F9'
+            BrushTextPrimary   = '#0F172A'
+            BrushTextSecondary = '#334155'
+            BrushTextMuted     = '#64748B'
+            BrushAccent        = '#2563EB'
+            BrushAccentHover   = '#1D4ED8'
+            BrushAccentPressed = '#1E40AF'
+            BrushAccentFg      = '#FFFFFF'
+            BrushAccentTint    = '#DBEAFE'
+            BrushAccentBorder  = '#592563EB'
+            BrushSecBtnBg      = '#FFFFFF'
+            BrushSecBtnHover   = '#F1F5F9'
+            BrushSecBtnPressed = '#E2E8F0'
+            BrushScrollThumb   = '#CBD5E1'
+            BrushOk            = '#059669'
+            BrushErr           = '#DC2626'
+            BrushDangerBg      = '#FEE2E2'
+            BrushDangerHover   = '#FECACA'
+            BrushDangerPressed = '#FCA5A5'
+            BrushDangerBorder  = '#EF4444'
+            BrushDangerFg      = '#B91C1C'
+            BrushDangerHoverFg = '#7F1D1D'
+        }
+    }
+
+    if ($canvasBrush.CanFreeze) { $canvasBrush.Freeze() }
+    $Window.Background = $canvasBrush
+    $Window.Resources['BrushCanvas'] = $canvasBrush
+    foreach ($key in $map.Keys) {
+        $b = $conv.ConvertFromString($map[$key])
+        if ($b.CanFreeze) { $b.Freeze() }
+        $Window.Resources[$key] = $b
+    }
+
+    if ($null -ne $ThemeLabel) {
+        $modeTag = if ($IsSystemAuto) { 'System' } else { 'Manual' }
+        $toneTag = if ($IsDark) { 'Dark' } else { 'Light' }
+        $ThemeLabel.Text = "Theme: $modeTag ($toneTag)"
+    }
+
+    try {
+        $helper = New-Object System.Windows.Interop.WindowInteropHelper($Window)
+        if ($helper.Handle -ne [IntPtr]::Zero -and ('Win11ChromeHelper' -as [type])) {
+            [Win11ChromeHelper]::ApplyWindowChrome($helper.Handle, $IsDark)
+        }
+    } catch {}
 }
 
 function Initialize-StandardGuiWindow {
@@ -164,27 +336,69 @@ $xaml = @"
         Title="Microsoft Teams Background Packager v1.2.0"
         Height="820" Width="1080" MinHeight="640" MinWidth="860"
         WindowStartupLocation="Manual"
-        Foreground="#F8FAFC">
-    <Window.Background>
-        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
-            <GradientStop Color="#0F1F3D" Offset="0.0"/>
-            <GradientStop Color="#091122" Offset="0.55"/>
-            <GradientStop Color="#05070C" Offset="1.0"/>
-        </RadialGradientBrush>
-    </Window.Background>
+        Background="#091122"
+        Foreground="{DynamicResource BrushTextPrimary}">
 
     <Window.Resources>
-        <!-- ScrollBar Style -->
+        <SolidColorBrush x:Key="BrushCanvas" Color="#091122"/>
+        <SolidColorBrush x:Key="BrushChromeBar" Color="#CC070D19"/>
+        <SolidColorBrush x:Key="BrushHairline" Color="#1CFFFFFF"/>
+        <SolidColorBrush x:Key="BrushCardBg" Color="#B30D192E"/>
+        <SolidColorBrush x:Key="BrushCardBorder" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushInputBg" Color="#C7070D1A"/>
+        <SolidColorBrush x:Key="BrushLogBg" Color="#E6050A14"/>
+        <SolidColorBrush x:Key="BrushTextPrimary" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="BrushTextSecondary" Color="#CBD5E1"/>
+        <SolidColorBrush x:Key="BrushTextMuted" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BrushAccent" Color="#2DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentHover" Color="#5EEAD4"/>
+        <SolidColorBrush x:Key="BrushAccentPressed" Color="#14B8A6"/>
+        <SolidColorBrush x:Key="BrushAccentFg" Color="#042F2E"/>
+        <SolidColorBrush x:Key="BrushAccentTint" Color="#242DD4BF"/>
+        <SolidColorBrush x:Key="BrushAccentBorder" Color="#6B2DD4BF"/>
+        <SolidColorBrush x:Key="BrushSecBtnBg" Color="#14FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnHover" Color="#24FFFFFF"/>
+        <SolidColorBrush x:Key="BrushSecBtnPressed" Color="#0DFFFFFF"/>
+        <SolidColorBrush x:Key="BrushScrollThumb" Color="#26354D"/>
+        <SolidColorBrush x:Key="BrushOk" Color="#34D399"/>
+        <SolidColorBrush x:Key="BrushErr" Color="#F87171"/>
+        <SolidColorBrush x:Key="BrushDangerBg" Color="#26EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerHover" Color="#45EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerPressed" Color="#66EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerBorder" Color="#66EF4444"/>
+        <SolidColorBrush x:Key="BrushDangerFg" Color="#FCA5A5"/>
+        <SolidColorBrush x:Key="BrushDangerHoverFg" Color="#FFFFFF"/>
+
+        <!-- Slim ScrollBar Style -->
         <Style TargetType="ScrollBar">
-            <Setter Property="Background" Value="#0D192E"/>
-            <Setter Property="Foreground" Value="#26354D"/>
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="Transparent">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="{DynamicResource BrushScrollThumb}" CornerRadius="4" Margin="1"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <!-- Base Secondary Button Style -->
         <Style TargetType="Button">
-            <Setter Property="Background" Value="#14FFFFFF"/>
-            <Setter Property="Foreground" Value="#E2E8F0"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="14,8"/>
             <Setter Property="FontSize" Value="12.5"/>
@@ -201,11 +415,11 @@ $xaml = @"
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#24FFFFFF"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSecBtnHover}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#0DFFFFFF"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSecBtnPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="border" Property="Opacity" Value="0.4"/>
@@ -216,10 +430,10 @@ $xaml = @"
             </Setter>
         </Style>
 
-        <!-- Primary Teal CTA Button -->
+        <!-- Primary CTA Button -->
         <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#2DD4BF"/>
-            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="Background" Value="{DynamicResource BrushAccent}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushAccentFg}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -230,10 +444,10 @@ $xaml = @"
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#5EEAD4"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushAccentHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#14B8A6"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushAccentPressed}"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="border" Property="Opacity" Value="0.4"/>
@@ -244,17 +458,17 @@ $xaml = @"
             </Setter>
         </Style>
 
-        <!-- Primary Teal Build CTA Button -->
+        <!-- Primary Build CTA Button -->
         <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
             <Setter Property="FontWeight" Value="Bold"/>
         </Style>
 
         <!-- Danger Button -->
         <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#26EF4444"/>
-            <Setter Property="BorderBrush" Value="#66EF4444"/>
+            <Setter Property="Background" Value="{DynamicResource BrushDangerBg}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushDangerBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Foreground" Value="#FCA5A5"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushDangerFg}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -266,10 +480,10 @@ $xaml = @"
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#45EF4444"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushDangerHover}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#66EF4444"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushDangerPressed}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -277,7 +491,7 @@ $xaml = @"
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushDangerHoverFg}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -287,13 +501,13 @@ $xaml = @"
 
         <!-- Styled TextBox -->
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#99070D1A"/>
-            <Setter Property="Foreground" Value="#F8FAFC"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushInputBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,6"/>
             <Setter Property="FontSize" Value="12.5"/>
-            <Setter Property="CaretBrush" Value="#2DD4BF"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource BrushAccent}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
@@ -305,7 +519,7 @@ $xaml = @"
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="border" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -315,7 +529,7 @@ $xaml = @"
 
         <!-- CheckBox Style -->
         <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#CBD5E1"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Margin" Value="0,3"/>
@@ -323,7 +537,7 @@ $xaml = @"
 
         <!-- RadioButton Style -->
         <Style TargetType="RadioButton">
-            <Setter Property="Foreground" Value="#CBD5E1"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Margin" Value="0,3"/>
@@ -331,19 +545,19 @@ $xaml = @"
 
         <!-- Surface Panel Style -->
         <Style x:Key="CardBorder" TargetType="Border">
-            <Setter Property="Background" Value="#660D192E"/>
+            <Setter Property="Background" Value="{DynamicResource BrushCardBg}"/>
             <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="16"/>
             <Setter Property="Margin" Value="0,0,0,12"/>
         </Style>
 
-        <!-- Dark GridView Header & Item Styles -->
+        <!-- GridView Header & Item Styles -->
         <Style TargetType="GridViewColumnHeader">
-            <Setter Property="Background" Value="#99070D1A"/>
-            <Setter Property="Foreground" Value="#94A3B8"/>
-            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="Background" Value="{DynamicResource BrushInputBg}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushCardBorder}"/>
             <Setter Property="BorderThickness" Value="0,0,1,1"/>
             <Setter Property="Padding" Value="10,7"/>
             <Setter Property="FontSize" Value="11.5"/>
@@ -353,16 +567,16 @@ $xaml = @"
 
         <Style TargetType="ListViewItem">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Padding" Value="4,4"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#14FFFFFF"/>
+                    <Setter Property="Background" Value="{DynamicResource BrushSecBtnBg}"/>
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="#242DD4BF"/>
-                    <Setter Property="Foreground" Value="#F8FAFC"/>
+                    <Setter Property="Background" Value="{DynamicResource BrushAccentTint}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -376,7 +590,7 @@ $xaml = @"
         </Grid.RowDefinitions>
 
         <!-- Header Banner -->
-        <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="24,14">
+        <Border Grid.Row="0" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,0,0,1" Padding="24,14">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -385,24 +599,29 @@ $xaml = @"
                 </Grid.ColumnDefinitions>
 
                 <!-- Teams Packager Icon -->
-                <Border Grid.Column="0" Background="#242DD4BF" BorderBrush="#2DD4BF" BorderThickness="1" Width="44" Height="44" CornerRadius="8" Margin="0,0,14,0">
+                <Border Grid.Column="0" Background="{DynamicResource BrushAccentTint}" BorderBrush="{DynamicResource BrushAccent}" BorderThickness="1" Width="44" Height="44" CornerRadius="8" Margin="0,0,14,0">
                     <Viewbox Width="24" Height="24" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Canvas Width="24" Height="24">
-                            <Path Fill="#2DD4BF" Data="M16.5 12c1.38 0 2.49-1.12 2.49-2.5S17.88 7 16.5 7 14 8.12 14 9.5s1.11 2.5 2.5 2.5zm-9 0c1.38 0 2.49-1.12 2.49-2.5S8.88 7 7.5 7 5 8.12 5 9.5 6.11 12 7.5 12zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-1.5c0-2.33-4.67-3.5-7-3.5zm9 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-1.5c0-2.33-4.67-3.5-7-3.5z"/>
+                            <Path Fill="{DynamicResource BrushAccent}" Data="M16.5 12c1.38 0 2.49-1.12 2.49-2.5S17.88 7 16.5 7 14 8.12 14 9.5s1.11 2.5 2.5 2.5zm-9 0c1.38 0 2.49-1.12 2.49-2.5S8.88 7 7.5 7 5 8.12 5 9.5 6.11 12 7.5 12zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-1.5c0-2.33-4.67-3.5-7-3.5zm9 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-1.5c0-2.33-4.67-3.5-7-3.5z"/>
                         </Canvas>
                     </Viewbox>
                 </Border>
 
                 <!-- Titles -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="Microsoft Teams Background Packager" FontSize="20" FontWeight="Bold" Foreground="#F8FAFC"/>
-                    <TextBlock Text="Package custom video meeting backgrounds into a production-ready Intune Win32 (.intunewin) application" FontSize="12.5" Foreground="#94A3B8" Margin="0,2,0,0"/>
+                    <TextBlock Text="Microsoft Teams Background Packager" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                    <TextBlock Text="Package custom video meeting backgrounds into a production-ready Intune Win32 (.intunewin) application" FontSize="12.5" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
                 </StackPanel>
 
-                <!-- Version Badge -->
-                <Border Grid.Column="2" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="12" Padding="12,4" VerticalAlignment="Center">
-                    <TextBlock Text="v1.2.0 | Win32 App" FontSize="11.5" FontWeight="SemiBold" Foreground="#2DD4BF"/>
-                </Border>
+                <!-- Theme Toggle & Version Badge -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="BtnThemeToggle" Padding="12,6" Margin="0,0,10,0" ToolTip="Follows Windows system light/dark theme automatically; click to toggle.">
+                        <TextBlock x:Name="TxtThemeLabel" Text="Theme: System (Dark)"/>
+                    </Button>
+                    <Border Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="12" Padding="12,4" VerticalAlignment="Center">
+                        <TextBlock Text="v1.2.0 | Win32 App" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushAccent}"/>
+                    </Border>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -418,12 +637,12 @@ $xaml = @"
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsSelected" Value="True">
-                                        <Setter TargetName="TabBorder" Property="Background" Value="#660D192E"/>
-                                        <Setter TargetName="TabBorder" Property="BorderBrush" Value="#2DD4BF"/>
-                                        <Setter Property="Foreground" Value="#2DD4BF"/>
+                                        <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource BrushCardBg}"/>
+                                        <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource BrushAccent}"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource BrushAccent}"/>
                                     </Trigger>
                                     <Trigger Property="IsSelected" Value="False">
-                                        <Setter Property="Foreground" Value="#94A3B8"/>
+                                        <Setter Property="Foreground" Value="{DynamicResource BrushTextMuted}"/>
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -444,38 +663,38 @@ $xaml = @"
                     <!-- Left Column: Settings -->
                     <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="20,16">
                         <StackPanel>
-                            <TextBlock Text="PACKAGE CONFIGURATION" FontSize="11" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,0,0,10"/>
+                            <TextBlock Text="PACKAGE CONFIGURATION" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" Margin="0,0,0,10"/>
 
-                            <TextBlock Text="Application Name" FontSize="12" Foreground="#CBD5E1" Margin="0,0,0,4"/>
+                            <TextBlock Text="Application Name" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
                             <TextBox x:Name="txtAppName" Text="Teams Backgrounds - Corporate Branding" Margin="0,0,0,10"/>
 
-                            <TextBlock Text="Publisher" FontSize="12" Foreground="#CBD5E1" Margin="0,0,0,4"/>
+                            <TextBlock Text="Publisher" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
                             <TextBox x:Name="txtPublisher" Text="Corporate IT" Margin="0,0,0,10"/>
 
-                            <TextBlock Text="Version" FontSize="12" Foreground="#CBD5E1" Margin="0,0,0,4"/>
+                            <TextBlock Text="Version" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
                             <TextBox x:Name="txtVersion" Text="1.0.0" Margin="0,0,0,10"/>
 
-                            <TextBlock Text="Description" FontSize="12" Foreground="#CBD5E1" Margin="0,0,0,4"/>
+                            <TextBlock Text="Description" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
                             <TextBox x:Name="txtDescription" Text="Standard corporate branded background images for Microsoft Teams video meetings." TextWrapping="Wrap" AcceptsReturn="True" Height="50" Margin="0,0,0,12"/>
 
-                            <TextBlock Text="TARGET TEAMS CLIENTS" FontSize="11" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,6,0,6"/>
+                            <TextBlock Text="TARGET TEAMS CLIENTS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" Margin="0,6,0,6"/>
                             <CheckBox x:Name="chkNewTeams" Content="New Microsoft Teams (MSTeams / v2)" IsChecked="True"/>
                             <CheckBox x:Name="chkClassicTeams" Content="Classic Microsoft Teams (v1)" IsChecked="True" Margin="0,2,0,12"/>
 
-                            <TextBlock Text="DEPLOYMENT CONTEXT" FontSize="11" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,6,0,6"/>
+                            <TextBlock Text="DEPLOYMENT CONTEXT" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" Margin="0,6,0,6"/>
                             <RadioButton x:Name="rbAutoContext" GroupName="Context" Content="Smart Auto-Detect (Recommended)" IsChecked="True"/>
-                            <TextBlock Text="Deploys to all user profiles in C:\Users (including Sandbox &amp; Default profile) when running as SYSTEM. Deploys to current user if run as User." FontSize="11" Foreground="#94A3B8" Margin="20,0,0,8" TextWrapping="Wrap"/>
+                            <TextBlock Text="Deploys to all user profiles in C:\Users (including Sandbox &amp; Default profile) when running as SYSTEM. Deploys to current user if run as User." FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="20,0,0,8" TextWrapping="Wrap"/>
 
                             <RadioButton x:Name="rbUserContext" GroupName="Context" Content="User Context"/>
-                            <TextBlock Text="Configured for Intune 'User' context (with fail-safe fallback if run as SYSTEM)." FontSize="11" Foreground="#94A3B8" Margin="20,0,0,8" TextWrapping="Wrap"/>
+                            <TextBlock Text="Configured for Intune 'User' context (with fail-safe fallback if run as SYSTEM)." FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="20,0,0,8" TextWrapping="Wrap"/>
 
                             <RadioButton x:Name="rbSystemContext" GroupName="Context" Content="System Context (All Users)"/>
-                            <TextBlock Text="Always installs to all user profiles under C:\Users (Intune: 'System')." FontSize="11" Foreground="#94A3B8" Margin="20,0,0,12" TextWrapping="Wrap"/>
+                            <TextBlock Text="Always installs to all user profiles under C:\Users (Intune: 'System')." FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="20,0,0,12" TextWrapping="Wrap"/>
 
-                            <TextBlock Text="LOG DIRECTORY (ENDPOINTS)" FontSize="11" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,6,0,4"/>
+                            <TextBlock Text="LOG DIRECTORY (ENDPOINTS)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" Margin="0,6,0,4"/>
                             <TextBox x:Name="txtLogDir" Text="C:\Logs\TeamsBackgrounds" Margin="0,0,0,12"/>
 
-                            <TextBlock Text="OUTPUT DIRECTORY" FontSize="11" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,6,0,4"/>
+                            <TextBlock Text="OUTPUT DIRECTORY" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" Margin="0,6,0,4"/>
                             <Grid Margin="0,0,0,6">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -488,7 +707,7 @@ $xaml = @"
                     </ScrollViewer>
 
                     <!-- 1px Hairline Divider -->
-                    <Border Grid.Column="1" Background="#1FFFFFFF"/>
+                    <Border Grid.Column="1" Background="{DynamicResource BrushHairline}"/>
 
                     <!-- Right Column: Images List -->
                     <Grid Grid.Column="2" Margin="18,14,20,14">
@@ -513,16 +732,16 @@ $xaml = @"
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="Backgrounds: " FontSize="12.5" Foreground="#94A3B8"/>
-                                    <TextBlock x:Name="lblImageCount" Text="0 images" FontSize="12.5" FontWeight="Bold" Foreground="#2DD4BF"/>
+                                    <TextBlock Text="Backgrounds: " FontSize="12.5" Foreground="{DynamicResource BrushTextMuted}"/>
+                                    <TextBlock x:Name="lblImageCount" Text="0 images" FontSize="12.5" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
 
                         <!-- Images ListView -->
-                        <Border Grid.Row="1" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="4">
+                        <Border Grid.Row="1" Background="{DynamicResource BrushCardBg}" BorderBrush="{DynamicResource BrushCardBorder}" BorderThickness="1" CornerRadius="8" Padding="4">
                             <Grid>
-                                <ListView x:Name="lvImages" Background="Transparent" BorderThickness="0" Foreground="#F8FAFC"
+                                <ListView x:Name="lvImages" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource BrushTextPrimary}"
                                           SelectionMode="Extended" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                     <ListView.View>
                                         <GridView>
@@ -546,11 +765,11 @@ $xaml = @"
                                 <StackPanel x:Name="pnlEmptyState" VerticalAlignment="Center" HorizontalAlignment="Center">
                                     <Viewbox Width="54" Height="54" HorizontalAlignment="Center" Margin="0,0,0,12">
                                         <Canvas Width="24" Height="24">
-                                            <Path Fill="#2DD4BF" Opacity="0.45" Data="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                                            <Path Fill="{DynamicResource BrushAccent}" Opacity="0.45" Data="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
                                         </Canvas>
                                     </Viewbox>
-                                    <TextBlock Text="No Teams background images added yet" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#CBD5E1"/>
-                                    <TextBlock Text="Click 'Add Images' to select .PNG or .JPG corporate backgrounds (1920x1080 recommended)" FontSize="12" Foreground="#94A3B8" HorizontalAlignment="Center" Margin="0,6,0,16"/>
+                                    <TextBlock Text="No Teams background images added yet" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                    <TextBlock Text="Click 'Add Images' to select .PNG or .JPG corporate backgrounds (1920x1080 recommended)" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center" Margin="0,6,0,16"/>
                                     <Button x:Name="btnAddImagesEmpty" Content="+ Select Images" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Center" Padding="20,10"/>
                                 </StackPanel>
                             </Grid>
@@ -564,7 +783,7 @@ $xaml = @"
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,14">
                     <StackPanel>
                         <!-- Package Status Banner -->
-                        <Border Style="{StaticResource CardBorder}" BorderBrush="#2DD4BF">
+                        <Border Style="{StaticResource CardBorder}" BorderBrush="{DynamicResource BrushAccent}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto"/>
@@ -573,12 +792,12 @@ $xaml = @"
                                 </Grid.ColumnDefinitions>
                                 <Viewbox Grid.Column="0" Width="32" Height="32" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,14,0">
                                     <Canvas Width="24" Height="24">
-                                        <Path Fill="#34D399" Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                        <Path Fill="{DynamicResource BrushOk}" Data="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
                                     </Canvas>
                                 </Viewbox>
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Win32 App Package Built Successfully" FontSize="15.5" FontWeight="Bold" Foreground="#F8FAFC"/>
-                                    <TextBlock x:Name="lblPackagePath" Text="Package path will appear here once built." FontSize="12" Foreground="#CBD5E1" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Win32 App Package Built Successfully" FontSize="15.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    <TextBlock x:Name="lblPackagePath" Text="Package path will appear here once built." FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                     <Button x:Name="btnOpenOutputDir" Content="Open Folder" Margin="0,0,8,0"/>
@@ -590,7 +809,7 @@ $xaml = @"
                         <!-- Step 1: Program Settings -->
                         <Border Style="{StaticResource CardBorder}">
                             <StackPanel>
-                                <TextBlock Text="STEP 1: INTUNE PROGRAM SETTINGS" FontSize="11.5" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,0,0,12"/>
+                                <TextBlock Text="STEP 1: INTUNE PROGRAM SETTINGS" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" Margin="0,0,0,12"/>
 
                                 <Grid Margin="0,0,0,12">
                                     <Grid.RowDefinitions>
@@ -601,7 +820,7 @@ $xaml = @"
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Install Command" FontSize="12" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Install Command" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
                                     <TextBox x:Name="txtInstallCommand" Grid.Row="1" Grid.Column="0" IsReadOnly="True" Margin="0,0,8,0"/>
                                     <Button x:Name="btnCopyInstallCmd" Grid.Row="1" Grid.Column="1" Content="Copy" Padding="14,6"/>
                                 </Grid>
@@ -615,7 +834,7 @@ $xaml = @"
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Uninstall Command" FontSize="12" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Uninstall Command" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
                                     <TextBox x:Name="txtUninstallCommand" Grid.Row="1" Grid.Column="0" IsReadOnly="True" Margin="0,0,8,0"/>
                                     <Button x:Name="btnCopyUninstallCmd" Grid.Row="1" Grid.Column="1" Content="Copy" Padding="14,6"/>
                                 </Grid>
@@ -628,17 +847,17 @@ $xaml = @"
                                     </Grid.ColumnDefinitions>
 
                                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                                        <TextBlock Text="Install Behavior" FontSize="12" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                                        <TextBlock Text="Install Behavior" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
                                         <TextBox x:Name="txtInstallBehavior" Text="User" IsReadOnly="True"/>
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="1" Margin="0,0,8,0">
-                                        <TextBlock Text="Device Restart Behavior" FontSize="12" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                                        <TextBlock Text="Device Restart Behavior" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
                                         <TextBox Text="Determine behavior based on return codes" IsReadOnly="True"/>
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Return Code for Success" FontSize="12" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                                        <TextBlock Text="Return Code for Success" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
                                         <TextBox Text="0 (Success)" IsReadOnly="True"/>
                                     </StackPanel>
                                 </Grid>
@@ -654,8 +873,8 @@ $xaml = @"
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="STEP 2: DETECTION RULES CONFIGURATION" FontSize="11.5" FontWeight="Bold" Foreground="#2DD4BF"/>
-                                        <TextBlock Text="Rules format: 'Use a custom detection script'. Select the generated Detect-TeamsBackgrounds.ps1 file." FontSize="12" Foreground="#94A3B8" Margin="0,2,0,0"/>
+                                        <TextBlock Text="STEP 2: DETECTION RULES CONFIGURATION" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}"/>
+                                        <TextBlock Text="Rules format: 'Use a custom detection script'. Select the generated Detect-TeamsBackgrounds.ps1 file." FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                                         <Button x:Name="btnCopyDetectionScript" Content="Copy Script" Margin="0,0,8,0"/>
@@ -664,8 +883,8 @@ $xaml = @"
                                 </Grid>
 
                                 <TextBox x:Name="txtDetectionScriptPreview" IsReadOnly="True" AcceptsReturn="True"
-                                         FontFamily="Cascadia Mono, Consolas" FontSize="12" Background="#CC050A14"
-                                         BorderBrush="#26354D" Foreground="#CBD5E1"
+                                         FontFamily="Cascadia Mono, Consolas" FontSize="12" Background="{DynamicResource BrushLogBg}"
+                                         BorderBrush="{DynamicResource BrushCardBorder}" Foreground="{DynamicResource BrushTextSecondary}"
                                          Height="180" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                                          Padding="10"/>
                             </StackPanel>
@@ -674,10 +893,10 @@ $xaml = @"
                         <!-- Step 3: Requirements Guide -->
                         <Border Style="{StaticResource CardBorder}">
                             <StackPanel>
-                                <TextBlock Text="STEP 3: REQUIREMENTS &amp; ASSIGNMENT" FontSize="11.5" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,0,0,8"/>
-                                <TextBlock Text="- Operating System Architecture: 64-bit and 32-bit" FontSize="12" Foreground="#CBD5E1" Margin="0,2"/>
-                                <TextBlock Text="- Minimum Operating System: Windows 10 1909 or higher" FontSize="12" Foreground="#CBD5E1" Margin="0,2"/>
-                                <TextBlock Text="- Assignment: Assign as 'Required' to targeted Entra ID User / Device groups." FontSize="12" Foreground="#CBD5E1" Margin="0,2"/>
+                                <TextBlock Text="STEP 3: REQUIREMENTS &amp; ASSIGNMENT" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}" Margin="0,0,0,8"/>
+                                <TextBlock Text="- Operating System Architecture: 64-bit and 32-bit" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,2"/>
+                                <TextBlock Text="- Minimum Operating System: Windows 10 1909 or higher" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,2"/>
+                                <TextBlock Text="- Assignment: Assign as 'Required' to targeted Entra ID User / Device groups." FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,2"/>
                             </StackPanel>
                         </Border>
 
@@ -690,8 +909,8 @@ $xaml = @"
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="STEP 4: LOGGING &amp; DIAGNOSTICS" FontSize="11.5" FontWeight="Bold" Foreground="#2DD4BF"/>
-                                        <TextBlock Text="Full runtime diagnostic logs are automatically written to this folder on target machines:" FontSize="12" Foreground="#94A3B8" Margin="0,2,0,0"/>
+                                        <TextBlock Text="STEP 4: LOGGING &amp; DIAGNOSTICS" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushAccent}"/>
+                                        <TextBlock Text="Full runtime diagnostic logs are automatically written to this folder on target machines:" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
                                     </StackPanel>
                                     <Button x:Name="btnOpenLogDir" Grid.Column="1" Content="Open Log Folder" Padding="12,6"/>
                                 </Grid>
@@ -701,32 +920,32 @@ $xaml = @"
                                         <ColumnDefinition Width="130"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Log Directory:" FontSize="12" Foreground="#94A3B8"/>
-                                    <TextBlock x:Name="lblLogDirPath" Grid.Column="1" Text="C:\Logs\TeamsBackgrounds" FontSize="12" FontWeight="SemiBold" Foreground="#2DD4BF"/>
+                                    <TextBlock Grid.Column="0" Text="Log Directory:" FontSize="12" Foreground="{DynamicResource BrushTextMuted}"/>
+                                    <TextBlock x:Name="lblLogDirPath" Grid.Column="1" Text="C:\Logs\TeamsBackgrounds" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushAccent}"/>
                                 </Grid>
                                 <Grid Margin="0,2,0,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="130"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Install Log:" FontSize="12" Foreground="#94A3B8"/>
-                                    <TextBlock x:Name="lblInstallLogPath" Grid.Column="1" Text="C:\Logs\TeamsBackgrounds\Install.log" FontSize="12" Foreground="#CBD5E1"/>
+                                    <TextBlock Grid.Column="0" Text="Install Log:" FontSize="12" Foreground="{DynamicResource BrushTextMuted}"/>
+                                    <TextBlock x:Name="lblInstallLogPath" Grid.Column="1" Text="C:\Logs\TeamsBackgrounds\Install.log" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}"/>
                                 </Grid>
                                 <Grid Margin="0,2,0,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="130"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Detection Log:" FontSize="12" Foreground="#94A3B8"/>
-                                    <TextBlock x:Name="lblDetectLogPath" Grid.Column="1" Text="C:\Logs\TeamsBackgrounds\Detection.log" FontSize="12" Foreground="#CBD5E1"/>
+                                    <TextBlock Grid.Column="0" Text="Detection Log:" FontSize="12" Foreground="{DynamicResource BrushTextMuted}"/>
+                                    <TextBlock x:Name="lblDetectLogPath" Grid.Column="1" Text="C:\Logs\TeamsBackgrounds\Detection.log" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}"/>
                                 </Grid>
                                 <Grid Margin="0,2,0,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="130"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Uninstall Log:" FontSize="12" Foreground="#94A3B8"/>
-                                    <TextBlock x:Name="lblUninstallLogPath" Grid.Column="1" Text="C:\Logs\TeamsBackgrounds\Uninstall.log" FontSize="12" Foreground="#CBD5E1"/>
+                                    <TextBlock Grid.Column="0" Text="Uninstall Log:" FontSize="12" Foreground="{DynamicResource BrushTextMuted}"/>
+                                    <TextBlock x:Name="lblUninstallLogPath" Grid.Column="1" Text="C:\Logs\TeamsBackgrounds\Uninstall.log" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}"/>
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -736,7 +955,7 @@ $xaml = @"
         </TabControl>
 
         <!-- Bottom Action Bar -->
-        <Border Grid.Row="2" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="24,12">
+        <Border Grid.Row="2" Background="{DynamicResource BrushChromeBar}" BorderBrush="{DynamicResource BrushHairline}" BorderThickness="0,1,0,0" Padding="24,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -745,8 +964,8 @@ $xaml = @"
 
                 <!-- Status & Progress -->
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,20,0">
-                    <TextBlock x:Name="lblStatus" Text="Ready. Add background images and click 'Build .intunewin Package'." FontSize="12.5" Foreground="#94A3B8" TextTrimming="CharacterEllipsis"/>
-                    <ProgressBar x:Name="progressBar" Height="5" Margin="0,6,0,0" Background="#26354D" Foreground="#2DD4BF" BorderThickness="0" Value="0" Visibility="Collapsed"/>
+                    <TextBlock x:Name="lblStatus" Text="Ready. Add background images and click 'Build .intunewin Package'." FontSize="12.5" Foreground="{DynamicResource BrushTextMuted}" TextTrimming="CharacterEllipsis"/>
+                    <ProgressBar x:Name="progressBar" Height="5" Margin="0,6,0,0" Background="{DynamicResource BrushCardBorder}" Foreground="{DynamicResource BrushAccent}" BorderThickness="0" Value="0" Visibility="Collapsed"/>
                 </StackPanel>
 
                 <!-- Build Button -->
@@ -764,6 +983,8 @@ $Window = [System.Windows.Markup.XamlReader]::Load($reader)
 Initialize-StandardGuiWindow -Window $Window
 
 # Map UI Controls
+$btnThemeToggle = $Window.FindName("BtnThemeToggle")
+$txtThemeLabel = $Window.FindName("TxtThemeLabel")
 $txtAppName = $Window.FindName("txtAppName")
 $txtPublisher = $Window.FindName("txtPublisher")
 $txtVersion = $Window.FindName("txtVersion")
@@ -816,6 +1037,34 @@ $txtOutputDir.Text = $DefaultOutputDir
 $lvImages.ItemsSource = $Global:ImageItems
 $Global:LastBuiltDetectionScriptPath = ""
 $Global:LastBuiltPackagePath = ""
+
+$Script:IsDarkTheme = Get-SystemIsDarkTheme
+$Script:IsSystemThemeAuto = $true
+Set-StandardGuiTheme -Window $Window -IsDark $Script:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $true
+
+$Window.Add_SourceInitialized({
+    Set-StandardGuiTheme -Window $Window -IsDark $Script:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $Script:IsSystemThemeAuto
+})
+
+$userPrefHandler = [Microsoft.Win32.UserPreferenceChangedEventHandler]{
+    param($sender, $e)
+    if ($e.Category -eq [Microsoft.Win32.UserPreferenceCategory]::General -and $Script:IsSystemThemeAuto) {
+        $Window.Dispatcher.Invoke([Action]{
+            $Script:IsDarkTheme = Get-SystemIsDarkTheme
+            Set-StandardGuiTheme -Window $Window -IsDark $Script:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $true
+        })
+    }
+}
+[Microsoft.Win32.SystemEvents]::add_UserPreferenceChanged($userPrefHandler)
+$Window.Add_Closed({
+    try { [Microsoft.Win32.SystemEvents]::remove_UserPreferenceChanged($userPrefHandler) } catch {}
+})
+
+$btnThemeToggle.Add_Click({
+    $Script:IsSystemThemeAuto = $false
+    $Script:IsDarkTheme = -not $Script:IsDarkTheme
+    Set-StandardGuiTheme -Window $Window -IsDark $Script:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $false
+})
 
 # Function to update UI image list counter & empty state
 function Update-ImageCounter {

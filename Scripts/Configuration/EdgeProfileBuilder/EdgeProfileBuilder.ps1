@@ -233,8 +233,178 @@ function Write-ToolLog {
 }
 
 # ---------------------------------------------------------------------------
-# 3. WPF GUI Standardization & Controller
+# 3. Painted Win11 Chrome, Theme Detection & WPF GUI Standardization
 # ---------------------------------------------------------------------------
+if (-not ('Win11ChromeHelper' -as [type])) {
+    $chromeCSharp = @'
+using System;
+using System.Runtime.InteropServices;
+
+public class Win11ChromeHelper
+{
+    private const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWA_BORDER_COLOR = 34;
+    private const int DWMWA_CAPTION_COLOR = 35;
+    private const int DWMWA_TEXT_COLOR = 36;
+    private const int DWMWCP_ROUND = 2;
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref uint attrValue, int attrSize);
+
+    public static void ApplyWindowChrome(IntPtr hwnd, bool isDark)
+    {
+        if (hwnd == IntPtr.Zero) return;
+
+        try
+        {
+            int darkVal = isDark ? 1 : 0;
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkVal, sizeof(int));
+
+            int cornerVal = DWMWCP_ROUND;
+            DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref cornerVal, sizeof(int));
+
+            uint captionBgr = isDark ? 0x0026160Fu : 0x00FFFFFFu; // #0F1626 dark / #FFFFFF light
+            uint textBgr    = isDark ? 0x00FCFAF8u : 0x002A170Fu; // #F8FAFC dark / #0F172A light
+            uint borderBgr  = isDark ? 0x003B291Eu : 0x00E1D5CBu; // #1E293B dark / #CBD5E1 light
+
+            DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref captionBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_TEXT_COLOR, ref textBgr, sizeof(uint));
+            DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref borderBgr, sizeof(uint));
+        }
+        catch
+        {
+            // Ignore gracefully on Windows 10 hosts lacking Win11 DWM attributes
+        }
+    }
+}
+'@
+    try { Add-Type -TypeDefinition $chromeCSharp -Language CSharp -ErrorAction Stop } catch {}
+}
+
+function Get-SystemIsDarkTheme {
+    [CmdletBinding()]
+    param()
+    try {
+        $regPath = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+        if (Test-Path -Path $regPath) {
+            $val = Get-ItemPropertyValue -Path $regPath -Name 'AppsUseLightTheme' -ErrorAction Stop
+            return ([int]$val -eq 0)
+        }
+    } catch {}
+    return $true
+}
+
+function Set-StandardGuiTheme {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window,
+
+        [Parameter(Mandatory = $true)]
+        [bool]$IsDark,
+
+        [System.Windows.Controls.TextBlock]$ThemeLabel = $null,
+        [bool]$IsSystemAuto = $true
+    )
+
+    $conv = New-Object System.Windows.Media.BrushConverter
+    if ($IsDark) {
+        $canvasBrush = New-Object System.Windows.Media.RadialGradientBrush
+        $canvasBrush.Center = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.GradientOrigin = New-Object System.Windows.Point(0.38, 0.0)
+        $canvasBrush.RadiusX = 0.95
+        $canvasBrush.RadiusY = 0.9
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#0F1F3D')), 0.0))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#091122')), 0.52))
+        $canvasBrush.GradientStops.Add((New-Object System.Windows.Media.GradientStop ([System.Windows.Media.ColorConverter]::ConvertFromString('#05070C')), 1.0))
+
+        $map = @{
+            BrushChromeBar     = '#CC070D19'
+            BrushHairline      = '#1CFFFFFF'
+            BrushCardBg        = '#B30D192E'
+            BrushCardBorder    = '#26354D'
+            BrushInputBg       = '#C7070D1A'
+            BrushLogBg         = '#E6050A14'
+            BrushTextPrimary   = '#F8FAFC'
+            BrushTextSecondary = '#CBD5E1'
+            BrushTextMuted     = '#94A3B8'
+            BrushAccent        = '#2DD4BF'
+            BrushAccentHover   = '#5EEAD4'
+            BrushAccentPressed = '#14B8A6'
+            BrushAccentFg      = '#042F2E'
+            BrushAccentTint    = '#242DD4BF'
+            BrushAccentBorder  = '#6B2DD4BF'
+            BrushSecBtnBg      = '#14FFFFFF'
+            BrushSecBtnHover   = '#24FFFFFF'
+            BrushSecBtnPressed = '#0DFFFFFF'
+            BrushScrollThumb   = '#26354D'
+            BrushOk            = '#34D399'
+            BrushErr           = '#F87171'
+            BrushDangerBg      = '#26EF4444'
+            BrushDangerHover   = '#45EF4444'
+            BrushDangerBorder  = '#66EF4444'
+            BrushDangerFg      = '#FCA5A5'
+            BrushDangerHoverFg = '#FFFFFF'
+        }
+    } else {
+        $canvasBrush = $conv.ConvertFromString('#F8F9FF')
+        $map = @{
+            BrushChromeBar     = '#F2FFFFFF'
+            BrushHairline      = '#190F172A'
+            BrushCardBg        = '#FFFFFFFF'
+            BrushCardBorder    = '#CBD5E1'
+            BrushInputBg       = '#F8FAFC'
+            BrushLogBg         = '#F1F5F9'
+            BrushTextPrimary   = '#0F172A'
+            BrushTextSecondary = '#334155'
+            BrushTextMuted     = '#64748B'
+            BrushAccent        = '#2563EB'
+            BrushAccentHover   = '#1D4ED8'
+            BrushAccentPressed = '#1E40AF'
+            BrushAccentFg      = '#FFFFFF'
+            BrushAccentTint    = '#DBEAFE'
+            BrushAccentBorder  = '#592563EB'
+            BrushSecBtnBg      = '#FFFFFF'
+            BrushSecBtnHover   = '#F1F5F9'
+            BrushSecBtnPressed = '#E2E8F0'
+            BrushScrollThumb   = '#CBD5E1'
+            BrushOk            = '#059669'
+            BrushErr           = '#DC2626'
+            BrushDangerBg      = '#FEE2E2'
+            BrushDangerHover   = '#FECACA'
+            BrushDangerBorder  = '#EF4444'
+            BrushDangerFg      = '#B91C1C'
+            BrushDangerHoverFg = '#7F1D1D'
+        }
+    }
+
+    if ($canvasBrush.CanFreeze) { $canvasBrush.Freeze() }
+    $Window.Background = $canvasBrush
+    $Window.Resources['BrushCanvas'] = $canvasBrush
+    foreach ($key in $map.Keys) {
+        $b = $conv.ConvertFromString($map[$key])
+        if ($b.CanFreeze) { $b.Freeze() }
+        $Window.Resources[$key] = $b
+    }
+
+    if ($null -ne $ThemeLabel) {
+        $modeTag = if ($IsSystemAuto) { 'System' } else { 'Manual' }
+        $toneTag = if ($IsDark) { 'Dark' } else { 'Light' }
+        $ThemeLabel.Text = "Theme: $modeTag ($toneTag)"
+    }
+
+    try {
+        $helper = New-Object System.Windows.Interop.WindowInteropHelper($Window)
+        if ($helper.Handle -ne [IntPtr]::Zero -and ('Win11ChromeHelper' -as [type])) {
+            [Win11ChromeHelper]::ApplyWindowChrome($helper.Handle, $IsDark)
+        }
+    } catch {}
+}
+
 function Initialize-StandardGuiWindow {
     [CmdletBinding()]
     param(
@@ -342,6 +512,8 @@ function Show-EdgeProfileBuilderGui {
 
     Initialize-StandardGuiWindow -Window $window
 
+    $btnThemeToggle = $window.FindName('BtnThemeToggle')
+    $txtThemeLabel = $window.FindName('TxtThemeLabel')
     $txtSelectedBadge = $window.FindName('TxtSelectedBadge')
     $btnUploadIcons = $window.FindName('BtnUploadIcons')
     $btnLoadFolder = $window.FindName('BtnLoadFolder')
@@ -361,6 +533,34 @@ function Show-EdgeProfileBuilderGui {
 
     $Script:LogTextBox = $txtLog
     $txtOutputRoot.Text = $OutputPath
+
+    $Script:IsDarkTheme = Get-SystemIsDarkTheme
+    $Script:IsSystemThemeAuto = $true
+    Set-StandardGuiTheme -Window $window -IsDark $Script:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $true
+
+    $window.Add_SourceInitialized({
+        Set-StandardGuiTheme -Window $window -IsDark $Script:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $Script:IsSystemThemeAuto
+    })
+
+    $userPrefHandler = [Microsoft.Win32.UserPreferenceChangedEventHandler]{
+        param($sender, $e)
+        if ($e.Category -eq [Microsoft.Win32.UserPreferenceCategory]::General -and $Script:IsSystemThemeAuto) {
+            $window.Dispatcher.Invoke([Action]{
+                $Script:IsDarkTheme = Get-SystemIsDarkTheme
+                Set-StandardGuiTheme -Window $window -IsDark $Script:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $true
+            })
+        }
+    }
+    [Microsoft.Win32.SystemEvents]::add_UserPreferenceChanged($userPrefHandler)
+    $window.Add_Closed({
+        try { [Microsoft.Win32.SystemEvents]::remove_UserPreferenceChanged($userPrefHandler) } catch {}
+    })
+
+    $btnThemeToggle.Add_Click({
+        $Script:IsSystemThemeAuto = $false
+        $Script:IsDarkTheme = -not $Script:IsDarkTheme
+        Set-StandardGuiTheme -Window $window -IsDark $Script:IsDarkTheme -ThemeLabel $txtThemeLabel -IsSystemAuto $false
+    })
 
     $cards = New-Object 'System.Collections.ObjectModel.ObservableCollection[EdgeIconCardItem]'
     $icIcons.ItemsSource = $cards
