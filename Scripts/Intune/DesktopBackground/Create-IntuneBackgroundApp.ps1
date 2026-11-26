@@ -970,12 +970,8 @@ $xamlText = @'
                                         <TextBlock Text="Supports PNG, JPG, JPEG, BMP" FontSize="11" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,4,0,0"/>
                                     </StackPanel>
 
-                                    <!-- Subtle Windows 11 Desktop Taskbar & Icon Overlay -->
-                                    <Grid x:Name="PnlOverlayDesktop" IsHitTestVisible="False">
-                                        <StackPanel Margin="12,12,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
-                                            <Border Width="22" Height="22" CornerRadius="4" Background="#28FFFFFF" BorderBrush="#48FFFFFF" BorderThickness="1" Margin="0,0,0,7"/>
-                                            <Border Width="22" Height="22" CornerRadius="4" Background="#28FFFFFF" BorderBrush="#48FFFFFF" BorderThickness="1"/>
-                                        </StackPanel>
+                                    <!-- Subtle Windows 11 Desktop Taskbar Overlay (shown once an image is loaded) -->
+                                    <Grid x:Name="PnlOverlayDesktop" Visibility="Collapsed" IsHitTestVisible="False">
                                         <Border Height="24" VerticalAlignment="Bottom" Background="#A6091122" BorderBrush="#2AFFFFFF" BorderThickness="0,1,0,0">
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                                 <Border Width="11" Height="11" CornerRadius="2" Background="#38BDF8" Margin="0,0,8,0"/>
@@ -1203,8 +1199,8 @@ function Update-ScreenPreview {
     $viewLabel = if ($isLockView) { 'Lock Screen' } else { '16:9' }
     $txtPreviewBadge.Text = "$selectedStyle · $viewLabel"
 
-    $pnlOverlayDesktop.Visibility = if ($isLockView) { [System.Windows.Visibility]::Collapsed } else { [System.Windows.Visibility]::Visible }
-    $pnlOverlayLock.Visibility    = if ($isLockView) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed }
+    $pnlOverlayDesktop.Visibility = [System.Windows.Visibility]::Collapsed
+    $pnlOverlayLock.Visibility    = [System.Windows.Visibility]::Collapsed
     if ($isLockView) {
         $now = Get-Date
         $txtLockClock.Text = $now.ToString('HH:mm')
@@ -1232,6 +1228,8 @@ function Update-ScreenPreview {
         try {
             $bitmap = New-FrozenBitmap -ImagePath $candidatePath
             $pnlPreviewEmpty.Visibility = [System.Windows.Visibility]::Collapsed
+            $pnlOverlayDesktop.Visibility = if ($isLockView) { [System.Windows.Visibility]::Collapsed } else { [System.Windows.Visibility]::Visible }
+            $pnlOverlayLock.Visibility    = if ($isLockView) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed }
 
             if ($selectedStyle -eq 'Tile' -and -not $isLockView) {
                 $tileBrush = New-Object System.Windows.Media.ImageBrush($bitmap)
