@@ -141,6 +141,89 @@ $global:CancelRequested  = $false
 # -------------------------------------------------------------------------
 # UI & Dispatcher Helpers
 # -------------------------------------------------------------------------
+function Initialize-StandardGuiWindow {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window,
+        [double]$MinWidth = 860,
+        [double]$MinHeight = 640
+    )
+
+    $fontFiles = @('Figtree-Regular.ttf', 'Figtree-SemiBold.ttf', 'Figtree-Bold.ttf')
+    $fontDir = $null
+
+    if ($PSScriptRoot) {
+        $probe = $PSScriptRoot
+        for ($i = 0; $i -le 5; $i++) {
+            if ([string]::IsNullOrWhiteSpace($probe)) { break }
+            $candidateDir = Join-Path -Path $probe -ChildPath 'assets\fonts'
+            $candidateRegular = Join-Path -Path $candidateDir -ChildPath 'Figtree-Regular.ttf'
+            if (Test-Path -Path $candidateRegular -PathType Leaf) {
+                $fontDir = $candidateDir
+                break
+            }
+            $probe = Split-Path -Path $probe -Parent
+        }
+    }
+
+    if (-not $fontDir) {
+        $cacheFontDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'PowerShellGui\fonts'
+        $cachedRegular = Join-Path -Path $cacheFontDir -ChildPath 'Figtree-Regular.ttf'
+        if (-not (Test-Path -Path $cachedRegular -PathType Leaf)) {
+            try {
+                if (-not (Test-Path -Path $cacheFontDir)) {
+                    New-Item -Path $cacheFontDir -ItemType Directory -Force | Out-Null
+                }
+                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+                $prevProgress = $ProgressPreference
+                $ProgressPreference = 'SilentlyContinue'
+                try {
+                    $baseUrl = 'https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/assets/fonts/'
+                    foreach ($f in $fontFiles) {
+                        $dest = Join-Path -Path $cacheFontDir -ChildPath $f
+                        if (-not (Test-Path -Path $dest -PathType Leaf)) {
+                            Invoke-WebRequest -Uri ($baseUrl + $f) -OutFile $dest -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+                        }
+                    }
+                } finally {
+                    $ProgressPreference = $prevProgress
+                }
+            } catch {
+                Write-Verbose "Figtree font download skipped (offline fallback): $($_.Exception.Message)"
+            }
+        }
+        if (Test-Path -Path $cachedRegular -PathType Leaf) {
+            $fontDir = $cacheFontDir
+        }
+    }
+
+    if ($fontDir) {
+        try {
+            $resolvedFontDir = (Resolve-Path -Path $fontDir -ErrorAction Stop).Path
+            $fontUri = ([System.Uri]::new((Join-Path -Path $resolvedFontDir -ChildPath ''))).AbsoluteUri
+            $Window.FontFamily = New-Object System.Windows.Media.FontFamily ("$($fontUri)#Figtree, Segoe UI Variable, Segoe UI")
+        } catch {
+            $Window.FontFamily = New-Object System.Windows.Media.FontFamily ('Segoe UI Variable, Segoe UI')
+        }
+    } else {
+        $Window.FontFamily = New-Object System.Windows.Media.FontFamily ('Segoe UI Variable, Segoe UI')
+    }
+
+    $workArea = [System.Windows.SystemParameters]::WorkArea
+    $targetWidth  = [Math]::Round([Math]::Min($workArea.Width - 24,  [Math]::Max(860, [Math]::Min(1440, $workArea.Width * 0.70))))
+    $targetHeight = [Math]::Round([Math]::Min($workArea.Height - 24, [Math]::Max(640, [Math]::Min(900,  $workArea.Height * 0.80))))
+
+    $Window.WindowStartupLocation = 'Manual'
+    $Window.Width  = $targetWidth
+    $Window.Height = $targetHeight
+    $Window.MinWidth  = [Math]::Min($MinWidth, $targetWidth)
+    $Window.MinHeight = [Math]::Min($MinHeight, $targetHeight)
+    $Window.Left = [Math]::Round($workArea.Left + (($workArea.Width - $targetWidth) / 2))
+    $Window.Top  = [Math]::Round($workArea.Top + (($workArea.Height - $targetHeight) / 2))
+    $Window.ResizeMode = 'CanResize'
+}
+
 function Invoke-DoEvent {
     $frame = [System.Windows.Threading.DispatcherFrame]::new()
     [System.Windows.Threading.Dispatcher]::CurrentDispatcher.BeginInvoke(
@@ -284,17 +367,18 @@ function Update-ConnectionBadge {
         [bool]$Connected,
         [string]$Account
     )
+    $bc = [System.Windows.Media.BrushConverter]::new()
     if ($Connected) {
-        $bdgConnection.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#065F46")
-        $bdgConnection.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#10B981")
+        $bdgConnection.Background = $bc.ConvertFromString("#1F34D399")
+        $bdgConnection.BorderBrush = $bc.ConvertFromString("#34D399")
         $lblConnectionStatus.Text = "Connected: $Account"
-        $lblConnectionStatus.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ECFDF5")
+        $lblConnectionStatus.Foreground = $bc.ConvertFromString("#F8FAFC")
         $btnConnect.Content = "Reconnect / Switch"
     } else {
-        $bdgConnection.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1E293B")
-        $bdgConnection.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#475569")
+        $bdgConnection.Background = $bc.ConvertFromString("#14FFFFFF")
+        $bdgConnection.BorderBrush = $bc.ConvertFromString("#26354D")
         $lblConnectionStatus.Text = "Not Signed In"
-        $lblConnectionStatus.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#94A3B8")
+        $lblConnectionStatus.Foreground = $bc.ConvertFromString("#94A3B8")
         $btnConnect.Content = "Sign In to Exchange Online"
     }
     Invoke-DoEvent
@@ -429,16 +513,17 @@ function New-DirectoryLookupMap {
 }
 
 function Update-IndexBadge {
+    $bc = [System.Windows.Media.BrushConverter]::new()
     if ($global:IsFullIndexBuilt) {
-        $bdgIndexStatus.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#DBEAFE")
-        $bdgIndexStatus.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
+        $bdgIndexStatus.Background = $bc.ConvertFromString("#262DD4BF")
+        $bdgIndexStatus.BorderBrush = $bc.ConvertFromString("#2DD4BF")
         $lblIndexStatus.Text = "Instant Index Active (Click any user)"
-        $lblIndexStatus.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1D4ED8")
+        $lblIndexStatus.Foreground = $bc.ConvertFromString("#5EEAD4")
     } else {
-        $bdgIndexStatus.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F1F5F9")
-        $bdgIndexStatus.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#CBD5E1")
+        $bdgIndexStatus.Background = $bc.ConvertFromString("#14FFFFFF")
+        $bdgIndexStatus.BorderBrush = $bc.ConvertFromString("#26354D")
         $lblIndexStatus.Text = "On-Demand Mode (Select user & click Check)"
-        $lblIndexStatus.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#475569")
+        $lblIndexStatus.Foreground = $bc.ConvertFromString("#94A3B8")
     }
     Invoke-DoEvent
 }
@@ -948,22 +1033,28 @@ function Export-AllCachedReport {
 }
 
 # -------------------------------------------------------------------------
-# WPF XAML User Interface
+# WPF XAML User Interface (Obsidian Teal Standard)
 # -------------------------------------------------------------------------
 [xml]$xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Microsoft 365 Shared Mailbox Access Viewer"
-        Height="820" Width="1340" MinHeight="640" MinWidth="1020"
-        WindowStartupLocation="CenterScreen"
-        Background="#F1F5F9"
-        FontFamily="Segoe UI">
+        Title="Microsoft 365 Shared Mailbox Access Viewer v1.0"
+        Height="820" Width="1340" MinHeight="640" MinWidth="860"
+        WindowStartupLocation="Manual" Foreground="#F8FAFC" FontSize="12.5">
+    <Window.Background>
+        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
+            <GradientStop Color="#0F1F3D" Offset="0.0"/>
+            <GradientStop Color="#091122" Offset="0.55"/>
+            <GradientStop Color="#05070C" Offset="1.0"/>
+        </RadialGradientBrush>
+    </Window.Background>
 
     <Window.Resources>
+        <!-- Secondary Button -->
         <Style TargetType="Button">
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="Foreground" Value="#1E293B"/>
-            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="12,6"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -980,7 +1071,10 @@ function Export-AllCachedReport {
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Opacity" Value="0.9"/>
+                                <Setter TargetName="border" Property="Background" Value="#24FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#0DFFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="border" Property="Opacity" Value="0.45"/>
@@ -991,30 +1085,332 @@ function Export-AllCachedReport {
             </Setter>
         </Style>
 
+        <!-- Primary CTA (Teal) -->
         <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#2563EB"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Background" Value="#2DD4BF"/>
+            <Setter Property="Foreground" Value="#042F2E"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#5EEAD4"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#14B8A6"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#1A2B44"/>
+                                <Setter Property="Foreground" Value="#64748B"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
+        <!-- Teal Outline Accent Button -->
         <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#7C3AED"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-
-        <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="#0D9488"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-
-        <Style x:Key="Card" TargetType="Border">
-            <Setter Property="Background" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="Background" Value="#1A2DD4BF"/>
+            <Setter Property="Foreground" Value="#5EEAD4"/>
+            <Setter Property="BorderBrush" Value="#2DD4BF"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="14"/>
+        </Style>
+
+        <!-- Danger Button -->
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#26EF4444"/>
+            <Setter Property="Foreground" Value="#FCA5A5"/>
+            <Setter Property="BorderBrush" Value="#66EF4444"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#3CEF4444"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}"/>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#99070D1A"/>
+            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="CaretBrush" Value="#2DD4BF"/>
+            <Setter Property="SelectionBrush" Value="#2DD4BF"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="0"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#2DD4BF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border x:Name="Box" Width="16" Height="16" CornerRadius="4"
+                                    Background="#99070D1A" BorderBrush="#26354D" BorderThickness="1"
+                                    Margin="0,0,7,0" VerticalAlignment="Center">
+                                <Path x:Name="CheckMark" Data="M 3,7.5 L 6.2,10.5 L 11.5,4"
+                                      Stroke="#042F2E" StrokeThickness="2" Visibility="Collapsed"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                            </Border>
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#2DD4BF"/>
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#2DD4BF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark ComboBox & ComboBoxItem -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBorder" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#1E3A5F"/>
+                                <Setter Property="Foreground" Value="#F8FAFC"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#262DD4BF"/>
+                                <Setter Property="Foreground" Value="#F8FAFC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#99070D1A"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton" Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="ComboBorder" Background="#99070D1A" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="26"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Path Grid.Column="1" Data="M 0,0 L 4,4 L 8,0 Z" Fill="#94A3B8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ComboBorder" Property="BorderBrush" Value="#2DD4BF"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              Margin="10,4,28,4" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                            <Popup x:Name="Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
+                                <Grid MinWidth="{TemplateBinding ActualWidth}" MaxHeight="260" SnapsToDevicePixels="True">
+                                    <Border Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Margin="0,2,0,0">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Grid>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark DataGrid -->
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="#091122"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="RowBackground" Value="#091122"/>
+            <Setter Property="AlternatingRowBackground" Value="#0C172B"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#1A2B44"/>
+            <Setter Property="HeadersVisibility" Value="Column"/>
+            <Setter Property="RowHeaderWidth" Value="0"/>
+        </Style>
+
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#0B1528"/>
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        </Style>
+
+        <Style TargetType="DataGridRow">
+            <Setter Property="Background" Value="#091122"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#142DD4BF"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#1E3A5F"/>
+                    <Setter Property="Foreground" Value="#F8FAFC"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGridRow}}"/>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="Transparent"/>
+                    <Setter Property="Foreground" Value="#F8FAFC"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="#050A14"/>
+            <Setter Property="Width" Value="10"/>
+            <Setter Property="MinWidth" Value="10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="{TemplateBinding Background}">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="#26354D" CornerRadius="4" Margin="2"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#26354D" BorderThickness="1,1,1,1" CornerRadius="6,6,0,0">
+                                <TabPanel IsItemsHost="True" Margin="6,0"/>
+                            </Border>
+                            <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder" Background="Transparent" BorderBrush="Transparent" BorderThickness="0,0,0,2" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#E2E8F0"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="#F8FAFC"/>
+                                <Setter TargetName="TabBorder" Property="Background" Value="#142DD4BF"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#2DD4BF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
@@ -1023,29 +1419,25 @@ function Export-AllCachedReport {
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- TOP HEADER BAR -->
-        <Border Grid.Row="0" Background="#0F172A" Padding="18,12">
+        <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="20,13">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Orientation="Vertical">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Shared Mailbox Access Viewer" Foreground="#FFFFFF" FontSize="19" FontWeight="Bold"/>
-                        <Border Background="#1E293B" CornerRadius="4" Margin="10,2,0,0" Padding="8,2" VerticalAlignment="Center">
-                            <TextBlock Text="Exchange Online" Foreground="#38BDF8" FontSize="11" FontWeight="Bold"/>
-                        </Border>
-                    </StackPanel>
-                    <TextBlock Text="Sign in once to Exchange Online, select any user, and view all Shared Mailboxes they have Full Access, Send As, or Send on Behalf permissions for."
-                               Foreground="#94A3B8" FontSize="12" Margin="0,3,0,0"/>
+                <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                    <TextBlock Text="Shared Mailbox Access Viewer v1.0" Foreground="#F8FAFC" FontSize="19" FontWeight="Bold"/>
+                    <TextBlock Text="Inspect Exchange Online Shared Mailbox Full Access, Send As, and Send on Behalf delegations."
+                               Foreground="#94A3B8" FontSize="12" Margin="0,2,0,0"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border x:Name="bdgConnection" Background="#1E293B" BorderBrush="#475569" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,0,10,0" VerticalAlignment="Center">
+                    <Border x:Name="bdgConnection" Background="#14FFFFFF" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="11,6" Margin="0,0,10,0" VerticalAlignment="Center">
                         <TextBlock x:Name="lblConnectionStatus" Text="Not Signed In" Foreground="#94A3B8" FontSize="12" FontWeight="SemiBold"/>
                     </Border>
                     <Button x:Name="btnConnect" Content="Sign In to Exchange Online" Style="{StaticResource PrimaryButton}" Height="34" Margin="0,0,8,0"/>
@@ -1056,15 +1448,15 @@ function Export-AllCachedReport {
         </Border>
 
         <!-- MAIN SPLIT CONTENT -->
-        <Grid Grid.Row="1" Margin="12,10,12,6">
+        <Grid Grid.Row="1" Margin="16,12,16,10">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="430" MinWidth="320"/>
-                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="420" MinWidth="300"/>
+                <ColumnDefinition Width="12"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <!-- LEFT PANE: USER DIRECTORY LIST -->
-            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12">
+            <Border Grid.Column="0" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -1080,8 +1472,8 @@ function Export-AllCachedReport {
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="1. Select User" FontSize="15" FontWeight="Bold" Foreground="#0F172A"/>
-                        <TextBlock x:Name="lblUserCount" Grid.Column="1" Text="0 users loaded" FontSize="12" FontWeight="SemiBold" Foreground="#2563EB" VerticalAlignment="Center"/>
+                        <TextBlock Text="1. Select User" FontSize="14.5" FontWeight="Bold" Foreground="#F8FAFC"/>
+                        <TextBlock x:Name="lblUserCount" Grid.Column="1" Text="0 users loaded" FontSize="12" FontWeight="SemiBold" Foreground="#2DD4BF" VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Search Box -->
@@ -1091,10 +1483,10 @@ function Export-AllCachedReport {
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Search:" VerticalAlignment="Center" Foreground="#64748B" FontWeight="SemiBold" Margin="0,0,6,0" FontSize="12"/>
-                        <TextBox x:Name="txtUserSearch" Grid.Column="1" Height="30" VerticalContentAlignment="Center" Padding="6,0"
+                        <TextBlock Text="Search:" VerticalAlignment="Center" Foreground="#94A3B8" FontWeight="SemiBold" Margin="0,0,8,0" FontSize="12"/>
+                        <TextBox x:Name="txtUserSearch" Grid.Column="1" Height="32" VerticalContentAlignment="Center"
                                  ToolTip="Type a user's name, email, or alias to filter"/>
-                        <Button x:Name="btnClearUserSearch" Grid.Column="2" Content="X" Width="30" Height="30" Padding="0" Margin="4,0,0,0" ToolTip="Clear search"/>
+                        <Button x:Name="btnClearUserSearch" Grid.Column="2" Content="X" Width="32" Height="32" Padding="0" Margin="6,0,0,0" ToolTip="Clear search"/>
                     </Grid>
 
                     <!-- Mailbox Type Filter -->
@@ -1103,8 +1495,8 @@ function Export-AllCachedReport {
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="Show:" VerticalAlignment="Center" Foreground="#64748B" FontWeight="SemiBold" Margin="0,0,8,0" FontSize="12"/>
-                        <ComboBox x:Name="cmbUserFilter" Grid.Column="1" Height="28" SelectedIndex="0" VerticalContentAlignment="Center">
+                        <TextBlock Text="Show:" VerticalAlignment="Center" Foreground="#94A3B8" FontWeight="SemiBold" Margin="0,0,10,0" FontSize="12"/>
+                        <ComboBox x:Name="cmbUserFilter" Grid.Column="1" Height="30" SelectedIndex="0" VerticalContentAlignment="Center">
                             <ComboBoxItem Content="User Mailboxes Only (Standard Users)"/>
                             <ComboBoxItem Content="All Mailboxes (Users + Shared Mailboxes)"/>
                         </ComboBox>
@@ -1112,14 +1504,11 @@ function Export-AllCachedReport {
 
                     <!-- Users DataGrid -->
                     <DataGrid x:Name="dgUsers" Grid.Row="3" AutoGenerateColumns="False" CanUserAddRows="False"
-                              SelectionMode="Single" IsReadOnly="True"
-                              Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1"
-                              RowHeaderWidth="0" GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                              RowHeight="30" FontSize="12">
+                              SelectionMode="Single" IsReadOnly="True" RowHeight="30" FontSize="12">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Display Name" Binding="{Binding DisplayName}" Width="1.2*"/>
                             <DataGridTextColumn Header="Email / UPN" Binding="{Binding PrimarySmtpAddress}" Width="1.5*"/>
-                            <DataGridTextColumn Header="Type" Binding="{Binding MailboxCategory}" Width="60"/>
+                            <DataGridTextColumn Header="Type" Binding="{Binding MailboxCategory}" Width="65"/>
                         </DataGrid.Columns>
                     </DataGrid>
 
@@ -1130,147 +1519,148 @@ function Export-AllCachedReport {
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <Button x:Name="btnCheckUser" Grid.Column="0" Content="Check Selected User's Access" Style="{StaticResource PrimaryButton}" Height="36"/>
-                        <Button x:Name="btnCancel" Grid.Column="1" Content="Stop" Height="36" Margin="6,0,0,0" IsEnabled="False"/>
+                        <Button x:Name="btnCancel" Grid.Column="1" Content="Stop" Style="{StaticResource DangerButton}" Height="36" MinWidth="72" Margin="8,0,0,0" IsEnabled="False"/>
                     </Grid>
                 </Grid>
             </Border>
 
             <!-- SPLITTER -->
-            <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Stretch" Background="Transparent"/>
+            <GridSplitter Grid.Column="1" Width="12" HorizontalAlignment="Stretch" Background="Transparent"/>
 
             <!-- RIGHT PANE: SELECTED USER'S MAILBOX ACCESS -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- User Summary & KPI Card -->
-                <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,8" Padding="14,12">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+                <!-- User Summary & KPI Strip (Flat container -> single-level KPI tiles) -->
+                <Grid Grid.Row="0" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                        <StackPanel VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                <TextBlock x:Name="lblSelectedUserName" Text="No User Selected" FontSize="17" FontWeight="Bold" Foreground="#0F172A"/>
-                                <Border x:Name="bdgIndexStatus" Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="4" Padding="8,2" Margin="12,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock x:Name="lblIndexStatus" Text="On-Demand Mode (Select user &amp; click Check)" FontSize="11" FontWeight="SemiBold" Foreground="#475569"/>
-                                </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock x:Name="lblSelectedUserName" Text="No User Selected" FontSize="17" FontWeight="Bold" Foreground="#F8FAFC"/>
+                            <Border x:Name="bdgIndexStatus" Background="#14FFFFFF" BorderBrush="#26354D" BorderThickness="1" CornerRadius="4" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock x:Name="lblIndexStatus" Text="On-Demand Mode (Select user &amp; click Check)" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock x:Name="lblSelectedUserEmail" Text="Sign in and select a user on the left to inspect their Shared Mailbox permissions." FontSize="12" Foreground="#94A3B8" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+
+                    <!-- KPI Counters -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Border Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,7" Margin="0,0,6,0" MinWidth="84">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock x:Name="lblStatTotal" Text="0" FontSize="18" FontWeight="Bold" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Mailboxes" FontSize="10.5" FontWeight="SemiBold" Foreground="#94A3B8" HorizontalAlignment="Center"/>
                             </StackPanel>
-                            <TextBlock x:Name="lblSelectedUserEmail" Text="Sign in and select a user on the left to inspect their Shared Mailbox permissions." FontSize="12" Foreground="#64748B"/>
-                        </StackPanel>
+                        </Border>
+                        <Border Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,7" Margin="0,0,6,0" MinWidth="84">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock x:Name="lblStatFullAccess" Text="0" FontSize="18" FontWeight="Bold" Foreground="#34D399" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Full Access" FontSize="10.5" FontWeight="SemiBold" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,7" Margin="0,0,6,0" MinWidth="84">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock x:Name="lblStatSendAs" Text="0" FontSize="18" FontWeight="Bold" Foreground="#FBBF24" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Send As" FontSize="10.5" FontWeight="SemiBold" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,7" MinWidth="92">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock x:Name="lblStatSendOnBehalf" Text="0" FontSize="18" FontWeight="Bold" Foreground="#CBD5E1" FontFamily="Cascadia Mono, Consolas" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Send On Behalf" FontSize="10.5" FontWeight="SemiBold" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
 
-                        <!-- KPI Counters -->
-                        <StackPanel Grid.Column="1" Orientation="Horizontal">
-                            <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="6" Padding="12,6" Margin="0,0,8,0" MinWidth="85">
-                                <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock x:Name="lblStatTotal" Text="0" FontSize="18" FontWeight="Bold" Foreground="#1D4ED8" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Mailboxes" FontSize="10" FontWeight="SemiBold" Foreground="#3B82F6" HorizontalAlignment="Center"/>
-                                </StackPanel>
+                <!-- Tabbed Results & Activity Log -->
+                <TabControl Grid.Row="1">
+                    <TabItem Header="Permissions Grid">
+                        <Grid Margin="0,8,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Filter Bar -->
+                            <Border Grid.Row="0" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="10,7" Margin="0,0,0,8">
+                                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,2,14,2">
+                                        <TextBlock Text="Filter Mailboxes:" VerticalAlignment="Center" Foreground="#94A3B8" FontWeight="SemiBold" Margin="0,0,6,0" FontSize="12"/>
+                                        <TextBox x:Name="txtResultSearch" Width="170" Height="30" VerticalContentAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,2,14,2">
+                                        <TextBlock Text="Permission:" VerticalAlignment="Center" Foreground="#94A3B8" FontWeight="SemiBold" Margin="0,0,6,0" FontSize="12"/>
+                                        <ComboBox x:Name="cmbPermFilter" Width="165" Height="30" SelectedIndex="0" VerticalContentAlignment="Center">
+                                            <ComboBoxItem Content="All Permissions"/>
+                                            <ComboBoxItem Content="Full Access Only"/>
+                                            <ComboBoxItem Content="Send As Only"/>
+                                            <ComboBoxItem Content="Send On Behalf Only"/>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <CheckBox x:Name="chkIncludeUserMailboxes" VerticalAlignment="Center" Margin="0,2,0,2"
+                                              ToolTip="Also check if the user has delegated access to other regular User Mailboxes">
+                                        <TextBlock Text="Include Delegated User Mailboxes" FontSize="12" Foreground="#CBD5E1" FontWeight="SemiBold"/>
+                                    </CheckBox>
+                                </WrapPanel>
                             </Border>
-                            <Border Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="6" Padding="12,6" Margin="0,0,8,0" MinWidth="85">
-                                <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock x:Name="lblStatFullAccess" Text="0" FontSize="18" FontWeight="Bold" Foreground="#047857" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Full Access" FontSize="10" FontWeight="SemiBold" Foreground="#10B981" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Background="#F5F3FF" BorderBrush="#DDD6FE" BorderThickness="1" CornerRadius="6" Padding="12,6" Margin="0,0,8,0" MinWidth="85">
-                                <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock x:Name="lblStatSendAs" Text="0" FontSize="18" FontWeight="Bold" Foreground="#6D28D9" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Send As" FontSize="10" FontWeight="SemiBold" Foreground="#8B5CF6" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="6" Padding="12,6" MinWidth="85">
-                                <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock x:Name="lblStatSendOnBehalf" Text="0" FontSize="18" FontWeight="Bold" Foreground="#B45309" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Send On Behalf" FontSize="10" FontWeight="SemiBold" Foreground="#F59E0B" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </Grid>
-                </Border>
 
-                <!-- Filter & Export Bar -->
-                <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,8" Padding="10,8">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+                            <!-- Results DataGrid -->
+                            <DataGrid x:Name="dgAccessResults" Grid.Row="1" AutoGenerateColumns="False" CanUserAddRows="False"
+                                      IsReadOnly="True" RowHeight="32" FontSize="12">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Shared Mailbox Name" Binding="{Binding MailboxDisplayName}" Width="1.6*"/>
+                                    <DataGridTextColumn Header="Mailbox Email" Binding="{Binding MailboxEmail}" Width="1.8*"/>
+                                    <DataGridTextColumn Header="Type" Binding="{Binding MailboxType}" Width="115"/>
+                                    <DataGridTextColumn Header="Full Access" Binding="{Binding FullAccess}" Width="85"/>
+                                    <DataGridTextColumn Header="Send As" Binding="{Binding SendAs}" Width="80"/>
+                                    <DataGridTextColumn Header="Send On Behalf" Binding="{Binding SendOnBehalf}" Width="105"/>
+                                    <DataGridTextColumn Header="Permissions Summary" Binding="{Binding PermissionsSummary}" Width="1.4*"/>
+                                    <DataGridTextColumn Header="GAL Status" Binding="{Binding GALStatus}" Width="85"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </TabItem>
 
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
-                            <TextBlock Text="Filter Mailboxes:" VerticalAlignment="Center" Foreground="#64748B" FontWeight="SemiBold" Margin="0,0,6,0" FontSize="12"/>
-                            <TextBox x:Name="txtResultSearch" Width="170" Height="28" VerticalContentAlignment="Center" Padding="6,0"/>
-                        </StackPanel>
-
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
-                            <TextBlock Text="Permission:" VerticalAlignment="Center" Foreground="#64748B" FontWeight="SemiBold" Margin="0,0,6,0" FontSize="12"/>
-                            <ComboBox x:Name="cmbPermFilter" Width="155" Height="28" SelectedIndex="0" VerticalContentAlignment="Center">
-                                <ComboBoxItem Content="All Permissions"/>
-                                <ComboBoxItem Content="Full Access Only"/>
-                                <ComboBoxItem Content="Send As Only"/>
-                                <ComboBoxItem Content="Send On Behalf Only"/>
-                            </ComboBox>
-                        </StackPanel>
-
-                        <CheckBox x:Name="chkIncludeUserMailboxes" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,10,0"
-                                  ToolTip="Also check if the user has delegated access to other regular User Mailboxes">
-                            <TextBlock Text="Include Delegated User Mailboxes" FontSize="12" Foreground="#334155" FontWeight="SemiBold"/>
-                        </CheckBox>
-
-                        <Button x:Name="btnExportUserCsv" Grid.Column="4" Content="Export User CSV" Margin="0,0,6,0"/>
-                        <Button x:Name="btnExportAllCsv" Grid.Column="5" Content="Export All Users CSV" Style="{StaticResource SuccessButton}"/>
-                    </Grid>
-                </Border>
-
-                <!-- Results DataGrid -->
-                <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0">
-                    <DataGrid x:Name="dgAccessResults" AutoGenerateColumns="False" CanUserAddRows="False"
-                              IsReadOnly="True" Background="#FFFFFF" BorderThickness="0"
-                              RowHeaderWidth="0" GridLinesVisibility="Horizontal" HeadersVisibility="Column"
-                              RowHeight="32" FontSize="12">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Shared Mailbox Name" Binding="{Binding MailboxDisplayName}" Width="1.6*"/>
-                            <DataGridTextColumn Header="Mailbox Email" Binding="{Binding MailboxEmail}" Width="1.8*"/>
-                            <DataGridTextColumn Header="Type" Binding="{Binding MailboxType}" Width="115"/>
-                            <DataGridTextColumn Header="Full Access" Binding="{Binding FullAccess}" Width="85"/>
-                            <DataGridTextColumn Header="Send As" Binding="{Binding SendAs}" Width="80"/>
-                            <DataGridTextColumn Header="Send On Behalf" Binding="{Binding SendOnBehalf}" Width="105"/>
-                            <DataGridTextColumn Header="Permissions Summary" Binding="{Binding PermissionsSummary}" Width="1.4*"/>
-                            <DataGridTextColumn Header="GAL Status" Binding="{Binding GALStatus}" Width="85"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </Border>
+                    <TabItem Header="Activity Log">
+                        <Border Margin="0,8,0,0" Background="#CC050A14" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="10">
+                            <TextBox x:Name="txtLog" Background="Transparent" Foreground="#CBD5E1" BorderThickness="0" Padding="0"
+                                     FontFamily="Cascadia Mono, Consolas" FontSize="11.5" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap"/>
+                        </Border>
+                    </TabItem>
+                </TabControl>
             </Grid>
         </Grid>
 
-        <!-- BOTTOM PROGRESS & ACTIVITY LOG -->
-        <Border Grid.Row="2" Background="#0F172A" Padding="14,10">
+        <!-- SLIM PROGRESS BAR -->
+        <ProgressBar x:Name="progressBar" Grid.Row="2" Height="3" Minimum="0" Maximum="100" Value="0"
+                     Background="#0B1528" Foreground="#2DD4BF" BorderThickness="0"/>
+
+        <!-- SINGLE-ROW FOOTER -->
+        <Border Grid.Row="3" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="20,10">
             <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="85"/>
-                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-                <Grid Grid.Row="0" Margin="0,0,0,6">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="260"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="lblProgress" Text="Ready. Click 'Sign In to Exchange Online' to load users." Foreground="#E2E8F0" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    <ProgressBar x:Name="progressBar" Grid.Column="1" Height="12" Minimum="0" Maximum="100" Value="0" Background="#1E293B" Foreground="#38BDF8" BorderThickness="0"/>
-                </Grid>
+                <TextBlock x:Name="lblProgress" Grid.Column="0" Text="Ready. Click 'Sign In to Exchange Online' to load users."
+                           Foreground="#94A3B8" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
 
-                <TextBox x:Name="txtLog" Grid.Row="1" Background="#020617" Foreground="#94A3B8" BorderBrush="#1E293B" BorderThickness="1"
-                         FontFamily="Consolas" FontSize="11" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" Padding="6"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="btnExportUserCsv" Content="Export User CSV" Height="34" Margin="0,0,10,0"/>
+                    <Button x:Name="btnExportAllCsv" Content="Export All Users CSV" Style="{StaticResource SuccessButton}" Height="34"/>
+                </StackPanel>
             </Grid>
         </Border>
     </Grid>
@@ -1282,6 +1672,7 @@ function Export-AllCachedReport {
 # -------------------------------------------------------------------------
 $reader = [System.Xml.XmlNodeReader]::new($xaml)
 $window = [System.Windows.Markup.XamlReader]::Load($reader)
+Initialize-StandardGuiWindow -Window $window
 
 $bdgConnection          = $window.FindName("bdgConnection")
 $lblConnectionStatus    = $window.FindName("lblConnectionStatus")

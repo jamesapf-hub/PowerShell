@@ -118,7 +118,7 @@ if (-not $isAdmin) {
 }
 
 # Reusable function to discover scripts and extract synopsis metadata
-function Get-DiscoveredScripts {
+function Get-DiscoveredScript {
     if (-not (Test-Path $ScriptsFolder)) {
         return @()
     }
@@ -170,7 +170,7 @@ function Get-DiscoveredScripts {
 # COMMAND LINE / AUTOMATION MODE
 # ==========================================
 if ($NoGui) {
-    $tasks = Get-DiscoveredScripts
+    $tasks = Get-DiscoveredScript
     if ($tasks.Count -eq 0) {
         Write-Host "[-] No cleanup tasks found in '$ScriptsFolder'." -ForegroundColor Red
         exit 0
@@ -254,149 +254,286 @@ if (-not $NoGui -and [System.Threading.Thread]::CurrentThread.GetApartmentState(
 # Import GUI assemblies
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
+function Initialize-StandardGuiWindow {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window,
+        [string]$ScriptRoot = $PSScriptRoot
+    )
+
+    $fontFiles = @('Figtree-Regular.ttf', 'Figtree-SemiBold.ttf', 'Figtree-Bold.ttf')
+    $fontBaseUrl = 'https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/assets/fonts/'
+    $resolvedFontDir = $null
+
+    if (-not [string]::IsNullOrWhiteSpace($ScriptRoot)) {
+        $probeDir = $ScriptRoot
+        for ($level = 0; $level -lt 6; $level++) {
+            if ([string]::IsNullOrWhiteSpace($probeDir)) { break }
+            $candidateDir = Join-Path -Path $probeDir -ChildPath 'assets\fonts'
+            if (Test-Path -LiteralPath (Join-Path -Path $candidateDir -ChildPath 'Figtree-Regular.ttf')) {
+                $resolvedFontDir = $candidateDir
+                break
+            }
+            $probeDir = Split-Path -Path $probeDir -Parent
+        }
+    }
+
+    if (-not $resolvedFontDir) {
+        $cacheDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'PowerShellGui\fonts'
+        try {
+            if (-not (Test-Path -LiteralPath $cacheDir)) {
+                New-Item -Path $cacheDir -ItemType Directory -Force | Out-Null
+            }
+            $prevProgress = $ProgressPreference
+            $ProgressPreference = 'SilentlyContinue'
+            try {
+                [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+                foreach ($fontFile in $fontFiles) {
+                    $destPath = Join-Path -Path $cacheDir -ChildPath $fontFile
+                    if (-not (Test-Path -LiteralPath $destPath)) {
+                        Invoke-WebRequest -Uri ($fontBaseUrl + $fontFile) -OutFile $destPath -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+                    }
+                }
+            } finally {
+                $ProgressPreference = $prevProgress
+            }
+            if (Test-Path -LiteralPath (Join-Path -Path $cacheDir -ChildPath 'Figtree-Regular.ttf')) {
+                $resolvedFontDir = $cacheDir
+            }
+        } catch {
+            $resolvedFontDir = $null
+        }
+    }
+
+    if ($resolvedFontDir -and (Test-Path -LiteralPath (Join-Path -Path $resolvedFontDir -ChildPath 'Figtree-Regular.ttf'))) {
+        try {
+            $fontUri = ([System.Uri]($resolvedFontDir.TrimEnd('\') + '\')).AbsoluteUri
+            $Window.FontFamily = New-Object System.Windows.Media.FontFamily ("$($fontUri)#Figtree, Segoe UI Variable, Segoe UI")
+        } catch {
+            $Window.FontFamily = New-Object System.Windows.Media.FontFamily ("Segoe UI Variable, Segoe UI")
+        }
+    } else {
+        $Window.FontFamily = New-Object System.Windows.Media.FontFamily ("Segoe UI Variable, Segoe UI")
+    }
+
+    $workArea = [System.Windows.SystemParameters]::WorkArea
+    $targetWidth  = [Math]::Round([Math]::Min($workArea.Width - 24,  [Math]::Max(860, [Math]::Min(1440, $workArea.Width * 0.70))))
+    $targetHeight = [Math]::Round([Math]::Min($workArea.Height - 24, [Math]::Max(640, [Math]::Min(900,  $workArea.Height * 0.80))))
+
+    $Window.Width = $targetWidth
+    $Window.Height = $targetHeight
+    $Window.MinWidth = [Math]::Min(860, $targetWidth)
+    $Window.MinHeight = [Math]::Min(640, $targetHeight)
+    $Window.ResizeMode = [System.Windows.ResizeMode]::CanResize
+    $Window.WindowStartupLocation = [System.Windows.WindowStartupLocation]::Manual
+    $Window.Left = $workArea.Left + [Math]::Round(($workArea.Width - $targetWidth) / 2)
+    $Window.Top  = $workArea.Top  + [Math]::Round(($workArea.Height - $targetHeight) / 2)
+}
+
 # Define XAML for the Main Window
 [xml]$xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Ultimate PC CleanUp Utility"
-        Height="700" Width="1050"
-        Background="#0e0e0e"
-        WindowStartupLocation="CenterScreen"
+        Title="Ultimate PC CleanUp Utility v1.1"
+        Height="720" Width="1120"
+        WindowStartupLocation="Manual"
         ResizeMode="CanResize">
-    
+    <Window.Background>
+        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
+            <GradientStop Color="#0F1F3D" Offset="0.0"/>
+            <GradientStop Color="#091122" Offset="0.55"/>
+            <GradientStop Color="#05070C" Offset="1.0"/>
+        </RadialGradientBrush>
+    </Window.Background>
+
     <Window.Resources>
-        <!-- Primary Action Button Style (Brand Orange Accent) -->
+        <!-- Primary Action Button Style (Obsidian Teal CTA) -->
         <Style TargetType="Button" x:Key="PrimaryBtn">
-            <Setter Property="Background" Value="#ff6900"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#2DD4BF"/>
+            <Setter Property="Foreground" Value="#042F2E"/>
             <Setter Property="Padding" Value="16,8"/>
             <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="FontSize" Value="13"/>
-            <Style.Resources>
-                <Style TargetType="Border">
-                    <Setter Property="CornerRadius" Value="6"/>
-                </Style>
-            </Style.Resources>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#cc5400"/>
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Background" Value="#662a00"/>
-                    <Setter Property="Foreground" Value="#9ca3af"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="BtnBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#5EEAD4"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#14B8A6"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#13223A"/>
+                                <Setter Property="Foreground" Value="#64748B"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-        <!-- Secondary Action Button Style (Outline Brand Orange Accent) -->
+        <!-- Secondary Accent Outline Button Style -->
         <Style TargetType="Button" x:Key="AccentBtn">
-            <Setter Property="Background" Value="#131313"/>
-            <Setter Property="Foreground" Value="#ff6900"/>
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Foreground" Value="#2DD4BF"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#ff6900"/>
+            <Setter Property="BorderBrush" Value="#2DD4BF"/>
             <Setter Property="Padding" Value="16,8"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="FontSize" Value="13"/>
-            <Style.Resources>
-                <Style TargetType="Border">
-                    <Setter Property="CornerRadius" Value="6"/>
-                </Style>
-            </Style.Resources>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#1b1b1b"/>
-                    <Setter Property="BorderBrush" Value="#ff8533"/>
-                    <Setter Property="Foreground" Value="#ff8533"/>
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Background" Value="#0e0e0e"/>
-                    <Setter Property="BorderBrush" Value="#662a00"/>
-                    <Setter Property="Foreground" Value="#662a00"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="BtnBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#24FFFFFF"/>
+                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#5EEAD4"/>
+                                <Setter Property="Foreground" Value="#5EEAD4"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#1A2DD4BF"/>
+                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#14B8A6"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#0DFFFFFF"/>
+                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#26354D"/>
+                                <Setter Property="Foreground" Value="#64748B"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-        <!-- General Button Style (Brand Secondary Elements) -->
+        <!-- General Secondary Button Style -->
         <Style TargetType="Button" x:Key="DefaultBtn">
-            <Setter Property="Background" Value="#1b1b1b"/>
-            <Setter Property="Foreground" Value="#e4e4e7"/>
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
             <Setter Property="Padding" Value="12,6"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#393939"/>
-            <Setter Property="FontWeight" Value="Medium"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Style.Resources>
-                <Style TargetType="Border">
-                    <Setter Property="CornerRadius" Value="4"/>
-                </Style>
-            </Style.Resources>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#393939"/>
-                    <Setter Property="BorderBrush" Value="#ff6900"/>
-                </Trigger>
-                <Trigger Property="IsEnabled" Value="False">
-                    <Setter Property="Background" Value="#0e0e0e"/>
-                    <Setter Property="BorderBrush" Value="#1b1b1b"/>
-                    <Setter Property="Foreground" Value="#71717a"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="BtnBorder" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#24FFFFFF"/>
+                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter Property="Foreground" Value="#F8FAFC"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#1FFFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#0DFFFFFF"/>
+                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#1A26354D"/>
+                                <Setter Property="Foreground" Value="#64748B"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-        <!-- Script Card Item Style (Brand Surface System) -->
+        <!-- Dark-Themed CheckBox Style -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent">
+                            <Border x:Name="CheckBoxBorder" Width="18" Height="18" Background="#99070D1A" BorderBrush="#26354D" BorderThickness="1.5" CornerRadius="4" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <Path x:Name="CheckMark" Data="M 3,8.5 L 6.5,12 L 13,4.5" Stroke="#042F2E" StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Visibility="Collapsed"/>
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckBoxBorder" Property="Background" Value="#2DD4BF"/>
+                                <Setter TargetName="CheckBoxBorder" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CheckBoxBorder" Property="BorderBrush" Value="#5EEAD4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Script Card Item Style (Obsidian Surface) -->
         <Style TargetType="Border" x:Key="ScriptCardStyle">
-            <Setter Property="Background" Value="#131313"/>
-            <Setter Property="BorderBrush" Value="#1b1b1b"/>
+            <Setter Property="Background" Value="#660D192E"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Padding" Value="12"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#1b1b1b"/>
-                    <Setter Property="BorderBrush" Value="#393939"/>
+                    <Setter Property="Background" Value="#880D192E"/>
+                    <Setter Property="BorderBrush" Value="#2DD4BF"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
     </Window.Resources>
-    
-    <Grid Margin="25">
+
+    <Grid>
         <Grid.RowDefinitions>
-            <!-- Title Bar/Header -->
+            <!-- Header Bar -->
             <RowDefinition Height="Auto"/>
             <!-- Main Content Area -->
             <RowDefinition Height="*"/>
-            <!-- Status & Progress Footer -->
+            <!-- Footer Bar -->
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        
+
         <!-- Header Panel -->
-        <Border Grid.Row="0" BorderThickness="0,0,0,1" BorderBrush="#1b1b1b" Padding="0,0,0,18" Margin="0,0,0,20">
+        <Border Grid.Row="0" Background="#B3070D19" BorderThickness="0,0,0,1" BorderBrush="#1FFFFFFF" Padding="24,14">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <TextBlock Text="Ultimate PC CleanUp" FontSize="28" FontWeight="Bold" Foreground="#F4F4F5"/>
-                    <TextBlock Text="Run custom PC tidy-up scripts safely, monitor outputs, and keep Windows clean." FontSize="13" Foreground="#A1A1AA" Margin="0,5,0,0"/>
+                <StackPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Ultimate PC CleanUp" FontSize="20" FontWeight="Bold" Foreground="#F8FAFC" VerticalAlignment="Center"/>
+                        <Border Background="#1A2DD4BF" BorderBrush="#402DD4BF" BorderThickness="1" CornerRadius="4" Padding="7,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="v1.1" FontSize="11" FontWeight="SemiBold" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas"/>
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Text="Run custom PC tidy-up scripts safely, monitor outputs, and keep Windows clean." FontSize="12.5" Foreground="#94A3B8" Margin="0,4,0,0"/>
                 </StackPanel>
-                <Button Name="BtnRefresh" Grid.Column="1" Style="{StaticResource DefaultBtn}" Content="Scan Folder" Width="100" Height="32" Cursor="Hand" VerticalAlignment="Center"/>
+                <Button Name="BtnRefresh" Grid.Column="1" Style="{StaticResource DefaultBtn}" Content="Scan Folder" MinWidth="106" Height="34" Cursor="Hand" VerticalAlignment="Center"/>
             </Grid>
         </Border>
-        
+
         <!-- Main Layout Split -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="1" Margin="24,18">
             <Grid.ColumnDefinitions>
                 <!-- Task Checklist Selection (Left) -->
                 <ColumnDefinition Width="4*"/>
                 <!-- Vertical Divider -->
-                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="18"/>
                 <!-- Console Logging Console (Right) -->
                 <ColumnDefinition Width="5*"/>
             </Grid.ColumnDefinitions>
-            
+
             <!-- Left Panel: Available Scripts -->
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
@@ -404,83 +541,83 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
-                
-                <TextBlock Text="DISCOVERED CLEANUP TASKS" FontSize="11" FontWeight="Bold" Foreground="#71717A" Margin="0,0,0,10"/>
-                
+
+                <TextBlock Text="DISCOVERED CLEANUP TASKS" FontSize="11" FontWeight="Bold" Foreground="#94A3B8" Margin="0,0,0,10"/>
+
                 <!-- Scrollable Checklist -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Name="ScriptListContainer" Margin="0,0,5,0"/>
+                    <StackPanel Name="ScriptListContainer" Margin="0,0,6,0"/>
                 </ScrollViewer>
-                
+
                 <!-- Bulk Selection controls -->
-                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,15,0,0">
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
                     <Button Name="BtnSelectAll" Style="{StaticResource DefaultBtn}" Content="Select All" Margin="0,0,8,0" Padding="14,6" Cursor="Hand"/>
                     <Button Name="BtnDeselectAll" Style="{StaticResource DefaultBtn}" Content="Clear Selection" Padding="14,6" Cursor="Hand"/>
                 </StackPanel>
             </Grid>
-            
+
             <!-- Right Panel: Logs & Execution Controls -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                
+
                 <!-- Execution Buttons -->
                 <Grid Grid.Row="0" Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Button Name="BtnRunSelected" Style="{StaticResource AccentBtn}" Content="Run Selected Tasks" Margin="0,0,10,0" Height="42" Cursor="Hand"/>
-                    <Button Name="BtnRunAll" Grid.Column="1" Style="{StaticResource PrimaryBtn}" Content="Run All Tasks" Height="42" Cursor="Hand"/>
+                    <Button Name="BtnRunSelected" Style="{StaticResource AccentBtn}" Content="Run Selected Tasks" Margin="0,0,10,0" Height="40" Cursor="Hand"/>
+                    <Button Name="BtnRunAll" Grid.Column="1" Style="{StaticResource PrimaryBtn}" Content="Run All Tasks" Height="40" Cursor="Hand"/>
                 </Grid>
-                
+
                 <!-- Monospaced Log Console -->
-                <Border Grid.Row="1" Background="#0e0e0e" CornerRadius="6" BorderThickness="1" BorderBrush="#1b1b1b">
+                <Border Grid.Row="1" Background="#CC050A14" CornerRadius="6" BorderThickness="1" BorderBrush="#26354D">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        
+
                         <!-- Console Header -->
-                        <Border Background="#131313" Padding="12,8" BorderThickness="0,0,0,1" BorderBrush="#1b1b1b">
+                        <Border Background="#660D192E" Padding="14,8" BorderThickness="0,0,0,1" BorderBrush="#26354D">
                             <Grid>
-                                <TextBlock Text="REAL-TIME EXECUTION LOG" FontSize="11" FontWeight="Bold" Foreground="#A1A1AA" VerticalAlignment="Center"/>
-                                <Button Name="BtnClearLog" Content="Clear Console" Style="{StaticResource DefaultBtn}" HorizontalAlignment="Right" Padding="8,3" FontSize="10" Cursor="Hand"/>
+                                <TextBlock Text="REAL-TIME EXECUTION LOG" FontSize="11" FontWeight="Bold" Foreground="#94A3B8" VerticalAlignment="Center"/>
+                                <Button Name="BtnClearLog" Content="Clear Console" Style="{StaticResource DefaultBtn}" HorizontalAlignment="Right" Padding="10,4" FontSize="11" Cursor="Hand"/>
                             </Grid>
                         </Border>
-                        
+
                         <!-- Console Textbox -->
-                        <TextBox Name="TxtConsole" Grid.Row="1" Background="Transparent" Foreground="#F4F4F5" FontFamily="Consolas" FontSize="12.5" BorderThickness="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Margin="12" Padding="2"/>
+                        <TextBox Name="TxtConsole" Grid.Row="1" Background="Transparent" Foreground="#F8FAFC" CaretBrush="#2DD4BF" SelectionBrush="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="12.5" BorderThickness="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Margin="12,10" Padding="2"/>
                     </Grid>
                 </Border>
             </Grid>
         </Grid>
-        
+
         <!-- Footer Panel -->
-        <Border Grid.Row="2" BorderThickness="0,1,0,0" BorderBrush="#1b1b1b" Padding="0,18,0,0" Margin="0,20,0,0">
+        <Border Grid.Row="2" Background="#B3070D19" BorderThickness="0,1,0,0" BorderBrush="#26354D" Padding="24,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Name="TxtProgress" Text="Ready to begin cleanup" Foreground="#A1A1AA" VerticalAlignment="Center" FontSize="12"/>
-                <ProgressBar Name="ProgressIndicator" Grid.Column="1" Margin="20,0" Height="8" Background="#1b1b1b" Foreground="#ff6900" Minimum="0" Maximum="100" Value="0" BorderThickness="0">
+                <TextBlock Name="TxtProgress" Text="Ready to begin cleanup" Foreground="#94A3B8" VerticalAlignment="Center" FontSize="12"/>
+                <ProgressBar Name="ProgressIndicator" Grid.Column="1" Margin="20,0" Height="8" Background="#99070D1A" Foreground="#2DD4BF" Minimum="0" Maximum="100" Value="0" BorderThickness="0">
                     <ProgressBar.Template>
                         <ControlTemplate TargetType="ProgressBar">
                             <Border Background="{TemplateBinding Background}" CornerRadius="4" ClipToBounds="True">
                                 <Grid>
-                                    <Border Name="PART_Track" />
-                                    <Border Name="PART_Indicator" Background="{TemplateBinding Foreground}" HorizontalAlignment="Left" CornerRadius="4"/>
+                                    <Border x:Name="PART_Track" />
+                                    <Border x:Name="PART_Indicator" Background="{TemplateBinding Foreground}" HorizontalAlignment="Left" CornerRadius="4"/>
                                 </Grid>
                             </Border>
                         </ControlTemplate>
                     </ProgressBar.Template>
                 </ProgressBar>
-                <TextBlock Name="TxtStatusCount" Grid.Column="2" Text="0 / 0 Completed" Foreground="#A1A1AA" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold"/>
+                <TextBlock Name="TxtStatusCount" Grid.Column="2" Text="0 / 0 Completed" Foreground="#CBD5E1" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" FontFamily="Cascadia Mono, Consolas"/>
             </Grid>
         </Border>
     </Grid>
@@ -490,6 +627,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 # Load the XML XAML into WPF Window object
 $reader = New-Object System.Xml.XmlNodeReader $xaml
 $window = [Windows.Markup.XamlReader]::Load($reader)
+Initialize-StandardGuiWindow -Window $window -ScriptRoot $PSScriptRoot
 
 # Map XAML named controls to PowerShell script-scoped variables automatically
 $xaml.SelectNodes("//*[@Name]") | ForEach-Object {
@@ -518,16 +656,18 @@ $runspace.Open()
 $runspace.SessionStateProxy.SetVariable("syncHash", $syncHash)
 
 # Function to parse scripts inside the 'Scripts' folder
-function Load-Scripts {
+function Update-ScriptList {
     $ScriptListContainer.Children.Clear()
     $scriptList.Clear()
     
-    $discovered = Get-DiscoveredScripts
+    $discovered = Get-DiscoveredScript
     foreach ($file in $discovered) {
+        $safeTitle = [System.Security.SecurityElement]::Escape($file.Title)
+        $safeDescription = [System.Security.SecurityElement]::Escape($file.Description)
         # Load XAML for the dynamic Card UI element
         $cardXaml = @"
 <Border xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Style="{StaticResource ScriptCardStyle}">
+        Style="{DynamicResource ScriptCardStyle}">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
@@ -537,13 +677,13 @@ function Load-Scripts {
         
         <CheckBox Name="ChkSelect" VerticalAlignment="Center" Margin="0,0,12,0" IsChecked="True" Cursor="Hand"/>
         
-        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-            <TextBlock Name="TxtTitle" Text="$($file.Title)" FontWeight="SemiBold" FontSize="14" Foreground="#F4F4F5"/>
-            <TextBlock Name="TxtDesc" Text="$($file.Description)" FontSize="11.5" Foreground="#A1A1AA" TextWrapping="Wrap" Margin="0,4,0,0"/>
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,10,0">
+            <TextBlock Name="TxtTitle" Text="$safeTitle" FontWeight="SemiBold" FontSize="13.5" Foreground="#F8FAFC"/>
+            <TextBlock Name="TxtDesc" Text="$safeDescription" FontSize="11.5" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,3,0,0"/>
         </StackPanel>
         
-        <Border Grid.Column="2" Name="StatusBadge" CornerRadius="4" Padding="8,4" VerticalAlignment="Center" Background="#1b1b1b" MinWidth="75">
-            <TextBlock Name="TxtStatus" Text="Pending" Foreground="#A1A1AA" FontWeight="Bold" FontSize="10.5" HorizontalAlignment="Center"/>
+        <Border Grid.Column="2" Name="StatusBadge" CornerRadius="4" Padding="8,4" VerticalAlignment="Center" Background="#99070D1A" BorderBrush="#26354D" BorderThickness="1" MinWidth="75">
+            <TextBlock Name="TxtStatus" Text="Pending" Foreground="#94A3B8" FontWeight="Bold" FontSize="10.5" HorizontalAlignment="Center"/>
         </Border>
     </Grid>
 </Border>
@@ -574,13 +714,14 @@ function Load-Scripts {
 function Start-Execution {
     param([bool]$onlySelected)
     
+    $brushConverter = New-Object System.Windows.Media.BrushConverter
     # Identify scripts to execute
     $selectedScripts = [System.Collections.Generic.List[PSCustomObject]]::new()
     foreach ($script in $scriptList) {
         # Reset card status visually
         $script.StatusText.Text = "Pending"
-        $script.StatusBadge.Background = [System.Windows.Media.BrushConverter]::ConvertFromString("#1b1b1b")
-        $script.StatusText.Foreground = [System.Windows.Media.BrushConverter]::ConvertFromString("#A1A1AA")
+        $script.StatusBadge.Background = $brushConverter.ConvertFromString("#99070D1A")
+        $script.StatusText.Foreground = $brushConverter.ConvertFromString("#94A3B8")
         
         if (-not $onlySelected -or $script.Checkbox.IsChecked) {
             $selectedScripts.Add($script) | Out-Null
@@ -615,6 +756,7 @@ function Start-Execution {
     
     $runscript = {
         $scripts = $syncHash.Scripts
+        $bgBrushConverter = New-Object System.Windows.Media.BrushConverter
         
         for ($i = 0; $i -lt $scripts.Count; $i++) {
             $script = $scripts[$i]
@@ -622,8 +764,8 @@ function Start-Execution {
             # Transition task card UI status to 'Running'
             $syncHash.Window.Dispatcher.Invoke([Action]{
                 $script.StatusText.Text = "Running"
-                $script.StatusBadge.Background = [System.Windows.Media.BrushConverter]::ConvertFromString("#393939") # Surface Bright
-                $script.StatusText.Foreground = [System.Windows.Media.BrushConverter]::ConvertFromString("#ff6900") # Primary Orange Accent
+                $script.StatusBadge.Background = $bgBrushConverter.ConvertFromString("#1A2DD4BF")
+                $script.StatusText.Foreground = $bgBrushConverter.ConvertFromString("#2DD4BF")
                 
                 $syncHash.TxtConsole.AppendText("======================================================================`r`n")
                 $syncHash.TxtConsole.AppendText("TASK: $($script.Title)`r`n")
@@ -648,7 +790,7 @@ function Start-Execution {
             # Read stdout stream asynchronously line-by-line
             while (-not $proc.HasExited) {
                 $line = $proc.StandardOutput.ReadLine()
-                if ($line -ne $null) {
+                if ($null -ne $line) {
                     $syncHash.Window.Dispatcher.Invoke([Action]{
                         $syncHash.TxtConsole.AppendText("$line`r`n")
                         $syncHash.TxtConsole.ScrollToEnd()
@@ -679,13 +821,13 @@ function Start-Execution {
                 
                 if ($exitCode -eq 0) {
                     $script.StatusText.Text = "Success"
-                    $script.StatusBadge.Background = [System.Windows.Media.BrushConverter]::ConvertFromString("#064E3B") # Dark Green
-                    $script.StatusText.Foreground = [System.Windows.Media.BrushConverter]::ConvertFromString("#34D399") # Bright Green
+                    $script.StatusBadge.Background = $bgBrushConverter.ConvertFromString("#064E3B")
+                    $script.StatusText.Foreground = $bgBrushConverter.ConvertFromString("#34D399")
                     $syncHash.TxtConsole.AppendText("`r`n[+] Task completed successfully.`r`n`r`n")
                 } else {
                     $script.StatusText.Text = "Failed"
-                    $script.StatusBadge.Background = [System.Windows.Media.BrushConverter]::ConvertFromString("#7F1D1D") # Dark Red
-                    $script.StatusText.Foreground = [System.Windows.Media.BrushConverter]::ConvertFromString("#F87171") # Bright Red
+                    $script.StatusBadge.Background = $bgBrushConverter.ConvertFromString("#7F1D1D")
+                    $script.StatusText.Foreground = $bgBrushConverter.ConvertFromString("#F87171")
                     if (-not [string]::IsNullOrEmpty($errors)) {
                         $syncHash.TxtConsole.AppendText("`r`n[!] Errors reported:`r`n$errors`r`n")
                     }
@@ -715,7 +857,7 @@ function Start-Execution {
 
 # Refresh/Scan Folder Button
 $BtnRefresh.Add_Click({
-    Load-Scripts
+    Update-ScriptList
 })
 
 # Run Selected Tasks Button
@@ -758,7 +900,7 @@ $window.Add_Closing({
 })
 
 # Initial script scan and load
-Load-Scripts
+Update-ScriptList
 
 # Display the main window
 $window.ShowDialog() | Out-Null

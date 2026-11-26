@@ -233,8 +233,100 @@ function Write-ToolLog {
 }
 
 # ---------------------------------------------------------------------------
-# 3. WPF GUI Controller
+# 3. WPF GUI Standardization & Controller
 # ---------------------------------------------------------------------------
+function Initialize-StandardGuiWindow {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window
+    )
+
+    $fontFiles = @('Figtree-Regular.ttf', 'Figtree-SemiBold.ttf', 'Figtree-Bold.ttf')
+    $resolvedFontDir = $null
+
+    $searchRoot = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+        $PSScriptRoot
+    } elseif (-not [string]::IsNullOrWhiteSpace($PSCommandPath)) {
+        Split-Path -Path $PSCommandPath -Parent
+    } else {
+        $null
+    }
+
+    if ($searchRoot) {
+        $probe = $searchRoot
+        for ($i = 0; $i -lt 5 -and -not [string]::IsNullOrWhiteSpace($probe); $i++) {
+            $candidateDir = Join-Path -Path $probe -ChildPath 'assets\fonts'
+            if (Test-Path -Path (Join-Path -Path $candidateDir -ChildPath 'Figtree-Regular.ttf') -PathType Leaf) {
+                $resolvedFontDir = $candidateDir
+                break
+            }
+            $probe = Split-Path -Path $probe -Parent
+        }
+    }
+
+    if (-not $resolvedFontDir) {
+        $cacheDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'PowerShellGui\fonts'
+        try {
+            if (-not (Test-Path -Path $cacheDir)) {
+                New-Item -Path $cacheDir -ItemType Directory -Force -ErrorAction Stop | Out-Null
+            }
+            $allCached = $true
+            foreach ($ff in $fontFiles) {
+                if (-not (Test-Path -Path (Join-Path -Path $cacheDir -ChildPath $ff) -PathType Leaf)) {
+                    $allCached = $false
+                    break
+                }
+            }
+            if (-not $allCached) {
+                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+                $prevProgress = $ProgressPreference
+                $ProgressPreference = 'SilentlyContinue'
+                try {
+                    foreach ($ff in $fontFiles) {
+                        $dest = Join-Path -Path $cacheDir -ChildPath $ff
+                        if (-not (Test-Path -Path $dest -PathType Leaf)) {
+                            $url = "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/assets/fonts/$ff"
+                            Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing -TimeoutSec 15 -ErrorAction Stop
+                        }
+                    }
+                } finally {
+                    $ProgressPreference = $prevProgress
+                }
+            }
+            if (Test-Path -Path (Join-Path -Path $cacheDir -ChildPath 'Figtree-Regular.ttf') -PathType Leaf) {
+                $resolvedFontDir = $cacheDir
+            }
+        } catch {
+            Write-Verbose "Figtree font download skipped: $($_.Exception.Message)"
+        }
+    }
+
+    if ($resolvedFontDir) {
+        try {
+            $fontUri = ([System.Uri]($resolvedFontDir.TrimEnd('\') + '\')).AbsoluteUri
+            $Window.FontFamily = New-Object System.Windows.Media.FontFamily ("$($fontUri)#Figtree, Segoe UI Variable, Segoe UI")
+        } catch {
+            $Window.FontFamily = New-Object System.Windows.Media.FontFamily ('Segoe UI Variable, Segoe UI')
+        }
+    } else {
+        $Window.FontFamily = New-Object System.Windows.Media.FontFamily ('Segoe UI Variable, Segoe UI')
+    }
+
+    $workArea = [System.Windows.SystemParameters]::WorkArea
+    $targetWidth  = [Math]::Round([Math]::Min($workArea.Width - 24,  [Math]::Max(860, [Math]::Min(1440, $workArea.Width * 0.70))))
+    $targetHeight = [Math]::Round([Math]::Min($workArea.Height - 24, [Math]::Max(640, [Math]::Min(900,  $workArea.Height * 0.80))))
+
+    $Window.WindowStartupLocation = 'Manual'
+    $Window.Width  = $targetWidth
+    $Window.Height = $targetHeight
+    $Window.Left   = [Math]::Round($workArea.Left + (($workArea.Width - $targetWidth) / 2))
+    $Window.Top    = [Math]::Round($workArea.Top + (($workArea.Height - $targetHeight) / 2))
+    $Window.MinWidth  = [Math]::Min(860, [int]$targetWidth)
+    $Window.MinHeight = [Math]::Min(640, [int]$targetHeight)
+    $Window.ResizeMode = 'CanResize'
+}
+
 function Show-EdgeProfileBuilderGui {
     [CmdletBinding()]
     param()
@@ -248,13 +340,7 @@ function Show-EdgeProfileBuilderGui {
     $xmlReader = New-Object System.Xml.XmlNodeReader $xamlDoc
     $window = [Windows.Markup.XamlReader]::Load($xmlReader)
 
-    $workArea = [System.Windows.SystemParameters]::WorkArea
-    $targetWidth = [Math]::Max(860, [Math]::Min(1440, $workArea.Width * 0.70))
-    $targetHeight = [Math]::Max(640, [Math]::Min(900, $workArea.Height * 0.80))
-    $window.Width = [Math]::Round([Math]::Min($targetWidth, $workArea.Width - 24))
-    $window.Height = [Math]::Round([Math]::Min($targetHeight, $workArea.Height - 24))
-    $window.Left = [Math]::Round($workArea.Left + (($workArea.Width - $window.Width) / 2))
-    $window.Top = [Math]::Round($workArea.Top + (($workArea.Height - $window.Height) / 2))
+    Initialize-StandardGuiWindow -Window $window
 
     $txtSelectedBadge = $window.FindName('TxtSelectedBadge')
     $btnUploadIcons = $window.FindName('BtnUploadIcons')

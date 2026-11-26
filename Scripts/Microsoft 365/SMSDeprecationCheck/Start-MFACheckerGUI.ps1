@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Entra ID MFA SMS Deprecation Checker GUI & Color-Coded Excel Exporter
 .DESCRIPTION
@@ -10,15 +10,104 @@
 #>
 
 # ==========================================
-# 1. IN-MEMORY EXECUTION SAFETY GUARD
+# 1. IN-MEMORY EXECUTION SAFETY GUARD & STA CHECK
 # ==========================================
 if ($PSScriptRoot -match "^iex") {
-    Write-Error "CRITICAL SAFETY ERROR: This packaged script relies on WPF GUI components and local modules. In-memory execution via 'iex' is disabled. Please download and extract the package folder, then run locally via:`n`npwsh.exe -ExecutionPolicy Bypass -File .\Start-MFACheckerGUI.ps1"
+    Write-Error "CRITICAL SAFETY ERROR: This packaged script relies on WPF GUI components and local modules. In-memory execution via 'iex' is disabled. Please download and extract the package folder, then run locally via:`n`npowershell.exe -ExecutionPolicy Bypass -File .\Start-MFACheckerGUI.ps1"
     exit 1
+}
+
+if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
+    $scriptPath = if ($PSScriptRoot) { Join-Path $PSScriptRoot $MyInvocation.MyCommand.Name } else { $PSCommandPath }
+    Start-Process powershell.exe -ArgumentList "-STA -ExecutionPolicy Bypass -NoProfile -File `"$scriptPath`""
+    exit
 }
 
 # Add required WPF & WinForms assemblies
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing
+
+function Initialize-StandardGuiWindow {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window,
+        [double]$MinWidth = 860,
+        [double]$MinHeight = 640
+    )
+
+    $fontFiles = @('Figtree-Regular.ttf', 'Figtree-SemiBold.ttf', 'Figtree-Bold.ttf')
+    $fontDir = $null
+
+    if ($PSScriptRoot) {
+        $probe = $PSScriptRoot
+        for ($i = 0; $i -le 5; $i++) {
+            if ([string]::IsNullOrWhiteSpace($probe)) { break }
+            $candidateDir = Join-Path -Path $probe -ChildPath 'assets\fonts'
+            $candidateRegular = Join-Path -Path $candidateDir -ChildPath 'Figtree-Regular.ttf'
+            if (Test-Path -Path $candidateRegular -PathType Leaf) {
+                $fontDir = $candidateDir
+                break
+            }
+            $probe = Split-Path -Path $probe -Parent
+        }
+    }
+
+    if (-not $fontDir) {
+        $cacheFontDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'PowerShellGui\fonts'
+        $cachedRegular = Join-Path -Path $cacheFontDir -ChildPath 'Figtree-Regular.ttf'
+        if (-not (Test-Path -Path $cachedRegular -PathType Leaf)) {
+            try {
+                if (-not (Test-Path -Path $cacheFontDir)) {
+                    New-Item -Path $cacheFontDir -ItemType Directory -Force | Out-Null
+                }
+                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+                $prevProgress = $ProgressPreference
+                $ProgressPreference = 'SilentlyContinue'
+                try {
+                    $baseUrl = 'https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/assets/fonts/'
+                    foreach ($f in $fontFiles) {
+                        $dest = Join-Path -Path $cacheFontDir -ChildPath $f
+                        if (-not (Test-Path -Path $dest -PathType Leaf)) {
+                            Invoke-WebRequest -Uri ($baseUrl + $f) -OutFile $dest -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+                        }
+                    }
+                } finally {
+                    $ProgressPreference = $prevProgress
+                }
+            } catch {
+                Write-Verbose "Figtree font download skipped (offline fallback): $($_.Exception.Message)"
+            }
+        }
+        if (Test-Path -Path $cachedRegular -PathType Leaf) {
+            $fontDir = $cacheFontDir
+        }
+    }
+
+    if ($fontDir) {
+        try {
+            $resolvedFontDir = (Resolve-Path -Path $fontDir -ErrorAction Stop).Path
+            $fontUri = ([System.Uri]::new((Join-Path -Path $resolvedFontDir -ChildPath ''))).AbsoluteUri
+            $Window.FontFamily = New-Object System.Windows.Media.FontFamily ("$($fontUri)#Figtree, Segoe UI Variable, Segoe UI")
+        } catch {
+            $Window.FontFamily = New-Object System.Windows.Media.FontFamily ('Segoe UI Variable, Segoe UI')
+        }
+    } else {
+        $Window.FontFamily = New-Object System.Windows.Media.FontFamily ('Segoe UI Variable, Segoe UI')
+    }
+
+    $workArea = [System.Windows.SystemParameters]::WorkArea
+    $targetWidth  = [Math]::Round([Math]::Min($workArea.Width - 24,  [Math]::Max(860, [Math]::Min(1440, $workArea.Width * 0.70))))
+    $targetHeight = [Math]::Round([Math]::Min($workArea.Height - 24, [Math]::Max(640, [Math]::Min(900,  $workArea.Height * 0.80))))
+
+    $Window.WindowStartupLocation = 'Manual'
+    $Window.Width  = $targetWidth
+    $Window.Height = $targetHeight
+    $Window.MinWidth  = [Math]::Min($MinWidth, $targetWidth)
+    $Window.MinHeight = [Math]::Min($MinHeight, $targetHeight)
+    $Window.Left = [Math]::Round($workArea.Left + (($workArea.Width - $targetWidth) / 2))
+    $Window.Top  = [Math]::Round($workArea.Top + (($workArea.Height - $targetHeight) / 2))
+    $Window.ResizeMode = 'CanResize'
+}
 
 # Global State
 $global:GraphConnected = $false
@@ -199,7 +288,7 @@ function Connect-EntraIDGraph {
             if ($txtConnStatus) {
                 $txtConnStatus.Dispatcher.Invoke([Action]{
                     $txtConnStatus.Text = "Missing Modules"
-                    $txtConnStatus.Foreground = [System.Windows.Media.Brushes]::Tomato
+                    $txtConnStatus.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F87171")
                 })
             }
             return $false
@@ -227,7 +316,7 @@ function Connect-EntraIDGraph {
             if ($txtConnStatus) {
                 $txtConnStatus.Dispatcher.Invoke([Action]{
                     $txtConnStatus.Text = "Connected: $($context.Account)"
-                    $txtConnStatus.Foreground = [System.Windows.Media.Brushes]::LightGreen
+                    $txtConnStatus.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#34D399")
                 })
             }
             return $true
@@ -237,7 +326,7 @@ function Connect-EntraIDGraph {
         if ($txtConnStatus) {
             $txtConnStatus.Dispatcher.Invoke([Action]{
                 $txtConnStatus.Text = "Connection Failed"
-                $txtConnStatus.Foreground = [System.Windows.Media.Brushes]::Tomato
+                $txtConnStatus.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F87171")
             })
         }
         return $false
@@ -579,66 +668,248 @@ function Export-MfaAuditToExcel {
 $inputXaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Entra ID MFA SMS Deprecation Checker" Height="780" Width="1100"
-        WindowStartupLocation="CenterScreen" Background="#1E1E2E" Foreground="#CDD6F4"
-        FontFamily="Segoe UI">
+        Title="Entra ID MFA SMS Deprecation Checker" Height="780" Width="1100" MinHeight="640" MinWidth="860"
+        WindowStartupLocation="Manual" Foreground="#F8FAFC" FontSize="13">
+    <Window.Background>
+        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
+            <GradientStop Color="#0F1F3D" Offset="0.0"/>
+            <GradientStop Color="#091122" Offset="0.55"/>
+            <GradientStop Color="#05070C" Offset="1.0"/>
+        </RadialGradientBrush>
+    </Window.Background>
+
     <Window.Resources>
+        <!-- Primary CTA Button (Teal) -->
+        <Style x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#2DD4BF"/>
+            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#5EEAD4"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#14B8A6"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Border" Property="Background" Value="#1A2B44"/>
+                                <Setter Property="Foreground" Value="#64748B"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Secondary Button -->
         <Style TargetType="Button">
-            <Setter Property="Background" Value="#313244"/>
-            <Setter Property="Foreground" Value="#CDD6F4"/>
-            <Setter Property="BorderBrush" Value="#45475A"/>
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Padding" Value="14,7"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#24FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#0DFFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
+
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#181825"/>
-            <Setter Property="Foreground" Value="#CDD6F4"/>
-            <Setter Property="BorderBrush" Value="#45475A"/>
-            <Setter Property="Padding" Value="6,4"/>
-            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Background" Value="#99070D1A"/>
+            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="CaretBrush" Value="#2DD4BF"/>
+            <Setter Property="SelectionBrush" Value="#2DD4BF"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#2DD4BF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
+
         <Style TargetType="CheckBox">
-            <Setter Property="Foreground" Value="#CDD6F4"/>
-            <Setter Property="Margin" Value="6,4"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="Margin" Value="0,0,14,0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border x:Name="Box" Width="16" Height="16" CornerRadius="4"
+                                    Background="#99070D1A" BorderBrush="#26354D" BorderThickness="1"
+                                    Margin="0,0,7,0" VerticalAlignment="Center">
+                                <Path x:Name="CheckMark" Data="M 3,7.5 L 6.2,10.5 L 11.5,4"
+                                      Stroke="#042F2E" StrokeThickness="2" Visibility="Collapsed"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                            </Border>
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#2DD4BF"/>
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#2DD4BF"/>
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#2DD4BF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="#050A14"/>
+            <Setter Property="Width" Value="10"/>
+            <Setter Property="MinWidth" Value="10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="{TemplateBinding Background}">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="#26354D" CornerRadius="4" Margin="2"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Margin="0,0,0,10">
+                                <TabPanel IsItemsHost="True" Margin="16,0"/>
+                            </Border>
+                            <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder" Background="Transparent" BorderBrush="Transparent" BorderThickness="0,0,0,2" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#E2E8F0"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="#F8FAFC"/>
+                                <Setter TargetName="TabBorder" Property="Background" Value="#142DD4BF"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#2DD4BF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
-    <Grid Margin="16">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/> <!-- Title & Connection Bar -->
-            <RowDefinition Height="Auto"/> <!-- KPI Cards -->
-            <RowDefinition Height="Auto"/> <!-- Controls Bar -->
-            <RowDefinition Height="*"/>    <!-- DataGrid Preview -->
-            <RowDefinition Height="Auto"/> <!-- Export Bar -->
-            <RowDefinition Height="120"/>  <!-- Console Log -->
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- HEADER BAR -->
-        <Border Grid.Row="0" Background="#252538" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+        <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="20,14">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Orientation="Vertical">
-                    <TextBlock Text="Entra ID MFA SMS Deprecation Checker" FontSize="20" FontWeight="Bold" Foreground="#89B4FA"/>
-                    <TextBlock Text="Audit user authentication methods, identify SMS default &amp; SMS-only users, and export color-coded XLSX" FontSize="12" Foreground="#A6ADC8" Margin="0,2,0,0"/>
+                <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                    <TextBlock Text="Entra ID MFA SMS Deprecation Checker" FontSize="19" FontWeight="Bold" Foreground="#F8FAFC"/>
+                    <TextBlock Text="Audit user authentication methods, identify SMS-default &amp; SMS-only accounts, and export color-coded XLSX reports." FontSize="12.5" Foreground="#94A3B8" Margin="0,2,0,0"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Name="txtConnStatus" Text="Not Connected" Foreground="Tomato" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                    <Button Name="btnConnect" Content="Connect to Entra ID" Background="#89B4FA" Foreground="#11111B" Padding="16,8"/>
+                    <Border Background="#14FFFFFF" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="11,6" Margin="0,0,12,0" VerticalAlignment="Center">
+                        <TextBlock Name="txtConnStatus" Text="Not Connected" Foreground="#F87171" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                    </Border>
+                    <Button Name="btnConnect" Content="Connect to Entra ID" Style="{StaticResource PrimaryButton}" Height="36"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- KPI CARDS -->
-        <Grid Grid.Row="1" Margin="0,0,0,12">
+        <!-- KPI STRIP -->
+        <Grid Grid.Row="1" Margin="16,12,16,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
@@ -646,142 +917,182 @@ $inputXaml = @"
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Total Users -->
-            <Border Grid.Column="0" Background="#252538" CornerRadius="6" Padding="12" Margin="0,0,6,0">
+            <Border Grid.Column="0" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,0,6,0">
                 <StackPanel>
-                    <TextBlock Text="Total Users Scanned" FontSize="11" Foreground="#A6ADC8"/>
-                    <TextBlock Name="kpiTotal" Text="0" FontSize="24" FontWeight="Bold" Foreground="#89B4FA" Margin="0,4,0,0"/>
+                    <TextBlock Text="Total Users Scanned" FontSize="11.5" Foreground="#94A3B8" FontWeight="SemiBold"/>
+                    <TextBlock Name="kpiTotal" Text="0" FontSize="22" FontWeight="Bold" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" Margin="0,3,0,0"/>
                 </StackPanel>
             </Border>
 
-            <!-- SMS ONLY -->
-            <Border Grid.Column="1" Background="#252538" CornerRadius="6" Padding="12" Margin="3,0,3,0">
+            <Border Grid.Column="1" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="3,0,3,0">
                 <StackPanel>
-                    <TextBlock Text="SMS ONLY (High Risk)" FontSize="11" Foreground="#F38BA8"/>
-                    <TextBlock Name="kpiSmsOnly" Text="0" FontSize="24" FontWeight="Bold" Foreground="#F38BA8" Margin="0,4,0,0"/>
+                    <TextBlock Text="SMS ONLY (High Risk)" FontSize="11.5" Foreground="#94A3B8" FontWeight="SemiBold"/>
+                    <TextBlock Name="kpiSmsOnly" Text="0" FontSize="22" FontWeight="Bold" Foreground="#F87171" FontFamily="Cascadia Mono, Consolas" Margin="0,3,0,0"/>
                 </StackPanel>
             </Border>
 
-            <!-- SMS DEFAULT -->
-            <Border Grid.Column="2" Background="#252538" CornerRadius="6" Padding="12" Margin="3,0,3,0">
+            <Border Grid.Column="2" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="3,0,3,0">
                 <StackPanel>
-                    <TextBlock Text="SMS Default (Medium Risk)" FontSize="11" Foreground="#F9E2AF"/>
-                    <TextBlock Name="kpiSmsDefault" Text="0" FontSize="24" FontWeight="Bold" Foreground="#F9E2AF" Margin="0,4,0,0"/>
+                    <TextBlock Text="SMS Default (Medium Risk)" FontSize="11.5" Foreground="#94A3B8" FontWeight="SemiBold"/>
+                    <TextBlock Name="kpiSmsDefault" Text="0" FontSize="22" FontWeight="Bold" Foreground="#FBBF24" FontFamily="Cascadia Mono, Consolas" Margin="0,3,0,0"/>
                 </StackPanel>
             </Border>
 
-            <!-- SECURE MFA -->
-            <Border Grid.Column="3" Background="#252538" CornerRadius="6" Padding="12" Margin="6,0,0,0">
+            <Border Grid.Column="3" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="6,0,0,0">
                 <StackPanel>
-                    <TextBlock Text="Secure MFA (Compliant)" FontSize="11" Foreground="#A6E3A1"/>
-                    <TextBlock Name="kpiSecure" Text="0" FontSize="24" FontWeight="Bold" Foreground="#A6E3A1" Margin="0,4,0,0"/>
+                    <TextBlock Text="Secure MFA (Compliant)" FontSize="11.5" Foreground="#94A3B8" FontWeight="SemiBold"/>
+                    <TextBlock Name="kpiSecure" Text="0" FontSize="22" FontWeight="Bold" Foreground="#34D399" FontFamily="Cascadia Mono, Consolas" Margin="0,3,0,0"/>
                 </StackPanel>
             </Border>
         </Grid>
 
-        <!-- CONTROLS BAR -->
-        <Border Grid.Row="2" Background="#252538" CornerRadius="6" Padding="8" Margin="0,0,0,8">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+        <!-- HORIZONTAL SECTION TABS -->
+        <TabControl Grid.Row="2" Margin="0,0,0,8">
+            <TabItem Header="MFA Audit Results">
+                <Grid Margin="16,0,16,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                <CheckBox Name="chkActiveOnly" Content="Active Users Only" IsChecked="True" Grid.Column="0"/>
-                <CheckBox Name="chkExcludeGuests" Content="Exclude Guest Users" IsChecked="True" Grid.Column="1"/>
+                    <!-- Controls Bar -->
+                    <Border Grid.Row="0" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <TextBlock Text="Search:" VerticalAlignment="Center" Foreground="#A6ADC8" Margin="0,0,4,0"/>
-                    <TextBox Name="txtSearch" Width="200"/>
-                </StackPanel>
+                            <CheckBox Name="chkActiveOnly" Content="Active Users Only" IsChecked="True" Grid.Column="0"/>
+                            <CheckBox Name="chkExcludeGuests" Content="Exclude Guest Users" IsChecked="True" Grid.Column="1"/>
 
-                <Button Name="btnScan" Content="Scan MFA Methods" Grid.Column="3" Background="#A6E3A1" Foreground="#11111B" Padding="16,6"/>
-            </Grid>
-        </Border>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                                <TextBlock Text="Filter:" VerticalAlignment="Center" Foreground="#94A3B8" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                                <TextBox Name="txtSearch" Width="260" Height="32" VerticalContentAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-        <!-- DATAGRID PREVIEW WITH FULL ROW COLOR CODING -->
-        <Border Grid.Row="3" Background="#181825" CornerRadius="6" Margin="0,0,0,8">
-            <DataGrid Name="dgAudit" AutoGenerateColumns="False" IsReadOnly="True"
-                      Background="#181825" Foreground="#CDD6F4" RowBackground="#1E1E2E"
-                      AlternatingRowBackground="#252538" GridLinesVisibility="Horizontal"
-                      HorizontalGridLinesBrush="#313244" HeadersVisibility="Column">
-                <DataGrid.Resources>
-                    <Style TargetType="DataGridColumnHeader">
-                        <Setter Property="Background" Value="#313244"/>
-                        <Setter Property="Foreground" Value="#CDD6F4"/>
-                        <Setter Property="Padding" Value="8,6"/>
-                        <Setter Property="FontWeight" Value="Bold"/>
-                    </Style>
-                </DataGrid.Resources>
-
-                <!-- Full Row Highlighting Triggers for GUI DataGrid -->
-                <DataGrid.RowStyle>
-                    <Style TargetType="DataGridRow">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding RiskCategory}" Value="SMS ONLY">
-                                <Setter Property="Background" Value="#FFC7CE"/>
-                                <Setter Property="Foreground" Value="#9C0006"/>
+                    <!-- Dark DataGrid Preview -->
+                    <DataGrid Name="dgAudit" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                              Background="#091122" Foreground="#E2E8F0" BorderBrush="#26354D" BorderThickness="1"
+                              RowBackground="#091122" AlternatingRowBackground="#0C172B"
+                              GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#1A2B44"
+                              HeadersVisibility="Column" RowHeaderWidth="0" SelectionMode="Single" FontSize="12">
+                        <DataGrid.ColumnHeaderStyle>
+                            <Style TargetType="DataGridColumnHeader">
+                                <Setter Property="Background" Value="#0B1528"/>
+                                <Setter Property="Foreground" Value="#94A3B8"/>
+                                <Setter Property="Padding" Value="10,7"/>
                                 <Setter Property="FontWeight" Value="Bold"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding RiskCategory}" Value="SMS DEFAULT">
-                                <Setter Property="Background" Value="#FFEB9C"/>
-                                <Setter Property="Foreground" Value="#9C6500"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding RiskCategory}" Value="SECURE MFA">
-                                <Setter Property="Background" Value="#C6EFCE"/>
-                                <Setter Property="Foreground" Value="#006100"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding RiskCategory}" Value="UNREGISTERED">
-                                <Setter Property="Background" Value="#E0E0E0"/>
-                                <Setter Property="Foreground" Value="#333333"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </DataGrid.RowStyle>
+                                <Setter Property="BorderBrush" Value="#26354D"/>
+                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                            </Style>
+                        </DataGrid.ColumnHeaderStyle>
+                        <DataGrid.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Padding" Value="8,5"/>
+                                <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGridRow}}"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#1E3A5F"/>
+                                        <Setter Property="Foreground" Value="#F8FAFC"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.CellStyle>
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="Background" Value="#091122"/>
+                                <Setter Property="Foreground" Value="#E2E8F0"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding RiskCategory}" Value="SMS ONLY">
+                                        <Setter Property="Background" Value="#2BEF4444"/>
+                                        <Setter Property="Foreground" Value="#FCA5A5"/>
+                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding RiskCategory}" Value="SMS DEFAULT">
+                                        <Setter Property="Background" Value="#24FBBF24"/>
+                                        <Setter Property="Foreground" Value="#FDE68A"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding RiskCategory}" Value="SECURE MFA">
+                                        <Setter Property="Background" Value="#1E34D399"/>
+                                        <Setter Property="Foreground" Value="#6EE7B7"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding RiskCategory}" Value="UNREGISTERED">
+                                        <Setter Property="Background" Value="#1A94A3B8"/>
+                                        <Setter Property="Foreground" Value="#CBD5E1"/>
+                                    </DataTrigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#1E3A5F"/>
+                                        <Setter Property="Foreground" Value="#F8FAFC"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
 
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Display Name" Binding="{Binding DisplayName}" Width="1.8*"/>
-                    <DataGridTextColumn Header="User Principal Name" Binding="{Binding UserPrincipalName}" Width="2.2*"/>
-                    <DataGridTextColumn Header="User Type" Binding="{Binding UserType}" Width="1*"/>
-                    <DataGridTextColumn Header="Default MFA Method" Binding="{Binding DefaultMfaMethod}" Width="1.8*"/>
-                    <DataGridTextColumn Header="Registered Methods" Binding="{Binding RegisteredMethods}" Width="2*"/>
-                    <DataGridTextColumn Header="Legacy MFA State" Binding="{Binding LegacyMfaState}" Width="1.2*"/>
-                    <DataGridTextColumn Header="Risk Category" Binding="{Binding RiskCategory}" Width="1.2*"/>
-                    <DataGridTextColumn Header="Recommendation" Binding="{Binding Recommendation}" Width="2.5*"/>
-                </DataGrid.Columns>
-            </DataGrid>
-        </Border>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Display Name" Binding="{Binding DisplayName}" Width="1.8*"/>
+                            <DataGridTextColumn Header="User Principal Name" Binding="{Binding UserPrincipalName}" Width="2.2*"/>
+                            <DataGridTextColumn Header="User Type" Binding="{Binding UserType}" Width="1*"/>
+                            <DataGridTextColumn Header="Default MFA Method" Binding="{Binding DefaultMfaMethod}" Width="1.8*"/>
+                            <DataGridTextColumn Header="Registered Methods" Binding="{Binding RegisteredMethods}" Width="2*"/>
+                            <DataGridTextColumn Header="Legacy MFA State" Binding="{Binding LegacyMfaState}" Width="1.2*"/>
+                            <DataGridTextColumn Header="Risk Category" Binding="{Binding RiskCategory}" Width="1.2*"/>
+                            <DataGridTextColumn Header="Recommendation" Binding="{Binding Recommendation}" Width="2.5*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
 
-        <!-- EXPORT BAR -->
-        <Border Grid.Row="4" Background="#252538" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                    <!-- Export Path Bar -->
+                    <Border Grid.Row="2" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,10,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Export Path:" VerticalAlignment="Center" Foreground="#94A3B8" FontWeight="SemiBold" Margin="0,0,10,0"/>
+                            <TextBox Name="txtExportPath" Grid.Column="1" Height="32" VerticalContentAlignment="Center" FontFamily="Cascadia Mono, Consolas" FontSize="12"/>
+                            <Button Name="btnBrowse" Content="Browse..." Grid.Column="2" Height="32" Padding="14,4" Margin="10,0,0,0"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Activity Log">
+                <Border Margin="16,0,16,0" Background="#CC050A14" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="10">
+                    <TextBox Name="txtLog" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                             Background="Transparent" BorderThickness="0" Padding="0"
+                             Foreground="#CBD5E1" FontFamily="Cascadia Mono, Consolas" FontSize="12"/>
+                </Border>
+            </TabItem>
+        </TabControl>
+
+        <!-- SLIM PROGRESS BAR -->
+        <ProgressBar Name="pbStatus" Grid.Row="3" Height="3" Minimum="0" Maximum="100" Value="0"
+                     Background="#0B1528" Foreground="#2DD4BF" BorderThickness="0"/>
+
+        <!-- SINGLE-ROW FOOTER -->
+        <Border Grid.Row="4" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="20,10">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Text="Export Path:" VerticalAlignment="Center" Foreground="#A6ADC8" Margin="4,0,8,0"/>
-                <TextBox Name="txtExportPath" Grid.Column="1"/>
-                <Button Name="btnBrowse" Content="Browse..." Grid.Column="2"/>
-                <Button Name="btnExport" Content="Export Color-Coded XLSX" Grid.Column="3" Background="#FAB387" Foreground="#11111B" Padding="16,6"/>
+                <TextBlock Grid.Column="0" Text="Logs stream to Activity Log · Export creates a color-coded XLSX workbook (CSV fallback if ImportExcel is missing)"
+                           Foreground="#94A3B8" FontSize="12" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Name="btnScan" Content="Scan MFA Methods" Height="36" MinWidth="150" Margin="0,0,10,0"/>
+                    <Button Name="btnExport" Content="Export Color-Coded XLSX" Style="{StaticResource PrimaryButton}" Height="36" MinWidth="195"/>
+                </StackPanel>
             </Grid>
         </Border>
-
-        <!-- CONSOLE LOG & PROGRESS -->
-        <Grid Grid.Row="5">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-
-            <ProgressBar Name="pbStatus" Height="6" Background="#313244" Foreground="#89B4FA" Margin="0,0,0,4"/>
-            <TextBox Name="txtLog" Grid.Row="1" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                     Background="#11111B" Foreground="#A6E3A1" FontFamily="Consolas" FontSize="11"/>
-        </Grid>
     </Grid>
 </Window>
 "@
@@ -789,6 +1100,7 @@ $inputXaml = @"
 # Read XAML
 $reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]::new($inputXaml))
 $window = [System.Windows.Markup.XamlReader]::Load($reader)
+Initialize-StandardGuiWindow -Window $window
 
 # Map UI Controls
 $txtConnStatus  = $window.FindName("txtConnStatus")
@@ -817,10 +1129,11 @@ Write-GuiLog "Entra ID MFA SMS Deprecation Checker initialized."
 
 # Run module and dependency verification when the GUI window renders
 $window.Add_Loaded({
+    $bc = [System.Windows.Media.BrushConverter]::new()
     $btnConnect.IsEnabled = $false
     $btnScan.IsEnabled = $false
     $txtConnStatus.Text = "Checking Prerequisites..."
-    $txtConnStatus.Foreground = [System.Windows.Media.Brushes]::Khaki
+    $txtConnStatus.Foreground = $bc.ConvertFromString("#FBBF24")
     
     $modulesOk = Assert-RequiredModules
     
@@ -828,10 +1141,10 @@ $window.Add_Loaded({
     $btnScan.IsEnabled = $true
     if ($modulesOk) {
         $txtConnStatus.Text = "Not Connected"
-        $txtConnStatus.Foreground = [System.Windows.Media.Brushes]::Tomato
+        $txtConnStatus.Foreground = $bc.ConvertFromString("#F87171")
     } else {
         $txtConnStatus.Text = "Prerequisites Missing"
-        $txtConnStatus.Foreground = [System.Windows.Media.Brushes]::Tomato
+        $txtConnStatus.Foreground = $bc.ConvertFromString("#F87171")
     }
 })
 

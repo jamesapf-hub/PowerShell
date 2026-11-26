@@ -60,643 +60,651 @@ function Assert-ModuleInstalled {
 
 Assert-ModuleInstalled -ModuleName "Microsoft.Graph" -FriendlyName "Microsoft Graph SDK"
 
-# 3. GUI Layout Definition (XAML)
+function Initialize-StandardGuiWindow {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window,
+        [double]$MinWidth = 860,
+        [double]$MinHeight = 640
+    )
+
+    $fontFiles = @('Figtree-Regular.ttf', 'Figtree-SemiBold.ttf', 'Figtree-Bold.ttf')
+    $fontDir = $null
+
+    if ($PSScriptRoot) {
+        $probe = $PSScriptRoot
+        for ($i = 0; $i -le 5; $i++) {
+            if ([string]::IsNullOrWhiteSpace($probe)) { break }
+            $candidateDir = Join-Path -Path $probe -ChildPath 'assets\fonts'
+            $candidateRegular = Join-Path -Path $candidateDir -ChildPath 'Figtree-Regular.ttf'
+            if (Test-Path -Path $candidateRegular -PathType Leaf) {
+                $fontDir = $candidateDir
+                break
+            }
+            $probe = Split-Path -Path $probe -Parent
+        }
+    }
+
+    if (-not $fontDir) {
+        $cacheFontDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'PowerShellGui\fonts'
+        $cachedRegular = Join-Path -Path $cacheFontDir -ChildPath 'Figtree-Regular.ttf'
+        if (-not (Test-Path -Path $cachedRegular -PathType Leaf)) {
+            try {
+                if (-not (Test-Path -Path $cacheFontDir)) {
+                    New-Item -Path $cacheFontDir -ItemType Directory -Force | Out-Null
+                }
+                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+                $prevProgress = $ProgressPreference
+                $ProgressPreference = 'SilentlyContinue'
+                try {
+                    $baseUrl = 'https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/assets/fonts/'
+                    foreach ($f in $fontFiles) {
+                        $dest = Join-Path -Path $cacheFontDir -ChildPath $f
+                        if (-not (Test-Path -Path $dest -PathType Leaf)) {
+                            Invoke-WebRequest -Uri ($baseUrl + $f) -OutFile $dest -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
+                        }
+                    }
+                } finally {
+                    $ProgressPreference = $prevProgress
+                }
+            } catch {
+                Write-Verbose "Figtree font download skipped (offline fallback): $($_.Exception.Message)"
+            }
+        }
+        if (Test-Path -Path $cachedRegular -PathType Leaf) {
+            $fontDir = $cacheFontDir
+        }
+    }
+
+    if ($fontDir) {
+        try {
+            $resolvedFontDir = (Resolve-Path -Path $fontDir -ErrorAction Stop).Path
+            $fontUri = ([System.Uri]::new((Join-Path -Path $resolvedFontDir -ChildPath ''))).AbsoluteUri
+            $Window.FontFamily = New-Object System.Windows.Media.FontFamily ("$($fontUri)#Figtree, Segoe UI Variable, Segoe UI")
+        } catch {
+            $Window.FontFamily = New-Object System.Windows.Media.FontFamily ('Segoe UI Variable, Segoe UI')
+        }
+    } else {
+        $Window.FontFamily = New-Object System.Windows.Media.FontFamily ('Segoe UI Variable, Segoe UI')
+    }
+
+    $workArea = [System.Windows.SystemParameters]::WorkArea
+    $targetWidth  = [Math]::Round([Math]::Min($workArea.Width - 24,  [Math]::Max(860, [Math]::Min(1440, $workArea.Width * 0.70))))
+    $targetHeight = [Math]::Round([Math]::Min($workArea.Height - 24, [Math]::Max(640, [Math]::Min(900,  $workArea.Height * 0.80))))
+
+    $Window.WindowStartupLocation = 'Manual'
+    $Window.Width  = $targetWidth
+    $Window.Height = $targetHeight
+    $Window.MinWidth  = [Math]::Min($MinWidth, $targetWidth)
+    $Window.MinHeight = [Math]::Min($MinHeight, $targetHeight)
+    $Window.Left = [Math]::Round($workArea.Left + (($workArea.Width - $targetWidth) / 2))
+    $Window.Top  = [Math]::Round($workArea.Top + (($workArea.Height - $targetHeight) / 2))
+    $Window.ResizeMode = 'CanResize'
+}
+
+# 3. GUI Layout Definition (XAML - Obsidian Teal Archetype 2 Compact Tabs)
 $Xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="M365 PowerShell Admin Console" Height="780" Width="1080"
-        WindowStartupLocation="CenterScreen" Background="#131313" Foreground="#f3f4f6">
+        Title="Microsoft 365 Licence Console" Height="780" Width="1180" MinHeight="640" MinWidth="860"
+        WindowStartupLocation="Manual" Foreground="#F8FAFC" FontSize="12.5">
+    <Window.Background>
+        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
+            <GradientStop Color="#0F1F3D" Offset="0.0"/>
+            <GradientStop Color="#091122" Offset="0.55"/>
+            <GradientStop Color="#05070C" Offset="1.0"/>
+        </RadialGradientBrush>
+    </Window.Background>
+
     <Window.Resources>
         <Style x:Key="BrandBtn" TargetType="Button">
-            <Setter Property="Background" Value="#3B82F6"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#2DD4BF"/>
+            <Setter Property="Foreground" Value="#042F2E"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Padding" Value="15,8"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#1D4ED8"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#5EEAD4"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#14B8A6"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Border" Property="Background" Value="#1A2B44"/>
+                                <Setter Property="Foreground" Value="#64748B"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
+
         <Style x:Key="SecBtn" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#3B82F6"/>
-            <Setter Property="BorderBrush" Value="#3B82F6"/>
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Padding" Value="12,6"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#3B82F6"/>
-                    <Setter Property="Foreground" Value="White"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#24FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#0DFFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-        <Style x:Key="TabBtn" TargetType="Button">
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#99070D1A"/>
+            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CaretBrush" Value="#2DD4BF"/>
+            <Setter Property="SelectionBrush" Value="#2DD4BF"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="0"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#2DD4BF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="PasswordBox">
+            <Setter Property="Background" Value="#99070D1A"/>
+            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CaretBrush" Value="#2DD4BF"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="PasswordBox">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="0"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="Border" Property="BorderBrush" Value="#2DD4BF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="#050A14"/>
+            <Setter Property="Width" Value="10"/>
+            <Setter Property="MinWidth" Value="10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="{TemplateBinding Background}">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="#26354D" CornerRadius="4" Margin="2"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TabControl">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#9ca3af"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabControl">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1">
+                                <TabPanel IsItemsHost="True" Margin="18,0"/>
+                            </Border>
+                            <ContentPresenter Grid.Row="1" ContentSource="SelectedContent"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="#94A3B8"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="Padding" Value="16,10"/>
-            <Setter Property="BorderThickness" Value="0,0,0,2"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder" Background="Transparent" BorderBrush="Transparent" BorderThickness="0,0,0,2" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="#E2E8F0"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Foreground" Value="#F8FAFC"/>
+                                <Setter TargetName="TabBorder" Property="Background" Value="#142DD4BF"/>
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="#2DD4BF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
-    
+
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/> <!-- Header -->
-            <RowDefinition Height="Auto"/> <!-- Nav Tabs -->
-            <RowDefinition Height="*"/>    <!-- Main Pages -->
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        
-        <!-- Header -->
-        <Border Grid.Row="0" Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="0,0,0,1" Padding="20,15">
+
+        <!-- HEADER BAR -->
+        <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="20,13">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                
-                <StackPanel Grid.Column="0">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="PS C:\&gt;" Foreground="#3B82F6" FontFamily="Consolas" FontSize="20" FontWeight="Bold" Margin="0,0,10,0"/>
-                        <TextBlock Text="M365 Admin Console" Foreground="White" FontSize="20" FontWeight="Bold"/>
-                    </StackPanel>
-                    <TextBlock Text="POWERSHELL 7 // MICROSOFT GRAPH SDK v2.0" Foreground="#555" FontFamily="Consolas" FontSize="11" Margin="0,2,0,0"/>
+
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Microsoft 365 Licence Console" Foreground="#F8FAFC" FontSize="19" FontWeight="Bold"/>
+                    <TextBlock Text="Audit licensed Entra ID accounts, inactive sign-ins, unassigned SKU waste, and downgrade opportunities." Foreground="#94A3B8" FontSize="12" Margin="0,2,0,0"/>
                 </StackPanel>
-                
-                <Border Grid.Column="1" Background="#0c0c0d" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="6" Padding="12,6" VerticalAlignment="Center">
+
+                <Border Name="bdgSessionStatus" Grid.Column="1" Background="#14FFFFFF" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,6" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Ellipse Name="elStatusDot" Width="10" Height="10" Fill="Red" Margin="0,0,8,0"/>
-                        <TextBlock Name="txtStatusLabel" Text="Offline Session" Foreground="#9ca3af" FontSize="11" Margin="0,0,10,0" FontFamily="Consolas"/>
-                        <Border Width="1" Height="12" Background="#2c2c2e" Margin="10,0"/>
-                        <TextBlock Text="TLS 1.2" Foreground="#10b981" FontSize="11" FontFamily="Consolas" FontWeight="Bold"/>
+                        <TextBlock Name="txtStatusLabel" Text="Offline Session" Foreground="#94A3B8" FontSize="11.5" FontWeight="SemiBold" FontFamily="Cascadia Mono, Consolas"/>
+                        <Border Width="1" Height="12" Background="#26354D" Margin="10,0"/>
+                        <TextBlock Text="TLS 1.2" Foreground="#34D399" FontSize="11" FontFamily="Cascadia Mono, Consolas" FontWeight="Bold"/>
                     </StackPanel>
                 </Border>
             </Grid>
         </Border>
-        
-        <!-- Nav Tabs -->
-        <Border Name="borderNav" Visibility="Collapsed" Grid.Row="1" Background="#131313" BorderBrush="#2c2c2e" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal" Margin="20,0">
-                <Button Name="btnNavConnection" Style="{StaticResource TabBtn}" Content="1. Establish Connection" BorderBrush="#3B82F6" Foreground="White"/>
-                <Button Name="btnNavDashboard" Style="{StaticResource TabBtn}" Content="2. Dashboard Insights"/>
-                <Button Name="btnNavDirectory" Style="{StaticResource TabBtn}" Content="3. User Directory"/>
-            </StackPanel>
-        </Border>
-        
-        <!-- Main Pages Container -->
-        <Grid Grid.Row="2" Margin="20">
-            <!-- PAGE 1: CONNECTION PANEL -->
-            <Grid Name="pageConnection" Visibility="Visible">
-                <!-- Offline Welcome Screen -->
-                <ScrollViewer Name="panelOfflineWelcome" Visibility="Visible" VerticalScrollBarVisibility="Auto">
-                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="750" Margin="0,10,0,10">
-                        
-                        <!-- App Header / Intro -->
-                        <TextBlock Text="Welcome to M365 Administration Console" Foreground="White" FontSize="22" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
-                        <TextBlock Text="Please select your operational role to begin auditing tenant users." Foreground="#9ca3af" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,25"/>
 
-                        <!-- Step 1: Role Selection Cards -->
-                        <TextBlock Text="STEP 1: SELECT YOUR OPERATING ROLE" Foreground="#3B82F6" FontFamily="Consolas" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Center"/>
-                        <UniformGrid Columns="2" Margin="0,0,0,25" Width="600">
-                            <!-- Service Desk Role Card -->
-                            <Button Name="btnRoleSelectServiceDesk" Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" Padding="15" Margin="0,0,10,0" Cursor="Hand" Height="100">
-                                <Button.Style>
-                                    <Style TargetType="Button">
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
-                                                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                                    </Border>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                </Button.Style>
-                                <StackPanel>
-                                    <TextBlock Text="[Desk] Service Desk" Foreground="White" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Standard view: licenses, statuses &amp; accounts. Hides all financials." Foreground="#9ca3af" FontSize="11" TextWrapping="Wrap" TextAlignment="Center" Margin="0,5,0,0"/>
-                                </StackPanel>
-                            </Button>
-                            
-                            <!-- Sales Role Card -->
-                            <Button Name="btnRoleSelectSales" Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" Padding="15" Margin="10,0,0,0" Cursor="Hand" Height="100">
-                                <Button.Style>
-                                    <Style TargetType="Button">
-                                        <Setter Property="Template">
-                                            <Setter.Value>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
-                                                        <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                                    </Border>
-                                                </ControlTemplate>
-                                            </Setter.Value>
-                                        </Setter>
-                                    </Style>
-                                </Button.Style>
-                                <StackPanel>
-                                    <TextBlock Text="[$] Sales &amp; Business" Foreground="White" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Financial view: savings, wasted costs, and downgrade recommendations." Foreground="#9ca3af" FontSize="11" TextWrapping="Wrap" TextAlignment="Center" Margin="0,5,0,0"/>
-                                </StackPanel>
-                            </Button>
-                        </UniformGrid>
-                        
-                        <!-- Step 2: Connection Panel (Collapsed by default, shown once role selected) -->
-                        <StackPanel Name="panelConnectionMethods" Visibility="Collapsed" HorizontalAlignment="Center" Width="740">
-                            <TextBlock Text="STEP 2: CHOOSE CONNECTION METHOD" Foreground="#3B82F6" FontFamily="Consolas" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Center"/>
-                            
-                            <!-- Side-by-Side Connection Cards -->
-                            <UniformGrid Columns="3" Margin="0,0,0,20">
-                                <!-- Option A: Interactive M365 Sign-In -->
-                                <Border Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="8" Padding="15" Margin="0,0,8,0">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="*"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        <TextBlock Grid.Row="0" Text="Interactive Sign-In" Foreground="White" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
-                                        <TextBlock Grid.Row="1" Text="Official Microsoft OAuth login prompt. Supports MFA and SSO." Foreground="#9ca3af" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,15"/>
-                                        
-                                        <StackPanel Grid.Row="2">
-                                            <TextBlock Text="Tenant (Optional):" Foreground="#777" FontSize="10" Margin="0,0,0,2"/>
-                                            <TextBox Name="txtUserTenant" Background="#0c0c0d" BorderBrush="#2c2c2e" Foreground="White" Padding="5" Margin="0,0,0,8" FontSize="11" CaretBrush="White"/>
-                                            <Button Name="btnConnectM365" Style="{StaticResource BrandBtn}" Content="M365 Sign-In" Height="32" FontSize="12"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                                
-                                <!-- Option B: App Client Secret -->
-                                <Border Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="8" Padding="15" Margin="4,0,4,0">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="*"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        <TextBlock Grid.Row="0" Text="App Client Secret" Foreground="White" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
-                                        <TextBlock Grid.Row="1" Text="Automated connection using Entra App Registration client credentials." Foreground="#9ca3af" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,15"/>
-                                        
-                                        <StackPanel Grid.Row="2">
-                                            <TextBlock Text="Tenant ID/Domain:" Foreground="#777" FontSize="10" Margin="0,0,0,2"/>
-                                            <TextBox Name="txtAppTenant" Background="#0c0c0d" BorderBrush="#2c2c2e" Foreground="White" Padding="4" Margin="0,0,0,4" FontSize="10" CaretBrush="White"/>
-                                            <TextBlock Text="Client ID:" Foreground="#777" FontSize="10" Margin="0,0,0,2"/>
-                                            <TextBox Name="txtAppClient" Background="#0c0c0d" BorderBrush="#2c2c2e" Foreground="White" Padding="4" Margin="0,0,0,4" FontSize="10" CaretBrush="White"/>
-                                            <TextBlock Text="Client Secret:" Foreground="#777" FontSize="10" Margin="0,0,0,2"/>
-                                            <PasswordBox Name="txtAppSecret" Background="#0c0c0d" BorderBrush="#2c2c2e" Foreground="White" Padding="4" Margin="0,0,0,8" FontSize="10" CaretBrush="White"/>
-                                            <Button Name="btnConnectApp" Style="{StaticResource BrandBtn}" Content="Connect App" Height="32" FontSize="12"/>
-                                        </StackPanel>
-                                    </Grid>
-                                </Border>
-                                
-                                <!-- Option C: Import CSV -->
-                                <Border Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="8" Padding="15" Margin="8,0,0,0">
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="*"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        <TextBlock Grid.Row="0" Text="Offline CSV Import" Foreground="White" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
-                                        <TextBlock Grid.Row="1" Text="Load previously exported user reports directly into the dashboard." Foreground="#9ca3af" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,15"/>
-                                        
-                                        <Button Grid.Row="2" Name="btnBrowseCSV" Background="Transparent" BorderThickness="0" Padding="0" Cursor="Hand">
-                                            <Border BorderBrush="#2c2c2e" BorderThickness="1" Background="#0c0c0d" CornerRadius="6" Padding="15" Height="100">
-                                                <StackPanel VerticalAlignment="Center">
-                                                    <TextBlock Text="[CSV]" Foreground="#3B82F6" FontFamily="Consolas" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
-                                                    <TextBlock Text="Browse CSV File" Foreground="White" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center"/>
-                                                    <TextBlock Text="Click to select file" Foreground="#555" FontSize="9" HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                                                </StackPanel>
-                                            </Border>
-                                        </Button>
-                                    </Grid>
-                                </Border>
-                            </UniformGrid>
-                            
-                            <!-- Demo Sandbox Option at the bottom -->
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
-                                <TextBlock Text="Need to test without credentials?" Foreground="#777" FontSize="12" VerticalAlignment="Center"/>
-                                <Button Name="btnDemoMode" Background="Transparent" BorderThickness="0" Foreground="#3B82F6" Content="Launch Demo Sandbox Mode" FontWeight="Bold" Cursor="Hand" Margin="8,0,0,0">
-                                    <Button.Style>
-                                        <Style TargetType="Button">
-                                            <Setter Property="Template">
-                                                <Setter.Value>
-                                                    <ControlTemplate TargetType="Button">
-                                                        <TextBlock Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" FontWeight="{TemplateBinding FontWeight}" Cursor="{TemplateBinding Cursor}" TextDecorations="Underline"/>
-                                                    </ControlTemplate>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
+        <!-- ARCHETYPE 2: HORIZONTAL SECTION TABS -->
+        <TabControl Name="tabMain" Grid.Row="1">
+            <!-- TAB 1: OVERVIEW -->
+            <TabItem Name="tabOverview" Header="Overview">
+                <Grid Name="pageDashboard" Margin="20,14,20,12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- KPIs Row -->
+                    <Grid Grid.Row="0" Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Name="colKpiTotal" Width="*"/>
+                            <ColumnDefinition Name="colKpiActive" Width="*"/>
+                            <ColumnDefinition Name="colKpiInactive90d" Width="*"/>
+                            <ColumnDefinition Name="colKpiInactive1yr" Width="*"/>
+                            <ColumnDefinition Name="colKpiSavings" Width="1.2*"/>
+                            <ColumnDefinition Name="colKpiPoolWaste" Width="1.2*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="TOTAL AUDITED" Foreground="#94A3B8" FontSize="10" FontWeight="Bold"/>
+                                <TextBlock Name="kpiTotal" Text="0" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="22" FontWeight="Bold" Margin="0,3,0,0"/>
                             </StackPanel>
-                        </StackPanel>
-                        
-                    </StackPanel>
-                </ScrollViewer>
-                
-                <!-- Connected Session Info Screen -->
-                <StackPanel Name="panelConnectedSession" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Width="450">
-                    <Border Background="#1c1c1e" BorderBrush="#3B82F6" BorderThickness="1" CornerRadius="8" Padding="25">
-                        <StackPanel>
-                            <TextBlock Text="Active Session Established" Foreground="White" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,5"/>
-                            <TextBlock Text="You are successfully authenticated and auditing the tenant." Foreground="#9ca3af" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,20"/>
-                            
-                            <Border Background="#0c0c0d" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="6" Padding="15" Margin="0,0,0,20">
-                                <StackPanel>
-                                    <Grid Margin="0,6">
-                                        <TextBlock Text="Tenant Domain:" Foreground="#9ca3af" FontSize="12"/>
-                                        <TextBlock Name="txtSessionTenant" Text="N/A" Foreground="White" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
-                                    </Grid>
-                                    <Grid Margin="0,6">
-                                        <TextBlock Text="Connected As:" Foreground="#9ca3af" FontSize="12"/>
-                                        <TextBlock Name="txtSessionUser" Text="N/A" Foreground="White" FontSize="12" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="240"/>
-                                    </Grid>
-                                    <Grid Margin="0,6">
-                                        <TextBlock Text="Uptime:" Foreground="#9ca3af" FontSize="12"/>
-                                        <TextBlock Name="txtSessionUptime" Text="00:00:00" Foreground="#3B82F6" FontSize="12" HorizontalAlignment="Right" FontWeight="Bold"/>
-                                    </Grid>
-                                    <Grid Margin="0,6">
-                                        <TextBlock Text="Mode:" Foreground="#9ca3af" FontSize="12"/>
-                                        <TextBlock Name="txtSessionMode" Text="N/A" Foreground="White" FontSize="12" HorizontalAlignment="Right"/>
-                                    </Grid>
-                                </StackPanel>
-                            </Border>
-                            
-                            <Button Name="btnDisconnect" Style="{StaticResource SecBtn}" Content="Disconnect Session" Height="40" FontSize="13"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-            </Grid>
-            
-            <!-- PAGE 2: DASHBOARD INSIGHTS -->
-            <Grid Name="pageDashboard" Visibility="Collapsed">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/> <!-- KPIs -->
-                    <RowDefinition Height="*"/>    <!-- Charts side-by-side -->
-                    <RowDefinition Height="Auto"/> <!-- Compact Terminal Feed -->
-                    <RowDefinition Height="Auto"/> <!-- Bottom Actions -->
-                </Grid.RowDefinitions>
-                
-                <!-- KPIs Row -->
-                <Grid Grid.Row="0" Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Name="colKpiTotal" Width="*"/>
-                        <ColumnDefinition Name="colKpiActive" Width="*"/>
-                        <ColumnDefinition Name="colKpiInactive90d" Width="*"/>
-                        <ColumnDefinition Name="colKpiInactive1yr" Width="*"/>
-                        <ColumnDefinition Name="colKpiSavings" Width="1.2*"/>
-                        <ColumnDefinition Name="colKpiPoolWaste" Width="1.2*"/>
-                    </Grid.ColumnDefinitions>
-                    
-                    <!-- Total -->
-                    <Border Grid.Column="0" Background="#1c1c1e" BorderBrush="#3B82F6" BorderThickness="1,0,0,0" Padding="12,8" Margin="0,0,8,0">
-                        <StackPanel>
-                            <TextBlock Text="TOTAL LICENSED" Foreground="#9ca3af" FontSize="10" FontWeight="Bold"/>
-                            <TextBlock Name="kpiTotal" Text="0" Foreground="White" FontSize="22" FontWeight="Bold" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Border>
-                    <!-- Active -->
-                    <Border Grid.Column="1" Background="#1c1c1e" BorderBrush="#10b981" BorderThickness="1,0,0,0" Padding="12,8" Margin="0,0,8,0">
-                        <StackPanel>
-                            <TextBlock Text="ACTIVE (&lt;=30d)" Foreground="#9ca3af" FontSize="10" FontWeight="Bold"/>
-                            <TextBlock Name="kpiActive" Text="0" Foreground="#10b981" FontSize="22" FontWeight="Bold" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Border>
-                    <!-- Warning -->
-                    <Border Grid.Column="2" Background="#1c1c1e" BorderBrush="#eab308" BorderThickness="1,0,0,0" Padding="12,8" Margin="0,0,8,0">
-                        <StackPanel>
-                            <TextBlock Text="INACTIVE (&gt;90d)" Foreground="#9ca3af" FontSize="10" FontWeight="Bold"/>
-                            <TextBlock Name="kpiInactive90d" Text="0" Foreground="#eab308" FontSize="22" FontWeight="Bold" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Border>
-                    <!-- Critical -->
-                    <Border Grid.Column="3" Background="#1c1c1e" BorderBrush="#ef4444" BorderThickness="1,0,0,0" Padding="12,8" Margin="0,0,8,0">
-                        <StackPanel>
-                            <TextBlock Text="CRITICAL (&gt;1yr)" Foreground="#9ca3af" FontSize="10" FontWeight="Bold"/>
-                            <TextBlock Name="kpiInactive1yr" Text="0" Foreground="#ef4444" FontSize="22" FontWeight="Bold" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </Border>
-                    <!-- Savings -->
-                    <Border Name="borderKpiSavings" Grid.Column="4" Background="#1c1c1e" BorderBrush="#3B82F6" BorderThickness="1,0,0,0" Padding="12,6" Margin="0,0,8,0">
-                        <StackPanel>
-                            <TextBlock Text="WASTED MONEY (&gt;6m)" Foreground="#9ca3af" FontSize="9" FontWeight="Bold"/>
-                            <TextBlock Name="kpiSavings" Text="£0.00" Foreground="#ef4444" FontSize="16" FontWeight="Bold" Margin="0,1,0,0"/>
-                            <TextBlock Text="POTENTIAL MONTHLY SAVINGS" Foreground="#9ca3af" FontSize="9" FontWeight="Bold" Margin="0,3,0,0"/>
-                            <TextBlock Name="kpiMonthlySavings" Text="£0.00/mo" Foreground="#10b981" FontSize="16" FontWeight="Bold" Margin="0,1,0,0"/>
-                        </StackPanel>
-                    </Border>
-                    <!-- Pool Waste -->
-                    <Border Name="borderKpiPoolWaste" Grid.Column="5" Background="#1c1c1e" BorderBrush="#3B82F6" BorderThickness="1,0,0,0" Padding="12,6">
-                        <StackPanel>
-                            <TextBlock Text="POOL WASTE (UNASSIGNED)" Foreground="#9ca3af" FontSize="9" FontWeight="Bold"/>
-                                    <TextBlock Name="kpiPoolWaste" Text="£0.00" Foreground="#ef4444" FontSize="16" FontWeight="Bold" Margin="0,1,0,0"/>
-                            <TextBlock Name="kpiPoolWasteCount" Text="0 unused licenses" Foreground="#9ca3af" FontSize="9" Margin="0,3,0,0" FontWeight="SemiBold"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-                   <!-- Side-by-Side Charts Layout -->
-                <Grid Grid.Row="1" Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2.2*"/>
-                        <ColumnDefinition Width="1*"/>
-                    </Grid.ColumnDefinitions>
-                    
-                    <!-- Border 1: Licenses & Unassigned Breakdown -->
-                    <Border Grid.Column="0" Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="8" Padding="15" Margin="0,0,10,0">
+                        </Border>
+                        <Border Grid.Column="1" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="ACTIVE (&lt;=30d)" Foreground="#94A3B8" FontSize="10" FontWeight="Bold"/>
+                                <TextBlock Name="kpiActive" Text="0" Foreground="#34D399" FontFamily="Cascadia Mono, Consolas" FontSize="22" FontWeight="Bold" Margin="0,3,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="INACTIVE (&gt;90d)" Foreground="#94A3B8" FontSize="10" FontWeight="Bold"/>
+                                <TextBlock Name="kpiInactive90d" Text="0" Foreground="#FBBF24" FontFamily="Cascadia Mono, Consolas" FontSize="22" FontWeight="Bold" Margin="0,3,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="3" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="CRITICAL (&gt;1yr)" Foreground="#94A3B8" FontSize="10" FontWeight="Bold"/>
+                                <TextBlock Name="kpiInactive1yr" Text="0" Foreground="#F87171" FontFamily="Cascadia Mono, Consolas" FontSize="22" FontWeight="Bold" Margin="0,3,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Name="borderKpiSavings" Grid.Column="4" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="WASTED MONEY (&gt;6m)" Foreground="#94A3B8" FontSize="9.5" FontWeight="Bold"/>
+                                <TextBlock Name="kpiSavings" Text="£0.00" Foreground="#F87171" FontFamily="Cascadia Mono, Consolas" FontSize="15" FontWeight="Bold" Margin="0,1,0,0"/>
+                                <TextBlock Text="POTENTIAL MONTHLY SAVINGS" Foreground="#94A3B8" FontSize="9.5" FontWeight="Bold" Margin="0,3,0,0"/>
+                                <TextBlock Name="kpiMonthlySavings" Text="£0.00/mo" Foreground="#34D399" FontFamily="Cascadia Mono, Consolas" FontSize="15" FontWeight="Bold" Margin="0,1,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Name="borderKpiPoolWaste" Grid.Column="5" Background="#0D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="12,8">
+                            <StackPanel>
+                                <TextBlock Text="POOL WASTE (UNASSIGNED)" Foreground="#94A3B8" FontSize="9.5" FontWeight="Bold"/>
+                                <TextBlock Name="kpiPoolWaste" Text="£0.00" Foreground="#F87171" FontFamily="Cascadia Mono, Consolas" FontSize="15" FontWeight="Bold" Margin="0,1,0,0"/>
+                                <TextBlock Name="kpiPoolWasteCount" Text="0 unused licenses" Foreground="#94A3B8" FontSize="10" Margin="0,3,0,0" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Activity Distribution Card -->
+                    <Border Grid.Row="1" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,12">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="Licenses &amp; Unassigned Breakdown" Foreground="White" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
-                            <DataGrid Grid.Row="1" Name="gridUnassigned" AutoGenerateColumns="False" IsReadOnly="True" 
-                                      Background="#1c1c1e" BorderThickness="0" Foreground="#f3f4f6"
-                                      RowBackground="#1c1c1e" AlternatingRowBackground="#131313" 
-                                      HeadersVisibility="Column" GridLinesVisibility="None" SelectionMode="Single"
-                                      FontFamily="Segoe UI" FontSize="11" RowHeight="28">
-                                <DataGrid.ColumnHeaderStyle>
-                                    <Style TargetType="DataGridColumnHeader">
-                                        <Setter Property="Background" Value="#18181c"/>
-                                        <Setter Property="Foreground" Value="#9ca3af"/>
-                                        <Setter Property="Padding" Value="8,6"/>
-                                        <Setter Property="FontWeight" Value="SemiBold"/>
-                                        <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                        <Setter Property="BorderBrush" Value="#2c2c2e"/>
-                                    </Style>
-                                </DataGrid.ColumnHeaderStyle>
-                                <DataGrid.CellStyle>
-                                    <Style TargetType="DataGridCell">
-                                        <Setter Property="BorderThickness" Value="0"/>
-                                        <Setter Property="Padding" Value="8,4"/>
-                                        <Setter Property="VerticalAlignment" Value="Center"/>
-                                        <Style.Triggers>
-                                            <Trigger Property="IsSelected" Value="True">
-                                                <Setter Property="Background" Value="#2c2c2e"/>
-                                                <Setter Property="Foreground" Value="White"/>
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </DataGrid.CellStyle>
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Product License" Binding="{Binding SkuPartName}" Width="2*"/>
-                                    <DataGridTextColumn Header="Assigned / Total" Binding="{Binding AssignedText}" Width="1.2*">
-                                        <DataGridTextColumn.ElementStyle>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="HorizontalAlignment" Value="Center"/>
-                                                <Setter Property="VerticalAlignment" Value="Center"/>
-                                            </Style>
-                                        </DataGridTextColumn.ElementStyle>
-                                    </DataGridTextColumn>
-                                    <DataGridTextColumn Header="Unassigned" Binding="{Binding UnassignedUnits}" Width="1*">
-                                        <DataGridTextColumn.ElementStyle>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="HorizontalAlignment" Value="Center"/>
-                                                <Setter Property="VerticalAlignment" Value="Center"/>
-                                                <Setter Property="FontWeight" Value="Bold"/>
-                                                <Setter Property="Foreground" Value="{Binding UnassignedBrush}"/>
-                                            </Style>
-                                        </DataGridTextColumn.ElementStyle>
-                                    </DataGridTextColumn>
-                                    <DataGridTextColumn Header="Monthly Cost" Binding="{Binding MonthlyPriceText}" Width="1.1*">
-                                        <DataGridTextColumn.ElementStyle>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                                                <Setter Property="VerticalAlignment" Value="Center"/>
-                                            </Style>
-                                        </DataGridTextColumn.ElementStyle>
-                                    </DataGridTextColumn>
-                                    <DataGridTextColumn Header="Wasted/mo" Binding="{Binding WastedCostText}" Width="1.1*">
-                                        <DataGridTextColumn.ElementStyle>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="HorizontalAlignment" Value="Right"/>
-                                                <Setter Property="VerticalAlignment" Value="Center"/>
-                                                <Setter Property="FontWeight" Value="SemiBold"/>
-                                                <Setter Property="Foreground" Value="{Binding WastedBrush}"/>
-                                            </Style>
-                                        </DataGridTextColumn.ElementStyle>
-                                    </DataGridTextColumn>
-                                </DataGrid.Columns>
-                            </DataGrid>
-                        </Grid>
-                    </Border>
-                    
-                    <!-- Chart 2: Activity -->
-                    <Border Grid.Column="1" Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="8" Padding="15" Margin="10,0,0,0">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Text="User Activity Distribution" Foreground="White" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                            <TextBlock Grid.Row="0" Text="User Activity Distribution" Foreground="#F8FAFC" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                                 <StackPanel Name="panelActivityChart"/>
                             </ScrollViewer>
                         </Grid>
                     </Border>
-                </Grid>
-                
-                <!-- Compact System Activity Feed -->
-                <Grid Grid.Row="2" Margin="0,0,0,10">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="100"/>
-                    </Grid.RowDefinitions>
-                    
-                    <Grid Grid.Row="0" Margin="0,0,0,5">
+
+                    <!-- Overview Export Actions -->
+                    <Grid Grid.Row="2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="&gt; System Activity Feed" Foreground="White" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
-                        <Button Name="btnRunScript" Grid.Column="1" Style="{StaticResource BrandBtn}" Content="Refresh Report" Padding="12,4" FontSize="11"/>
+                        <TextBlock Text="Inspect full SKU pool waste on Licences or filter accounts on User Directory." Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Name="btnGenEmailDash" Style="{StaticResource SecBtn}" Content="Generate Email Draft" Height="34" Margin="0,0,8,0"/>
+                            <Button Name="btnExportCSVDash" Style="{StaticResource SecBtn}" Content="Export CSV" Height="34" Margin="0,0,8,0"/>
+                            <Button Name="btnExportExcelDash" Style="{StaticResource SecBtn}" Content="Export Excel (XLSX)" Height="34" Margin="0,0,8,0"/>
+                            <Button Name="btnExportPDFDash" Style="{StaticResource SecBtn}" Content="Export PDF Report" Height="34" Margin="0,0,8,0"/>
+                            <Button Name="btnExportPNGDash" Style="{StaticResource SecBtn}" Content="Snapshot PNG" Height="34"/>
+                        </StackPanel>
                     </Grid>
-                    
-                    <Border Grid.Row="1" Background="#0c0c0d" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="6">
-                        <TextBox Name="txtLog" Background="Transparent" Foreground="#38bdf8" BorderThickness="0" 
-                                 FontFamily="Consolas" FontSize="11" IsReadOnly="True" AcceptsReturn="True" 
-                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Padding="8"/>
-                    </Border>
                 </Grid>
-                
-                <!-- Bottom Exporters (Dashboard Page) -->
-                <Grid Grid.Row="3" Margin="0,5,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    
-                    <TextBlock Text="// Results represent audited active Entra ID subscriptions" Foreground="#555" FontSize="11" VerticalAlignment="Center"/>
-                    
-                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                        <Button Name="btnGenEmailDash" Style="{StaticResource SecBtn}" Content="Generate Email Draft" Height="32" Margin="0,0,8,0"/>
-                        <Button Name="btnExportCSVDash" Style="{StaticResource SecBtn}" Content="Export CSV" Height="32" Margin="0,0,8,0"/>
-                        <Button Name="btnExportExcelDash" Style="{StaticResource SecBtn}" Content="Export Excel (XLSX)" Height="32" Margin="0,0,8,0"/>
-                        <Button Name="btnExportPDFDash" Style="{StaticResource SecBtn}" Content="Export PDF Report" Height="32" Margin="0,0,8,0"/>
-                        <Button Name="btnExportPNGDash" Style="{StaticResource SecBtn}" Content="Snapshot Dashboard PNG" Height="32"/>
-                    </StackPanel>
-                </Grid>
-            </Grid>
-            
-            <!-- PAGE 3: USER DIRECTORY GRID -->
-            <!-- PAGE 3: USER DIRECTORY GRID -->
-            <Grid Name="pageDirectory" Visibility="Collapsed">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/> <!-- Filters & Search -->
-                    <RowDefinition Height="Auto"/> <!-- Additive Filters Toolbar -->
-                    <RowDefinition Height="*"/>    <!-- Data Grid -->
-                    <RowDefinition Height="Auto"/> <!-- Bottom Actions -->
-                </Grid.RowDefinitions>
-                
-                <!-- Filters & Search -->
-                <Grid Grid.Row="0" Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="260"/>
-                    </Grid.ColumnDefinitions>
-                    
-                    <!-- Preset Filters -->
-                    <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Name="btnFilterAll" Content="All Users" Padding="10,5" Background="#3B82F6" Foreground="White" FontWeight="SemiBold" BorderThickness="0" Margin="0,0,5,5" Tag="all"/>
-                        <Button Name="btnFilterActive" Content="Active (&lt;=30d)" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="active"/>
-                        <Button Name="btnFilterLicGuests" Content="Licensed + Guests" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="licensed_guests"/>
-                        <Button Name="btnFilterLicensed" Content="Licensed Only" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="licensed"/>
-                        <Button Name="btnFilterGuests" Content="Guests Only" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="guests"/>
-                        <Button Name="btnFilterUnlicensed" Content="Unlicensed" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="unlicensed"/>
-                        <Button Name="btnFilterDisabled" Content="Disabled" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="disabled"/>
-                        <Button Name="btnFilterInactive90d" Content="Inactive (&gt;90d)" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="inactive90d"/>
-                        <Button Name="btnFilterNever" Content="Never Logged In" Padding="10,5" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,5,5" Tag="never"/>
-                    </WrapPanel>
-                    
-                    <!-- Search Box -->
-                    <Grid Grid.Column="1" VerticalAlignment="Top">
-                        <TextBox Name="txtSearch" Background="#0c0c0d" BorderBrush="#2c2c2e" Foreground="White" Padding="8,6" FontSize="12" SelectionBrush="#3B82F6" CaretBrush="White"/>
-                        <TextBlock Text="Search Name, UPN, SKU..." Foreground="#555" IsHitTestVisible="False" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
+            </TabItem>
+
+            <!-- TAB 2: LICENCES -->
+            <TabItem Name="tabLicences" Header="Licences">
+                <Border Margin="20,14,20,12" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="14">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="Tenant Subscriptions &amp; Unassigned Licence Pool" Foreground="#F8FAFC" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <DataGrid Grid.Row="1" Name="gridUnassigned" AutoGenerateColumns="False" IsReadOnly="True"
+                                  Background="#091122" BorderBrush="#26354D" BorderThickness="1" Foreground="#E2E8F0"
+                                  RowBackground="#091122" AlternatingRowBackground="#0C172B"
+                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#1A2B44"
+                                  RowHeaderWidth="0" SelectionMode="Single" FontSize="12" RowHeight="30">
+                            <DataGrid.ColumnHeaderStyle>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="Background" Value="#0B1528"/>
+                                    <Setter Property="Foreground" Value="#94A3B8"/>
+                                    <Setter Property="Padding" Value="10,7"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    <Setter Property="BorderBrush" Value="#26354D"/>
+                                </Style>
+                            </DataGrid.ColumnHeaderStyle>
+                            <DataGrid.CellStyle>
+                                <Style TargetType="DataGridCell">
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Padding" Value="8,4"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="Foreground" Value="#E2E8F0"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding ElementName=txtSearch, Path=Text}" Value="">
-                                            <Setter Property="Visibility" Value="Visible"/>
-                                        </DataTrigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#1E3A5F"/>
+                                            <Setter Property="Foreground" Value="#F8FAFC"/>
+                                        </Trigger>
                                     </Style.Triggers>
                                 </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </Grid>
-                </Grid>
-
-                <!-- Additive Filter Toolbar -->
-                <Border Grid.Row="1" Background="#161618" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="6" Padding="8,5" Margin="0,0,0,10">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="REFINE:" Foreground="#64748b" FontSize="10" FontWeight="Bold" FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            
-                            <!-- License Group -->
-                            <TextBlock Text="Lic:" Foreground="#9ca3af" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                            <Button Name="btnSubLicAll" Content="All" Padding="6,3" FontSize="10" Background="#2563eb" Foreground="White" BorderBrush="#3B82F6" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
-                            <Button Name="btnSubLicYes" Content="Yes" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,3,0" Tag="licensed"/>
-                            <Button Name="btnSubLicNo" Content="No" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,8,0" Tag="unlicensed"/>
-                            
-                            <Border Width="1" Height="14" Background="#2c2c2e" Margin="0,0,8,0" VerticalAlignment="Center"/>
-
-                            <!-- Type Group -->
-                            <TextBlock Text="Type:" Foreground="#9ca3af" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                            <Button Name="btnSubTypeAll" Content="All" Padding="6,3" FontSize="10" Background="#2563eb" Foreground="White" BorderBrush="#3B82F6" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
-                            <Button Name="btnSubTypeMembers" Content="Members" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,3,0" Tag="members"/>
-                            <Button Name="btnSubTypeGuests" Content="Guests" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,3,0" Tag="guests"/>
-                            <Button Name="btnSubTypeLicGuest" Content="Lic+Guests" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,8,0" Tag="licensed_guests"/>
-
-                            <Border Width="1" Height="14" Background="#2c2c2e" Margin="0,0,8,0" VerticalAlignment="Center"/>
-
-                            <!-- Status Group -->
-                            <TextBlock Text="Status:" Foreground="#9ca3af" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                            <Button Name="btnSubAccAll" Content="All" Padding="6,3" FontSize="10" Background="#2563eb" Foreground="White" BorderBrush="#3B82F6" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
-                            <Button Name="btnSubAccEnabled" Content="Enabled" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,3,0" Tag="enabled"/>
-                            <Button Name="btnSubAccDisabled" Content="Disabled" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,8,0" Tag="disabled"/>
-
-                            <Border Width="1" Height="14" Background="#2c2c2e" Margin="0,0,8,0" VerticalAlignment="Center"/>
-
-                            <!-- Sign-In Activity Group -->
-                            <TextBlock Text="Sign-In:" Foreground="#9ca3af" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                            <Button Name="btnSubActAll" Content="All" Padding="6,3" FontSize="10" Background="#2563eb" Foreground="White" BorderBrush="#3B82F6" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
-                            <Button Name="btnSubActActive" Content="&lt;=30d" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,3,0" Tag="active"/>
-                            <Button Name="btnSubActInactive" Content="&gt;90d" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,3,0" Tag="inactive90d"/>
-                            <Button Name="btnSubActNever" Content="Never" Padding="6,3" FontSize="10" Background="#1c1c1e" Foreground="#9ca3af" BorderBrush="#2c2c2e" BorderThickness="1" Margin="0,0,8,0" Tag="never"/>
-
-                            <Button Name="btnResetFilters" Content="Reset All" Padding="8,3" FontSize="10" Background="#1c1c1e" Foreground="#f87171" BorderBrush="#ef4444" BorderThickness="1" Margin="4,0,0,0"/>
-                        </WrapPanel>
-                        
-                        <TextBlock Name="txtFilterCount" Grid.Column="1" Text="Showing 0 of 0 users" Foreground="#10b981" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                            </DataGrid.CellStyle>
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Product License" Binding="{Binding SkuPartName}" Width="2*"/>
+                                <DataGridTextColumn Header="Assigned / Total" Binding="{Binding AssignedText}" Width="1.2*">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Unassigned" Binding="{Binding UnassignedUnits}" Width="1*">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                            <Setter Property="FontWeight" Value="Bold"/>
+                                            <Setter Property="Foreground" Value="{Binding UnassignedBrush}"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Monthly Cost" Binding="{Binding MonthlyPriceText}" Width="1.1*">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                                <DataGridTextColumn Header="Wasted/mo" Binding="{Binding WastedCostText}" Width="1.1*">
+                                    <DataGridTextColumn.ElementStyle>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                                            <Setter Property="VerticalAlignment" Value="Center"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="Foreground" Value="{Binding WastedBrush}"/>
+                                        </Style>
+                                    </DataGridTextColumn.ElementStyle>
+                                </DataGridTextColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
                     </Grid>
                 </Border>
-                
-                <!-- Styled Data Grid -->
-                <Border Grid.Row="2" Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="8" Padding="5">
-                    <DataGrid Name="gridUsers" AutoGenerateColumns="False" IsReadOnly="True" 
-                              Background="#1c1c1e" BorderThickness="0" Foreground="#f3f4f6"
-                              RowBackground="#1c1c1e" AlternatingRowBackground="#131313" 
-                              HeadersVisibility="Column" GridLinesVisibility="None" SelectionMode="Single"
-                              FontFamily="Consolas" FontSize="11" Margin="5">
+            </TabItem>
+
+            <!-- TAB 3: USER DIRECTORY -->
+            <TabItem Name="tabDirectory" Header="User Directory">
+                <Grid Name="pageDirectory" Margin="20,12,20,12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Filters & Search -->
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="260"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Preset Filters -->
+                        <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Name="btnFilterAll" Content="All Users" Padding="10,5" Background="#2DD4BF" Foreground="#042F2E" FontWeight="Bold" BorderThickness="0" Margin="0,0,5,5" Tag="all"/>
+                            <Button Name="btnFilterActive" Content="Active (&lt;=30d)" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="active"/>
+                            <Button Name="btnFilterLicGuests" Content="Licensed + Guests" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="licensed_guests"/>
+                            <Button Name="btnFilterLicensed" Content="Licensed Only" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="licensed"/>
+                            <Button Name="btnFilterGuests" Content="Guests Only" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="guests"/>
+                            <Button Name="btnFilterUnlicensed" Content="Unlicensed" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="unlicensed"/>
+                            <Button Name="btnFilterDisabled" Content="Disabled" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="disabled"/>
+                            <Button Name="btnFilterInactive90d" Content="Inactive (&gt;90d)" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="inactive90d"/>
+                            <Button Name="btnFilterNever" Content="Never Logged In" Padding="10,5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,5,5" Tag="never"/>
+                        </WrapPanel>
+
+                        <!-- Search Box -->
+                        <Grid Grid.Column="1" VerticalAlignment="Top">
+                            <TextBox Name="txtSearch" Height="32" Padding="8,5" FontSize="12" VerticalContentAlignment="Center"/>
+                            <TextBlock Text="Search Name, UPN, SKU..." Foreground="#94A3B8" IsHitTestVisible="False" VerticalAlignment="Center" Margin="10,0,0,0" FontSize="11.5">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ElementName=txtSearch, Path=Text}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Grid>
+
+                    <!-- Additive Filter Toolbar -->
+                    <Border Grid.Row="1" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="8,5" Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <WrapPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="REFINE:" Foreground="#94A3B8" FontSize="10" FontWeight="Bold" FontFamily="Cascadia Mono, Consolas" VerticalAlignment="Center" Margin="0,0,8,0"/>
+
+                                <TextBlock Text="Lic:" Foreground="#94A3B8" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <Button Name="btnSubLicAll" Content="All" Padding="6,3" FontSize="10.5" Background="#262DD4BF" Foreground="#F8FAFC" BorderBrush="#2DD4BF" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
+                                <Button Name="btnSubLicYes" Content="Yes" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,3,0" Tag="licensed"/>
+                                <Button Name="btnSubLicNo" Content="No" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,8,0" Tag="unlicensed"/>
+
+                                <Border Width="1" Height="14" Background="#26354D" Margin="0,0,8,0" VerticalAlignment="Center"/>
+
+                                <TextBlock Text="Type:" Foreground="#94A3B8" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <Button Name="btnSubTypeAll" Content="All" Padding="6,3" FontSize="10.5" Background="#262DD4BF" Foreground="#F8FAFC" BorderBrush="#2DD4BF" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
+                                <Button Name="btnSubTypeMembers" Content="Members" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,3,0" Tag="members"/>
+                                <Button Name="btnSubTypeGuests" Content="Guests" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,3,0" Tag="guests"/>
+                                <Button Name="btnSubTypeLicGuest" Content="Lic+Guests" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,8,0" Tag="licensed_guests"/>
+
+                                <Border Width="1" Height="14" Background="#26354D" Margin="0,0,8,0" VerticalAlignment="Center"/>
+
+                                <TextBlock Text="Status:" Foreground="#94A3B8" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <Button Name="btnSubAccAll" Content="All" Padding="6,3" FontSize="10.5" Background="#262DD4BF" Foreground="#F8FAFC" BorderBrush="#2DD4BF" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
+                                <Button Name="btnSubAccEnabled" Content="Enabled" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,3,0" Tag="enabled"/>
+                                <Button Name="btnSubAccDisabled" Content="Disabled" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,8,0" Tag="disabled"/>
+
+                                <Border Width="1" Height="14" Background="#26354D" Margin="0,0,8,0" VerticalAlignment="Center"/>
+
+                                <TextBlock Text="Sign-In:" Foreground="#94A3B8" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <Button Name="btnSubActAll" Content="All" Padding="6,3" FontSize="10.5" Background="#262DD4BF" Foreground="#F8FAFC" BorderBrush="#2DD4BF" BorderThickness="1" Margin="0,0,3,0" Tag="all"/>
+                                <Button Name="btnSubActActive" Content="&lt;=30d" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,3,0" Tag="active"/>
+                                <Button Name="btnSubActInactive" Content="&gt;90d" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,3,0" Tag="inactive90d"/>
+                                <Button Name="btnSubActNever" Content="Never" Padding="6,3" FontSize="10.5" Background="#14FFFFFF" Foreground="#94A3B8" BorderBrush="#26354D" BorderThickness="1" Margin="0,0,8,0" Tag="never"/>
+
+                                <Button Name="btnResetFilters" Content="Reset All" Padding="8,3" FontSize="10.5" Background="#26EF4444" Foreground="#FCA5A5" BorderBrush="#66EF4444" BorderThickness="1" Margin="4,0,0,0"/>
+                            </WrapPanel>
+
+                            <TextBlock Name="txtFilterCount" Grid.Column="1" Text="Showing 0 of 0 users" Foreground="#2DD4BF" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Dark Data Grid -->
+                    <DataGrid Name="gridUsers" Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True"
+                              Background="#091122" BorderBrush="#26354D" BorderThickness="1" Foreground="#E2E8F0"
+                              RowBackground="#091122" AlternatingRowBackground="#0C172B"
+                              HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#1A2B44"
+                              RowHeaderWidth="0" SelectionMode="Single" FontSize="11.5">
                         <DataGrid.ColumnHeaderStyle>
                             <Style TargetType="DataGridColumnHeader">
-                                <Setter Property="Background" Value="#18181c"/>
-                                <Setter Property="Foreground" Value="#9ca3af"/>
+                                <Setter Property="Background" Value="#0B1528"/>
+                                <Setter Property="Foreground" Value="#94A3B8"/>
                                 <Setter Property="Padding" Value="10,8"/>
-                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="FontWeight" Value="Bold"/>
                                 <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                <Setter Property="BorderBrush" Value="#2c2c2e"/>
+                                <Setter Property="BorderBrush" Value="#26354D"/>
                             </Style>
                         </DataGrid.ColumnHeaderStyle>
                         <DataGrid.CellStyle>
                             <Style TargetType="DataGridCell">
                                 <Setter Property="Background" Value="Transparent"/>
                                 <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Padding" Value="6,4"/>
                                 <Setter Property="Foreground" Value="{Binding Path=Foreground, RelativeSource={RelativeSource AncestorType=DataGridRow}}"/>
                                 <Style.Triggers>
                                     <Trigger Property="IsSelected" Value="True">
-                                        <Setter Property="Background" Value="#33ffffff"/>
-                                        <Setter Property="Foreground" Value="{Binding Path=Foreground, RelativeSource={RelativeSource AncestorType=DataGridRow}}"/>
+                                        <Setter Property="Background" Value="#1E3A5F"/>
+                                        <Setter Property="Foreground" Value="#F8FAFC"/>
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
                         </DataGrid.CellStyle>
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow">
+                                <Setter Property="Background" Value="#091122"/>
+                                <Setter Property="Foreground" Value="#E2E8F0"/>
                                 <Setter Property="BorderThickness" Value="0,0,0,1"/>
-                                <Setter Property="BorderBrush" Value="#1f1f23"/>
-                                <Setter Property="Padding" Value="5"/>
+                                <Setter Property="BorderBrush" Value="#1A2B44"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding StatusCategory}" Value="Active (&lt;=30d)">
-                                        <Setter Property="Background" Value="#10b981"/>
-                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="Background" Value="#1A34D399"/>
+                                        <Setter Property="Foreground" Value="#6EE7B7"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding StatusCategory}" Value="Inactive (30-90d)">
-                                        <Setter Property="Background" Value="#eab308"/>
-                                        <Setter Property="Foreground" Value="Black"/>
+                                        <Setter Property="Background" Value="#1AFBBF24"/>
+                                        <Setter Property="Foreground" Value="#FDE68A"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding StatusCategory}" Value="Inactive (90-365d)">
-                                        <Setter Property="Background" Value="#3B82F6"/>
-                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="Background" Value="#1A2DD4BF"/>
+                                        <Setter Property="Foreground" Value="#5EEAD4"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding StatusCategory}" Value="Inactive (&gt;1yr)">
-                                        <Setter Property="Background" Value="#ef4444"/>
-                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="Background" Value="#26EF4444"/>
+                                        <Setter Property="Foreground" Value="#FCA5A5"/>
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding StatusCategory}" Value="Never Logged In">
-                                        <Setter Property="Background" Value="#64748b"/>
-                                        <Setter Property="Foreground" Value="White"/>
+                                        <Setter Property="Background" Value="#1494A3B8"/>
+                                        <Setter Property="Foreground" Value="#CBD5E1"/>
                                     </DataTrigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#1E3A5F"/>
+                                        <Setter Property="Foreground" Value="#F8FAFC"/>
+                                    </Trigger>
                                 </Style.Triggers>
                             </Style>
                         </DataGrid.RowStyle>
@@ -710,7 +718,7 @@ $Xaml = @"
                                         <Setter Property="FontWeight" Value="SemiBold"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding UserType}" Value="Guest">
-                                                <Setter Property="Foreground" Value="#38bdf8"/>
+                                                <Setter Property="Foreground" Value="#2DD4BF"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -732,27 +740,233 @@ $Xaml = @"
                             <DataGridTextColumn Header="Verification" Binding="{Binding VerificationText}" Width="110"/>
                         </DataGrid.Columns>
                     </DataGrid>
+
+                    <!-- Directory Export Actions -->
+                    <Grid Grid.Row="3" Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Results represent audited Entra ID accounts and subscriptions." Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Name="btnGenEmail" Style="{StaticResource SecBtn}" Content="Generate Email Draft" Height="34" Margin="0,0,8,0"/>
+                            <Button Name="btnExportCSV" Style="{StaticResource SecBtn}" Content="Export CSV" Height="34" Margin="0,0,8,0"/>
+                            <Button Name="btnExportExcel" Style="{StaticResource SecBtn}" Content="Export Excel (XLSX)" Height="34" Margin="0,0,8,0"/>
+                            <Button Name="btnExportPDF" Style="{StaticResource SecBtn}" Content="Export PDF Report" Height="34" Margin="0,0,8,0"/>
+                            <Button Name="btnExportPNG" Style="{StaticResource SecBtn}" Content="Snapshot PNG" Height="34"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- TAB 4: ACTIVITY LOG -->
+            <TabItem Name="tabActivityLog" Header="Activity Log">
+                <Border Margin="20,14,20,12" Background="#CC050A14" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="12">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="System Activity Feed" Foreground="#94A3B8" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <TextBox Grid.Row="1" Name="txtLog" Background="Transparent" Foreground="#CBD5E1" BorderThickness="0" Padding="0"
+                                 FontFamily="Cascadia Mono, Consolas" FontSize="11.5" IsReadOnly="True" AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+                    </Grid>
                 </Border>
-                
-                <!-- Bottom Exporters -->
-                <Grid Grid.Row="3" Margin="0,15,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    
-                    <TextBlock Text="// Results represent audited active Entra ID subscriptions" Foreground="#555" FontSize="11" VerticalAlignment="Center"/>
-                    
-                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                        <Button Name="btnGenEmail" Style="{StaticResource SecBtn}" Content="Generate Email Draft" Height="32" Margin="0,0,8,0"/>
-                        <Button Name="btnExportCSV" Style="{StaticResource SecBtn}" Content="Export CSV" Height="32" Margin="0,0,8,0"/>
-                        <Button Name="btnExportExcel" Style="{StaticResource SecBtn}" Content="Export Excel (XLSX)" Height="32" Margin="0,0,8,0"/>
-                        <Button Name="btnExportPDF" Style="{StaticResource SecBtn}" Content="Export PDF Report" Height="32" Margin="0,0,8,0"/>
-                        <Button Name="btnExportPNG" Style="{StaticResource SecBtn}" Content="Snapshot Dashboard PNG" Height="32"/>
+            </TabItem>
+
+            <!-- TAB 5: CONNECTION -->
+            <TabItem Name="tabConnection" Header="Connection">
+                <Grid Name="pageConnection" Margin="20,12,20,12">
+                    <!-- Offline Welcome Screen -->
+                    <ScrollViewer Name="panelOfflineWelcome" Visibility="Visible" VerticalScrollBarVisibility="Auto">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="760" Margin="0,8,0,8">
+                            <TextBlock Text="Microsoft 365 Licence Console" Foreground="#F8FAFC" FontSize="21" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                            <TextBlock Text="Select your operational role and authentication method to audit tenant users." Foreground="#94A3B8" FontSize="13" HorizontalAlignment="Center" Margin="0,0,0,18"/>
+
+                            <!-- Step 1: Role Selection Cards -->
+                            <TextBlock Text="STEP 1: SELECT YOUR OPERATING ROLE" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="11" FontWeight="Bold" Margin="0,0,0,8" HorizontalAlignment="Center"/>
+                            <UniformGrid Columns="2" Margin="0,0,0,18" Width="620">
+                                <Button Name="btnRoleSelectServiceDesk" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" Padding="14" Margin="0,0,8,0" Cursor="Hand" Height="92">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </Button.Style>
+                                    <StackPanel>
+                                        <TextBlock Text="[Desk] Service Desk" Foreground="#F8FAFC" FontSize="15.5" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="Standard view: licences, statuses &amp; accounts. Hides all financials." Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Name="btnRoleSelectSales" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" Padding="14" Margin="8,0,0,0" Cursor="Hand" Height="92">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                                        </Border>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </Button.Style>
+                                    <StackPanel>
+                                        <TextBlock Text="[$] Sales &amp; Business" Foreground="#F8FAFC" FontSize="15.5" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="Financial view: savings, wasted costs, and downgrade recommendations." Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" TextAlignment="Center" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </UniformGrid>
+
+                            <!-- Step 2: Connection Panel -->
+                            <StackPanel Name="panelConnectionMethods" Visibility="Collapsed" HorizontalAlignment="Center" Width="760">
+                                <TextBlock Text="STEP 2: CHOOSE CONNECTION METHOD" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="11" FontWeight="Bold" Margin="0,0,0,10" HorizontalAlignment="Center"/>
+
+                                <UniformGrid Columns="3" Margin="0,0,0,14">
+                                    <!-- Option A: Interactive M365 Sign-In -->
+                                    <Border Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,8,0">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Grid.Row="0" Text="Interactive Sign-In" Foreground="#F8FAFC" FontSize="13.5" FontWeight="Bold" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="1" Text="Official Microsoft OAuth login prompt. Supports MFA and SSO." Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                                            <StackPanel Grid.Row="2">
+                                                <TextBlock Text="Tenant (Optional):" Foreground="#94A3B8" FontSize="10.5" Margin="0,0,0,3"/>
+                                                <TextBox Name="txtUserTenant" Padding="6,5" Margin="0,0,0,8" FontSize="11.5"/>
+                                                <Button Name="btnConnectM365" Style="{StaticResource BrandBtn}" Content="M365 Sign-In" Height="34" FontSize="12"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Option B: App Client Secret -->
+                                    <Border Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="14" Margin="4,0,4,0">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Grid.Row="0" Text="App Client Secret" Foreground="#F8FAFC" FontSize="13.5" FontWeight="Bold" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="1" Text="Automated connection using Entra App Registration client credentials." Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+                                            <StackPanel Grid.Row="2">
+                                                <TextBlock Text="Tenant ID/Domain:" Foreground="#94A3B8" FontSize="10" Margin="0,0,0,2"/>
+                                                <TextBox Name="txtAppTenant" Padding="5,4" Margin="0,0,0,4" FontSize="11"/>
+                                                <TextBlock Text="Client ID:" Foreground="#94A3B8" FontSize="10" Margin="0,0,0,2"/>
+                                                <TextBox Name="txtAppClient" Padding="5,4" Margin="0,0,0,4" FontSize="11"/>
+                                                <TextBlock Text="Client Secret:" Foreground="#94A3B8" FontSize="10" Margin="0,0,0,2"/>
+                                                <PasswordBox Name="txtAppSecret" Padding="5,4" Margin="0,0,0,8" FontSize="11"/>
+                                                <Button Name="btnConnectApp" Style="{StaticResource BrandBtn}" Content="Connect App" Height="34" FontSize="12"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Option C: Import CSV -->
+                                    <Border Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="8" Padding="14" Margin="8,0,0,0">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Grid.Row="0" Text="Offline CSV Import" Foreground="#F8FAFC" FontSize="13.5" FontWeight="Bold" Margin="0,0,0,6"/>
+                                            <TextBlock Grid.Row="1" Text="Load previously exported user reports directly into the console." Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                                            <Button Grid.Row="2" Name="btnBrowseCSV" Style="{StaticResource SecBtn}" Height="86">
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="[CSV]" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                                    <TextBlock Text="Browse CSV File" Foreground="#F8FAFC" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                                    <TextBlock Text="Click to select file" Foreground="#94A3B8" FontSize="10" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </UniformGrid>
+
+                                <!-- Demo Sandbox Option -->
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,4,0,0">
+                                    <TextBlock Text="Need to test without credentials?" Foreground="#94A3B8" FontSize="12" VerticalAlignment="Center"/>
+                                    <Button Name="btnDemoMode" Background="Transparent" BorderThickness="0" Foreground="#2DD4BF" Content="Launch Demo Sandbox Mode" FontWeight="Bold" Cursor="Hand" Margin="8,0,0,0">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <TextBlock Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" FontWeight="{TemplateBinding FontWeight}" Cursor="{TemplateBinding Cursor}" TextDecorations="Underline"/>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Connected Session Info Screen -->
+                    <StackPanel Name="panelConnectedSession" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Width="460">
+                        <Border Background="#660D192E" BorderBrush="#2DD4BF" BorderThickness="1" CornerRadius="8" Padding="24">
+                            <StackPanel>
+                                <TextBlock Text="Active Session Established" Foreground="#F8FAFC" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                <TextBlock Text="You are successfully authenticated and auditing the tenant." Foreground="#94A3B8" FontSize="12" HorizontalAlignment="Center" Margin="0,0,0,18"/>
+
+                                <Grid Margin="0,6">
+                                    <TextBlock Text="Tenant Domain:" Foreground="#94A3B8" FontSize="12"/>
+                                    <TextBlock Name="txtSessionTenant" Text="N/A" Foreground="#F8FAFC" FontSize="12" FontWeight="Bold" HorizontalAlignment="Right"/>
+                                </Grid>
+                                <Grid Margin="0,6">
+                                    <TextBlock Text="Connected As:" Foreground="#94A3B8" FontSize="12"/>
+                                    <TextBlock Name="txtSessionUser" Text="N/A" Foreground="#F8FAFC" FontSize="12" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" MaxWidth="250"/>
+                                </Grid>
+                                <Grid Margin="0,6">
+                                    <TextBlock Text="Uptime:" Foreground="#94A3B8" FontSize="12"/>
+                                    <TextBlock Name="txtSessionUptime" Text="00:00:00" Foreground="#2DD4BF" FontFamily="Cascadia Mono, Consolas" FontSize="12" HorizontalAlignment="Right" FontWeight="Bold"/>
+                                </Grid>
+                                <Grid Margin="0,6,0,18">
+                                    <TextBlock Text="Mode:" Foreground="#94A3B8" FontSize="12"/>
+                                    <TextBlock Name="txtSessionMode" Text="N/A" Foreground="#F8FAFC" FontSize="12" HorizontalAlignment="Right"/>
+                                </Grid>
+
+                                <Button Name="btnDisconnect" Style="{StaticResource SecBtn}" Content="Disconnect Session" Height="38" FontSize="13"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- SINGLE-ROW FOOTER -->
+        <Border Grid.Row="2" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="20,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="Logs: C:\Logs\UserLicenceCheck · Use horizontal tabs to switch between Overview, Licences, Directory, Logs, and Connection"
+                           Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Name="btnFooterActivity" Style="{StaticResource SecBtn}" Content="View Activity Log" Height="34" Margin="0,0,10,0"/>
+                    <Button Name="btnRunScript" Style="{StaticResource BrandBtn}" Content="Refresh Report" Height="34" IsEnabled="False"/>
+                </StackPanel>
             </Grid>
-        </Grid>
+        </Border>
     </Grid>
 </Window>
 "@
@@ -781,6 +995,7 @@ function Find-WpfChildByName {
 # 4. XML Parsing and WPF Window Binding
 $Reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]::new($Xaml))
 $Window = [System.Windows.Markup.XamlReader]::Load($Reader)
+Initialize-StandardGuiWindow -Window $Window
 
 # Dynamically link named XAML elements to local PowerShell variables prefixed with '$wpf_'
 [xml]$Xml = $Xaml
@@ -842,12 +1057,12 @@ $Script:MockData = @(
 )
 
 $Script:ActivityColors = @{
-    "Active (<=30d)"          = "#10b981"
-    "Inactive (30-90d)"        = "#eab308"
-    "Inactive (90-365d)"       = "#3B82F6"
-    "Inactive (>1yr)"          = "#ef4444"
-    "Never Logged In"          = "#64748b"
-    "Requires Entra ID P1/P2" = "#8b5cf6"
+    "Active (<=30d)"          = "#34D399"
+    "Inactive (30-90d)"        = "#FBBF24"
+    "Inactive (90-365d)"       = "#2DD4BF"
+    "Inactive (>1yr)"          = "#F87171"
+    "Never Logged In"          = "#94A3B8"
+    "Requires Entra ID P1/P2" = "#38BDF8"
 }
 
 # Determine script directory
@@ -1301,33 +1516,57 @@ function Show-VerificationSelectorDialog {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Exclude Verification Accounts" Height="360" Width="460"
-        WindowStartupLocation="CenterOwner" Background="#131313" Foreground="#f3f4f6"
+        WindowStartupLocation="CenterOwner" Foreground="#F8FAFC"
         ResizeMode="NoResize" ShowInTaskbar="False">
+    <Window.Background>
+        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
+            <GradientStop Color="#0F1F3D" Offset="0.0"/>
+            <GradientStop Color="#091122" Offset="0.55"/>
+            <GradientStop Color="#05070C" Offset="1.0"/>
+        </RadialGradientBrush>
+    </Window.Background>
     <Window.Resources>
         <Style x:Key="DialogBtn" TargetType="Button">
-            <Setter Property="Background" Value="#3B82F6"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#2DD4BF"/>
+            <Setter Property="Foreground" Value="#042F2E"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#1D4ED8"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#5EEAD4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style x:Key="DialogSecBtn" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#9ca3af"/>
-            <Setter Property="BorderBrush" Value="#2c2c2e"/>
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Cursor" Value="Hand"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#2c2c2e"/>
-                    <Setter Property="Foreground" Value="White"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#24FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
     
@@ -1339,20 +1578,20 @@ function Show-VerificationSelectorDialog {
         </Grid.RowDefinitions>
         
         <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="Verification Accounts Detected" Foreground="#3B82F6" FontSize="15" FontWeight="Bold"/>
+            <TextBlock Text="Verification Accounts Detected" Foreground="#2DD4BF" FontSize="15" FontWeight="Bold"/>
             <TextBlock Text="The following Test/Admin accounts were found in the list. Uncheck any accounts you want to remove from the exported file." 
-                       Foreground="#9ca3af" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                       Foreground="#94A3B8" FontSize="11.5" TextWrapping="Wrap" Margin="0,4,0,0"/>
         </StackPanel>
         
-        <Border Grid.Row="1" Background="#0c0c0d" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="6" Padding="10">
+        <Border Grid.Row="1" Background="#CC050A14" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="10">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Name="panelCheckBoxes"/>
             </ScrollViewer>
         </Border>
         
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
-            <Button Name="btnProceed" Style="{StaticResource DialogBtn}" Content="Proceed Export" Width="120" Height="30" IsDefault="True" Margin="0,0,10,0"/>
-            <Button Name="btnCancel" Style="{StaticResource DialogSecBtn}" Content="Cancel" Width="80" Height="30" IsCancel="True"/>
+            <Button Name="btnProceed" Style="{StaticResource DialogBtn}" Content="Proceed Export" Width="125" Height="32" IsDefault="True" Margin="0,0,10,0"/>
+            <Button Name="btnCancel" Style="{StaticResource DialogSecBtn}" Content="Cancel" Width="84" Height="32" IsCancel="True"/>
         </StackPanel>
     </Grid>
 </Window>
@@ -1361,6 +1600,7 @@ function Show-VerificationSelectorDialog {
     $Reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]::new($DialogXaml))
     $DlgWindow = [System.Windows.Markup.XamlReader]::Load($Reader)
     $DlgWindow.Owner = $Window
+    if ($Window -and $Window.FontFamily) { $DlgWindow.FontFamily = $Window.FontFamily }
     
     $Panel = $DlgWindow.FindName("panelCheckBoxes")
     $BtnProceed = $DlgWindow.FindName("btnProceed")
@@ -1370,7 +1610,7 @@ function Show-VerificationSelectorDialog {
     foreach ($user in $Users) {
         $CB = [System.Windows.Controls.CheckBox]::new()
         $CB.Content = "$($user.DisplayName) ($($user.UserPrincipalName))"
-        $CB.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#f3f4f6")
+        $CB.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F8FAFC")
         $CB.IsChecked = $true
         $CB.Margin = "0,4,0,4"
         $CB.Tag = $user.UserPrincipalName
@@ -1414,31 +1654,60 @@ function Show-EmailTemplateDialog {
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Generated Email Draft" Height="500" Width="650"
-        WindowStartupLocation="CenterOwner" Background="#131313" Foreground="#f3f4f6"
+        WindowStartupLocation="CenterOwner" Foreground="#F8FAFC"
         ResizeMode="NoResize" ShowInTaskbar="False">
+    <Window.Background>
+        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
+            <GradientStop Color="#0F1F3D" Offset="0.0"/>
+            <GradientStop Color="#091122" Offset="0.55"/>
+            <GradientStop Color="#05070C" Offset="1.0"/>
+        </RadialGradientBrush>
+    </Window.Background>
     <Window.Resources>
         <Style x:Key="DialogBtn" TargetType="Button">
-            <Setter Property="Background" Value="#2c2c2e"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="15,6"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Margin" Value="5,0"/>
-            <Setter Property="Height" Value="32"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#3c3c3e"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#24FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style x:Key="BrandDialogBtn" TargetType="Button" BasedOn="{StaticResource DialogBtn}">
-            <Setter Property="Background" Value="#3B82F6"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#60A5FA"/>
-                </Trigger>
-            </Style.Triggers>
+            <Setter Property="Background" Value="#2DD4BF"/>
+            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#5EEAD4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
     
@@ -1451,15 +1720,15 @@ function Show-EmailTemplateDialog {
         
         <!-- Header -->
         <StackPanel Margin="0,0,0,15">
-            <TextBlock Text="GENERATED EMAIL DRAFT" Foreground="#3B82F6" FontSize="14" FontWeight="Bold"/>
-            <TextBlock Text="Review the generated draft below. You can copy it directly to your clipboard." Foreground="#9ca3af" FontSize="11" Margin="0,3,0,0"/>
+            <TextBlock Text="GENERATED EMAIL DRAFT" Foreground="#2DD4BF" FontSize="14" FontWeight="Bold"/>
+            <TextBlock Text="Review the generated draft below. You can copy it directly to your clipboard." Foreground="#94A3B8" FontSize="11.5" Margin="0,3,0,0"/>
         </StackPanel>
         
         <!-- Scrollable TextBox -->
-        <Border Grid.Row="1" Background="#1c1c1e" BorderBrush="#2c2c2e" BorderThickness="1" CornerRadius="6" Padding="5">
-            <TextBox Name="txtEmailBody" Background="Transparent" Foreground="#f3f4f6" BorderThickness="0"
+        <Border Grid.Row="1" Background="#CC050A14" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="6">
+            <TextBox Name="txtEmailBody" Background="Transparent" Foreground="#F8FAFC" BorderThickness="0"
                      TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True" VerticalScrollBarVisibility="Auto"
-                     FontSize="12" FontFamily="Segoe UI" Padding="8"/>
+                     FontSize="12" Padding="8"/>
         </Border>
         
         <!-- Actions -->
@@ -1469,7 +1738,7 @@ function Show-EmailTemplateDialog {
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             
-            <TextBlock Name="txtStatusMessage" Text="" Foreground="#10b981" FontSize="12" VerticalAlignment="Center" FontWeight="SemiBold"/>
+            <TextBlock Name="txtStatusMessage" Text="" Foreground="#34D399" FontSize="12" VerticalAlignment="Center" FontWeight="SemiBold"/>
             
             <StackPanel Grid.Column="1" Orientation="Horizontal">
                 <Button Name="btnCopy" Style="{StaticResource BrandDialogBtn}" Content="Copy to Clipboard"/>
@@ -1490,6 +1759,7 @@ function Show-EmailTemplateDialog {
     $Reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]::new($DialogXaml))
     $DlgWindow = [System.Windows.Markup.XamlReader]::Load($Reader)
     $DlgWindow.Owner = $WpfWindow
+    if ($WpfWindow -and $WpfWindow.FontFamily) { $DlgWindow.FontFamily = $WpfWindow.FontFamily }
     
     # Bind dialog controls
     $TxtEmailBody = $DlgWindow.FindName("txtEmailBody")
@@ -1554,9 +1824,9 @@ function Invoke-AuditReport {
         Update-UI
         Start-Sleep -Milliseconds 400
         
-        $GreenBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#10b981")
-        $RedBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ef4444")
-        $GrayBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
+        $GreenBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#34D399")
+        $RedBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F87171")
+        $GrayBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#94A3B8")
         
         $Script:TotalPoolWaste = 186.70
         $Script:TotalUnassignedCount = 7
@@ -1769,9 +2039,9 @@ function Invoke-AuditReport {
                         $Script:TotalUnassignedCount += $Unassigned
                     }
                     
-                    $GreenBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#10b981")
-                    $RedBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ef4444")
-                    $GrayBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
+                    $GreenBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#34D399")
+                    $RedBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F87171")
+                    $GrayBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#94A3B8")
                     
                     $UnassignedBrush = if ($Unassigned -gt 0) { $GreenBrush } elseif ($Unassigned -lt 0) { $RedBrush } else { $GrayBrush }
                     $WastedBrush = if ($Unassigned -gt 0) { $RedBrush } elseif ($Unassigned -lt 0) { $GreenBrush } else { $GrayBrush }
@@ -1982,7 +2252,7 @@ function UpdateBarChart($Panel, $DataMap, $ColorHex) {
         
         $Label = [System.Windows.Controls.TextBlock]::new()
         $Label.Text = $Key
-        $Label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
+        $Label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#94A3B8")
         $Label.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
         $Label.FontSize = 11
         $Label.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
@@ -1990,8 +2260,8 @@ function UpdateBarChart($Panel, $DataMap, $ColorHex) {
         $Grid.Children.Add($Label)
         
         $BarOuter = [System.Windows.Controls.Border]::new()
-        $BarOuter.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#0c0c0d")
-        $BarOuter.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
+        $BarOuter.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#99070D1A")
+        $BarOuter.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#26354D")
         $BarOuter.BorderThickness = 1
         $BarOuter.CornerRadius = 3
         $BarOuter.Height = 14
@@ -2013,7 +2283,7 @@ function UpdateBarChart($Panel, $DataMap, $ColorHex) {
         
         $ValLabel = [System.Windows.Controls.TextBlock]::new()
         $ValLabel.Text = $Val.ToString()
-        $ValLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ffffff")
+        $ValLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F8FAFC")
         $ValLabel.FontWeight = [System.Windows.FontWeights]::Bold
         $ValLabel.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
         $ValLabel.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Right
@@ -2044,15 +2314,15 @@ function AddActivityBarChartRow($Panel, $LabelText, $Val, $Total, $ColorHex) {
     
     $Label = [System.Windows.Controls.TextBlock]::new()
     $Label.Text = $LabelText
-    $Label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
+    $Label.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#94A3B8")
     $Label.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
     $Label.FontSize = 11
     [System.Windows.Controls.Grid]::SetColumn($Label, 0)
     $Grid.Children.Add($Label)
     
     $BarOuter = [System.Windows.Controls.Border]::new()
-    $BarOuter.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#0c0c0d")
-    $BarOuter.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
+    $BarOuter.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#99070D1A")
+    $BarOuter.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#26354D")
     $BarOuter.BorderThickness = 1
     $BarOuter.CornerRadius = 3
     $BarOuter.Height = 14
@@ -2074,7 +2344,7 @@ function AddActivityBarChartRow($Panel, $LabelText, $Val, $Total, $ColorHex) {
     
     $ValLabel = [System.Windows.Controls.TextBlock]::new()
     $ValLabel.Text = $Val.ToString()
-    $ValLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ffffff")
+    $ValLabel.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#F8FAFC")
     $ValLabel.FontWeight = [System.Windows.FontWeights]::Bold
     $ValLabel.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
     $ValLabel.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Right
@@ -2358,7 +2628,7 @@ function Process-UserData($Users) {
     $wpf_kpiPoolWasteCount.Text = "$PoolWasteCountVal unused licenses"
     
     # Draw License Bar Chart
-    if ($wpf_panelLicenseChart) { UpdateBarChart $wpf_panelLicenseChart $LicenseMap "#3B82F6" }
+    if ($wpf_panelLicenseChart) { UpdateBarChart $wpf_panelLicenseChart $LicenseMap "#2DD4BF" }
     
     # Draw Activity Bar Chart with distinct colors
     $wpf_panelActivityChart.Children.Clear()
@@ -2444,89 +2714,80 @@ function Filter-DataGrid {
 
 # 10. Navigations & Tab Switchers
 function Show-Page($PageName) {
-    $wpf_pageConnection.Visibility = [System.Windows.Visibility]::Collapsed
-    $wpf_pageDashboard.Visibility = [System.Windows.Visibility]::Collapsed
-    $wpf_pageDirectory.Visibility = [System.Windows.Visibility]::Collapsed
-    
-    $wpf_btnNavConnection.BorderBrush = [System.Windows.Media.Brushes]::Transparent
-    $wpf_btnNavConnection.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
-    $wpf_btnNavDashboard.BorderBrush = [System.Windows.Media.Brushes]::Transparent
-    $wpf_btnNavDashboard.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
-    $wpf_btnNavDirectory.BorderBrush = [System.Windows.Media.Brushes]::Transparent
-    $wpf_btnNavDirectory.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
-    
-    if ($PageName -eq "Connection") {
-        $wpf_pageConnection.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_btnNavConnection.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
-        $wpf_btnNavConnection.Foreground = [System.Windows.Media.Brushes]::White
-    } elseif ($PageName -eq "Dashboard") {
-        $wpf_pageDashboard.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_btnNavDashboard.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
-        $wpf_btnNavDashboard.Foreground = [System.Windows.Media.Brushes]::White
-    } elseif ($PageName -eq "Directory") {
-        $wpf_pageDirectory.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_btnNavDirectory.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
-        $wpf_btnNavDirectory.Foreground = [System.Windows.Media.Brushes]::White
+    if ($wpf_pageConnection) { $wpf_pageConnection.Visibility = [System.Windows.Visibility]::Visible }
+    if ($wpf_pageDashboard) { $wpf_pageDashboard.Visibility = [System.Windows.Visibility]::Visible }
+    if ($wpf_pageDirectory) { $wpf_pageDirectory.Visibility = [System.Windows.Visibility]::Visible }
+
+    if ($null -eq $wpf_tabMain) { return }
+    switch ($PageName) {
+        "Connection"  { if ($wpf_tabConnection)  { $wpf_tabMain.SelectedItem = $wpf_tabConnection } }
+        "Dashboard"   { if ($wpf_tabOverview)    { $wpf_tabMain.SelectedItem = $wpf_tabOverview } }
+        "Licences"    { if ($wpf_tabLicences)    { $wpf_tabMain.SelectedItem = $wpf_tabLicences } }
+        "Directory"   { if ($wpf_tabDirectory)   { $wpf_tabMain.SelectedItem = $wpf_tabDirectory } }
+        "ActivityLog" { if ($wpf_tabActivityLog) { $wpf_tabMain.SelectedItem = $wpf_tabActivityLog } }
     }
 }
 
 function Show-ConnectionMethod($MethodName) {
+    if ($null -eq $wpf_panelMethodM365 -or $null -eq $wpf_panelMethodApp -or $null -eq $wpf_panelMethodCSV) { return }
+    $bc = [System.Windows.Media.BrushConverter]::new()
     $wpf_panelMethodM365.Visibility = [System.Windows.Visibility]::Collapsed
     $wpf_panelMethodApp.Visibility = [System.Windows.Visibility]::Collapsed
     $wpf_panelMethodCSV.Visibility = [System.Windows.Visibility]::Collapsed
-    
-    $wpf_btnMethodM365.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#0c0c0d")
-    $wpf_btnMethodM365.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
-    $wpf_btnMethodM365.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
-    $wpf_btnMethodM365.BorderThickness = 1
-    
-    $wpf_btnMethodApp.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#0c0c0d")
-    $wpf_btnMethodApp.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
-    $wpf_btnMethodApp.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
-    $wpf_btnMethodApp.BorderThickness = 1
-    
-    $wpf_btnMethodCSV.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#0c0c0d")
-    $wpf_btnMethodCSV.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
-    $wpf_btnMethodCSV.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
-    $wpf_btnMethodCSV.BorderThickness = 1
-    
+
+    foreach ($btn in @($wpf_btnMethodM365, $wpf_btnMethodApp, $wpf_btnMethodCSV)) {
+        if ($btn) {
+            $btn.Background = $bc.ConvertFromString("#14FFFFFF")
+            $btn.Foreground = $bc.ConvertFromString("#94A3B8")
+            $btn.BorderBrush = $bc.ConvertFromString("#26354D")
+            $btn.BorderThickness = 1
+        }
+    }
+
     if ($MethodName -eq "M365") {
         $wpf_panelMethodM365.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_btnMethodM365.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
-        $wpf_btnMethodM365.Foreground = [System.Windows.Media.Brushes]::White
-        $wpf_btnMethodM365.BorderThickness = 0
+        if ($wpf_btnMethodM365) {
+            $wpf_btnMethodM365.Background = $bc.ConvertFromString("#2DD4BF")
+            $wpf_btnMethodM365.Foreground = $bc.ConvertFromString("#042F2E")
+            $wpf_btnMethodM365.BorderThickness = 0
+        }
     } elseif ($MethodName -eq "App") {
         $wpf_panelMethodApp.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_btnMethodApp.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
-        $wpf_btnMethodApp.Foreground = [System.Windows.Media.Brushes]::White
-        $wpf_btnMethodApp.BorderThickness = 0
+        if ($wpf_btnMethodApp) {
+            $wpf_btnMethodApp.Background = $bc.ConvertFromString("#2DD4BF")
+            $wpf_btnMethodApp.Foreground = $bc.ConvertFromString("#042F2E")
+            $wpf_btnMethodApp.BorderThickness = 0
+        }
     } elseif ($MethodName -eq "CSV") {
         $wpf_panelMethodCSV.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_btnMethodCSV.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
-        $wpf_btnMethodCSV.Foreground = [System.Windows.Media.Brushes]::White
-        $wpf_btnMethodCSV.BorderThickness = 0
+        if ($wpf_btnMethodCSV) {
+            $wpf_btnMethodCSV.Background = $bc.ConvertFromString("#2DD4BF")
+            $wpf_btnMethodCSV.Foreground = $bc.ConvertFromString("#042F2E")
+            $wpf_btnMethodCSV.BorderThickness = 0
+        }
     }
 }
 
 function Select-Role($Role) {
     $Script:UserRole = $Role
-    
+    $bc = [System.Windows.Media.BrushConverter]::new()
+
     if ($Role -eq "ServiceDesk") {
-        $wpf_btnRoleSelectServiceDesk.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
-        $wpf_btnRoleSelectServiceDesk.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff8c00")
-        
-        $wpf_btnRoleSelectSales.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1c1c1e")
-        $wpf_btnRoleSelectSales.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
+        $wpf_btnRoleSelectServiceDesk.Background = $bc.ConvertFromString("#262DD4BF")
+        $wpf_btnRoleSelectServiceDesk.BorderBrush = $bc.ConvertFromString("#2DD4BF")
+
+        $wpf_btnRoleSelectSales.Background = $bc.ConvertFromString("#660D192E")
+        $wpf_btnRoleSelectSales.BorderBrush = $bc.ConvertFromString("#26354D")
     } else {
-        $wpf_btnRoleSelectServiceDesk.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1c1c1e")
-        $wpf_btnRoleSelectServiceDesk.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
-        
-        $wpf_btnRoleSelectSales.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
-        $wpf_btnRoleSelectSales.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#ff8c00")
+        $wpf_btnRoleSelectServiceDesk.Background = $bc.ConvertFromString("#660D192E")
+        $wpf_btnRoleSelectServiceDesk.BorderBrush = $bc.ConvertFromString("#26354D")
+
+        $wpf_btnRoleSelectSales.Background = $bc.ConvertFromString("#262DD4BF")
+        $wpf_btnRoleSelectSales.BorderBrush = $bc.ConvertFromString("#2DD4BF")
     }
-    
+
     Configure-RoleUI
-    
+
     # Reveal Step 2 connection methods panel
     $wpf_panelConnectionMethods.Visibility = [System.Windows.Visibility]::Visible
     Update-UI
@@ -2534,10 +2795,9 @@ function Select-Role($Role) {
 
 $wpf_btnRoleSelectServiceDesk.Add_Click({ Select-Role "ServiceDesk" })
 $wpf_btnRoleSelectSales.Add_Click({ Select-Role "Sales" })
-
-$wpf_btnNavConnection.Add_Click({ Show-Page "Connection" })
-$wpf_btnNavDashboard.Add_Click({ Show-Page "Dashboard" })
-$wpf_btnNavDirectory.Add_Click({ Show-Page "Directory" })
+if ($wpf_btnFooterActivity) {
+    $wpf_btnFooterActivity.Add_Click({ Show-Page "ActivityLog" })
+}
 
 # 11. Event Handlers & Connection Logic
 # Connect: M365 Interactive Login
@@ -2573,8 +2833,13 @@ $wpf_btnConnectM365.Add_Click({
         if ($null -eq $Context) { throw "Graph connection context could not be established." }
         
         $Script:SessionMode = "Real"
+        $bcStatus = [System.Windows.Media.BrushConverter]::new()
         $wpf_txtStatusLabel.Text = "Connected to Graph"
-        $wpf_elStatusDot.Fill = [System.Windows.Media.Brushes]::Green
+        $wpf_txtStatusLabel.Foreground = $bcStatus.ConvertFromString("#F8FAFC")
+        if ($wpf_bdgSessionStatus) {
+            $wpf_bdgSessionStatus.Background = $bcStatus.ConvertFromString("#1F34D399")
+            $wpf_bdgSessionStatus.BorderBrush = $bcStatus.ConvertFromString("#34D399")
+        }
         
         $TenantName = "UnknownTenant"
         try {
@@ -2599,7 +2864,6 @@ $wpf_btnConnectM365.Add_Click({
         # Switch visibilities to connected session look
         $wpf_panelOfflineWelcome.Visibility = [System.Windows.Visibility]::Collapsed
         $wpf_panelConnectedSession.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_borderNav.Visibility = [System.Windows.Visibility]::Visible
         
         Show-Page "Dashboard"
         Invoke-AuditReport
@@ -2639,8 +2903,13 @@ $wpf_btnConnectApp.Add_Click({
         if ($null -eq $Context) { throw "Graph connection context could not be established." }
         
         $Script:SessionMode = "AppRegistration"
+        $bcStatus = [System.Windows.Media.BrushConverter]::new()
         $wpf_txtStatusLabel.Text = "Connected (App Secret)"
-        $wpf_elStatusDot.Fill = [System.Windows.Media.Brushes]::Green
+        $wpf_txtStatusLabel.Foreground = $bcStatus.ConvertFromString("#F8FAFC")
+        if ($wpf_bdgSessionStatus) {
+            $wpf_bdgSessionStatus.Background = $bcStatus.ConvertFromString("#1F34D399")
+            $wpf_bdgSessionStatus.BorderBrush = $bcStatus.ConvertFromString("#34D399")
+        }
         
         $TenantName = "UnknownTenant"
         try {
@@ -2663,7 +2932,6 @@ $wpf_btnConnectApp.Add_Click({
         # Switch visibilities to connected session look
         $wpf_panelOfflineWelcome.Visibility = [System.Windows.Visibility]::Collapsed
         $wpf_panelConnectedSession.Visibility = [System.Windows.Visibility]::Visible
-        $wpf_borderNav.Visibility = [System.Windows.Visibility]::Visible
         
         Show-Page "Dashboard"
         Invoke-AuditReport
@@ -2733,7 +3001,7 @@ $wpf_btnBrowseCSV.Add_Click({
                 }
                 
                 $Count = $CsvSkuCounts[$SkuName]
-                $GrayBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
+                $GrayBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#94A3B8")
                 $UnassignedList.Add([PSCustomObject]@{
                     SkuPartName      = $SkuName
                     SkuId            = $ResolvedSkuId
@@ -2755,8 +3023,13 @@ $wpf_btnBrowseCSV.Add_Click({
             $Script:TotalUnassignedCount = 0
             
             $Script:SessionMode = "CSVImport"
+            $bcStatus = [System.Windows.Media.BrushConverter]::new()
             $wpf_txtStatusLabel.Text = "Loaded Local CSV"
-            $wpf_elStatusDot.Fill = [System.Windows.Media.Brushes]::Green
+            $wpf_txtStatusLabel.Foreground = $bcStatus.ConvertFromString("#F8FAFC")
+            if ($wpf_bdgSessionStatus) {
+                $wpf_bdgSessionStatus.Background = $bcStatus.ConvertFromString("#1F34D399")
+                $wpf_bdgSessionStatus.BorderBrush = $bcStatus.ConvertFromString("#34D399")
+            }
             
             $TenantName = "Local CSV"
             if ($openFileDialog.SafeFileName -match "LicensedUsers_([^_]+)_") {
@@ -2801,7 +3074,6 @@ $wpf_btnBrowseCSV.Add_Click({
             # Switch visibilities to connected session look
             $wpf_panelOfflineWelcome.Visibility = [System.Windows.Visibility]::Collapsed
             $wpf_panelConnectedSession.Visibility = [System.Windows.Visibility]::Visible
-            $wpf_borderNav.Visibility = [System.Windows.Visibility]::Visible
             
             Show-Page "Dashboard"
         } catch {
@@ -2814,8 +3086,13 @@ $wpf_btnBrowseCSV.Add_Click({
 # Connect: Demo Sandbox Mode
 $wpf_btnDemoMode.Add_Click({
     $Script:SessionMode = "Demo"
+    $bcStatus = [System.Windows.Media.BrushConverter]::new()
     $wpf_txtStatusLabel.Text = "Active Sandbox Session"
-    $wpf_elStatusDot.Fill = [System.Windows.Media.Brushes]::Green
+    $wpf_txtStatusLabel.Foreground = $bcStatus.ConvertFromString("#F8FAFC")
+    if ($wpf_bdgSessionStatus) {
+        $wpf_bdgSessionStatus.Background = $bcStatus.ConvertFromString("#1F34D399")
+        $wpf_bdgSessionStatus.BorderBrush = $bcStatus.ConvertFromString("#34D399")
+    }
     
     $wpf_txtSessionTenant.Text = "contoso.com (Demo)"
     $wpf_txtSessionUser.Text = "admin_demo@contoso.com"
@@ -2836,7 +3113,6 @@ $wpf_btnDemoMode.Add_Click({
     # Switch visibilities to connected session look
     $wpf_panelOfflineWelcome.Visibility = [System.Windows.Visibility]::Collapsed
     $wpf_panelConnectedSession.Visibility = [System.Windows.Visibility]::Visible
-    $wpf_borderNav.Visibility = [System.Windows.Visibility]::Visible
     
     Show-Page "Dashboard"
     Invoke-AuditReport
@@ -2850,14 +3126,20 @@ $wpf_btnDisconnect.Add_Click({
     $Script:GridRows = $null
     $Script:UserRole = ""
     
+    $bcStatus = [System.Windows.Media.BrushConverter]::new()
     $wpf_txtStatusLabel.Text = "Offline Session"
-    $wpf_elStatusDot.Fill = [System.Windows.Media.Brushes]::Red
+    $wpf_txtStatusLabel.Foreground = $bcStatus.ConvertFromString("#94A3B8")
+    if ($wpf_bdgSessionStatus) {
+        $wpf_bdgSessionStatus.Background = $bcStatus.ConvertFromString("#14FFFFFF")
+        $wpf_bdgSessionStatus.BorderBrush = $bcStatus.ConvertFromString("#26354D")
+    }
     
     $wpf_txtSessionTenant.Text = "N/A"
     $wpf_txtSessionUser.Text = "N/A"
     $wpf_txtSessionUptime.Text = "00:00:00"
     $wpf_txtSessionMode.Text = "N/A"
     $wpf_btnDisconnect.Visibility = [System.Windows.Visibility]::Collapsed
+    $wpf_btnRunScript.IsEnabled = $false
     
     $wpf_txtAppTenant.Text = ""
     $wpf_txtAppClient.Text = ""
@@ -2876,13 +3158,12 @@ $wpf_btnDisconnect.Add_Click({
     # Reset role cards and hide connection options panel
     $wpf_panelOfflineWelcome.Visibility = [System.Windows.Visibility]::Visible
     $wpf_panelConnectedSession.Visibility = [System.Windows.Visibility]::Collapsed
-    $wpf_borderNav.Visibility = [System.Windows.Visibility]::Collapsed
     
     $wpf_panelConnectionMethods.Visibility = [System.Windows.Visibility]::Collapsed
-    $wpf_btnRoleSelectServiceDesk.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1c1c1e")
-    $wpf_btnRoleSelectServiceDesk.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
-    $wpf_btnRoleSelectSales.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1c1c1e")
-    $wpf_btnRoleSelectSales.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
+    $wpf_btnRoleSelectServiceDesk.Background = $bcStatus.ConvertFromString("#660D192E")
+    $wpf_btnRoleSelectServiceDesk.BorderBrush = $bcStatus.ConvertFromString("#26354D")
+    $wpf_btnRoleSelectSales.Background = $bcStatus.ConvertFromString("#660D192E")
+    $wpf_btnRoleSelectSales.BorderBrush = $bcStatus.ConvertFromString("#26354D")
     
     Clear-MgGraphCache
     
@@ -2917,17 +3198,18 @@ $Script:PresetButtons = @(
 )
 
 function Set-PresetButtonActive($ActiveButton) {
+    $bc = [System.Windows.Media.BrushConverter]::new()
     foreach ($btn in $Script:PresetButtons) {
         if ($null -ne $btn) {
-            $btn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1c1c1e")
-            $btn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
-            $btn.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
+            $btn.Background = $bc.ConvertFromString("#14FFFFFF")
+            $btn.Foreground = $bc.ConvertFromString("#94A3B8")
+            $btn.BorderBrush = $bc.ConvertFromString("#26354D")
             $btn.BorderThickness = 1
         }
     }
     if ($null -ne $ActiveButton) {
-        $ActiveButton.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
-        $ActiveButton.Foreground = [System.Windows.Media.Brushes]::White
+        $ActiveButton.Background = $bc.ConvertFromString("#2DD4BF")
+        $ActiveButton.Foreground = $bc.ConvertFromString("#042F2E")
         $ActiveButton.BorderThickness = 0
     }
 }
@@ -2938,18 +3220,19 @@ $Script:SubAccButtons = @($wpf_btnSubAccAll, $wpf_btnSubAccEnabled, $wpf_btnSubA
 $Script:SubActButtons = @($wpf_btnSubActAll, $wpf_btnSubActActive, $wpf_btnSubActInactive, $wpf_btnSubActNever)
 
 function Set-SubButtonGroupActive($ButtonGroup, $ActiveBtn) {
+    $bc = [System.Windows.Media.BrushConverter]::new()
     foreach ($btn in $ButtonGroup) {
         if ($null -ne $btn) {
-            $btn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#1c1c1e")
-            $btn.Foreground = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#9ca3af")
-            $btn.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2c2c2e")
+            $btn.Background = $bc.ConvertFromString("#14FFFFFF")
+            $btn.Foreground = $bc.ConvertFromString("#94A3B8")
+            $btn.BorderBrush = $bc.ConvertFromString("#26354D")
             $btn.BorderThickness = 1
         }
     }
     if ($null -ne $ActiveBtn) {
-        $ActiveBtn.Background = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#2563eb")
-        $ActiveBtn.Foreground = [System.Windows.Media.Brushes]::White
-        $ActiveBtn.BorderBrush = [System.Windows.Media.BrushConverter]::new().ConvertFromString("#3B82F6")
+        $ActiveBtn.Background = $bc.ConvertFromString("#262DD4BF")
+        $ActiveBtn.Foreground = $bc.ConvertFromString("#F8FAFC")
+        $ActiveBtn.BorderBrush = $bc.ConvertFromString("#2DD4BF")
         $ActiveBtn.BorderThickness = 1
     }
 }

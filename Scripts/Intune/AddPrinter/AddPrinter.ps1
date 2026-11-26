@@ -25,38 +25,142 @@ if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
+function Initialize-StandardGuiWindow {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Window]$Window,
+        [switch]$PreserveSize
+    )
+
+    $fontFiles = @('Figtree-Regular.ttf', 'Figtree-SemiBold.ttf', 'Figtree-Bold.ttf')
+    $resolvedFontDir = $null
+
+    $searchRoot = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+        $PSScriptRoot
+    } elseif (-not [string]::IsNullOrWhiteSpace($PSCommandPath)) {
+        Split-Path -Path $PSCommandPath -Parent
+    } else {
+        $null
+    }
+
+    if ($searchRoot) {
+        $probe = $searchRoot
+        for ($i = 0; $i -lt 5 -and -not [string]::IsNullOrWhiteSpace($probe); $i++) {
+            $candidateDir = Join-Path -Path $probe -ChildPath 'assets\fonts'
+            if (Test-Path -Path (Join-Path -Path $candidateDir -ChildPath 'Figtree-Regular.ttf') -PathType Leaf) {
+                $resolvedFontDir = $candidateDir
+                break
+            }
+            $probe = Split-Path -Path $probe -Parent
+        }
+    }
+
+    if (-not $resolvedFontDir) {
+        $cacheDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'PowerShellGui\fonts'
+        try {
+            if (-not (Test-Path -Path $cacheDir)) {
+                New-Item -Path $cacheDir -ItemType Directory -Force -ErrorAction Stop | Out-Null
+            }
+            $allCached = $true
+            foreach ($ff in $fontFiles) {
+                if (-not (Test-Path -Path (Join-Path -Path $cacheDir -ChildPath $ff) -PathType Leaf)) {
+                    $allCached = $false
+                    break
+                }
+            }
+            if (-not $allCached) {
+                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+                $prevProgress = $ProgressPreference
+                $ProgressPreference = 'SilentlyContinue'
+                try {
+                    foreach ($ff in $fontFiles) {
+                        $dest = Join-Path -Path $cacheDir -ChildPath $ff
+                        if (-not (Test-Path -Path $dest -PathType Leaf)) {
+                            $url = "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/assets/fonts/$ff"
+                            Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing -TimeoutSec 15 -ErrorAction Stop
+                        }
+                    }
+                } finally {
+                    $ProgressPreference = $prevProgress
+                }
+            }
+            if (Test-Path -Path (Join-Path -Path $cacheDir -ChildPath 'Figtree-Regular.ttf') -PathType Leaf) {
+                $resolvedFontDir = $cacheDir
+            }
+        } catch {
+            Write-Verbose "Figtree font download skipped: $($_.Exception.Message)"
+        }
+    }
+
+    if ($resolvedFontDir) {
+        try {
+            $fontUri = ([System.Uri]($resolvedFontDir.TrimEnd('\') + '\')).AbsoluteUri
+            $Window.FontFamily = New-Object System.Windows.Media.FontFamily ("$($fontUri)#Figtree, Segoe UI Variable, Segoe UI")
+        } catch {
+            $Window.FontFamily = New-Object System.Windows.Media.FontFamily ('Segoe UI Variable, Segoe UI')
+        }
+    } else {
+        $Window.FontFamily = New-Object System.Windows.Media.FontFamily ('Segoe UI Variable, Segoe UI')
+    }
+
+    if (-not $PreserveSize) {
+        $workArea = [System.Windows.SystemParameters]::WorkArea
+        $targetWidth  = [Math]::Round([Math]::Min($workArea.Width - 24,  [Math]::Max(860, [Math]::Min(1440, $workArea.Width * 0.70))))
+        $targetHeight = [Math]::Round([Math]::Min($workArea.Height - 24, [Math]::Max(640, [Math]::Min(900,  $workArea.Height * 0.80))))
+
+        $Window.WindowStartupLocation = 'Manual'
+        $Window.Width  = $targetWidth
+        $Window.Height = $targetHeight
+        $Window.Left   = [Math]::Round($workArea.Left + (($workArea.Width - $targetWidth) / 2))
+        $Window.Top    = [Math]::Round($workArea.Top + (($workArea.Height - $targetHeight) / 2))
+        $Window.MinWidth  = [Math]::Min(860, [int]$targetWidth)
+        $Window.MinHeight = [Math]::Min(640, [int]$targetHeight)
+        $Window.ResizeMode = 'CanResize'
+    }
+}
+
 # WPF XAML Definition
 $xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Intune Printer Packager Tool v1.4.3" Height="680" Width="520"
-        ResizeMode="NoResize" WindowStartupLocation="CenterScreen"
-        Background="#18181B">
+        Title="Intune Printer Packager v1.4.3" Height="740" Width="1060"
+        MinHeight="640" MinWidth="860"
+        ResizeMode="CanResize" WindowStartupLocation="Manual"
+        Foreground="#F8FAFC">
+    <Window.Background>
+        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
+            <GradientStop Color="#0F1F3D" Offset="0.0"/>
+            <GradientStop Color="#091122" Offset="0.55"/>
+            <GradientStop Color="#05070C" Offset="1.0"/>
+        </RadialGradientBrush>
+    </Window.Background>
     <Window.Resources>
-        <!-- Modern Rounded Button Style (Primary Blue) -->
+        <!-- Primary Teal CTA Button Style -->
         <Style x:Key="PrimaryButton" TargetType="Button">
-            <Setter Property="Background" Value="#3B82F6"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#2DD4BF"/>
+            <Setter Property="Foreground" Value="#042F2E"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Padding" Value="16,8"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Focusable" Value="False"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#2563EB"/>
+                                <Setter TargetName="border" Property="Background" Value="#5EEAD4"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#1D4ED8"/>
+                                <Setter TargetName="border" Property="Background" Value="#14B8A6"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="border" Property="Background" Value="#3F3F46"/>
-                                <Setter Property="Opacity" Value="0.5"/>
+                                <Setter TargetName="border" Property="Opacity" Value="0.4"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -64,25 +168,36 @@ $xaml = @'
             </Setter>
         </Style>
 
-        <!-- Secondary Gray Button Style -->
-        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-            <Setter Property="Background" Value="#4B5563"/>
+        <!-- Secondary Button Style -->
+        <Style x:Key="SecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#374151"/>
+                                <Setter TargetName="border" Property="Background" Value="#24FFFFFF"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#2DD4BF"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#1F2937"/>
+                                <Setter TargetName="border" Property="Background" Value="#0DFFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="border" Property="Background" Value="#3F3F46"/>
-                                <Setter Property="Opacity" Value="0.5"/>
+                                <Setter TargetName="border" Property="Opacity" Value="0.4"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -90,109 +205,161 @@ $xaml = @'
             </Setter>
         </Style>
 
-        <!-- Build Package Large Button Style (Green) -->
+        <!-- Build CTA Button Style -->
         <Style x:Key="BuildButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-            <Setter Property="Background" Value="#10B981"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#059669"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#047857"/>
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="border" Property="Background" Value="#3F3F46"/>
-                                <Setter Property="Opacity" Value="0.5"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="FontSize" Value="13.5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="22,9"/>
+        </Style>
+
+        <!-- Input Field Border Style -->
+        <Style x:Key="InputBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="#99070D1A"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="6,3"/>
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                    <Setter Property="BorderBrush" Value="#2DD4BF"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
 
-    <Grid Margin="20">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/> <!-- Header -->
-            <RowDefinition Height="*"/>    <!-- Content Form -->
-            <RowDefinition Height="Auto"/> <!-- Build Button -->
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header Block -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="Intune Printer Packager v1.4.3" FontSize="24" FontWeight="Bold" Foreground="#3B82F6" FontFamily="Segoe UI"/>
-            <TextBlock Text="Package TCP/IP printers as Intune Win32 Apps in seconds" FontSize="12" Foreground="#A1A1AA" FontFamily="Segoe UI" Margin="0,4,0,0"/>
-            <Separator Height="1" Background="#27272A" Margin="0,10,0,0"/>
-        </StackPanel>
-
-        <!-- Main Form Container -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="0,0,10,0">
-                
-                <!-- Printer Name Input -->
-                <TextBlock Text="Printer Name (e.g., Showroom | Upstairs | Sharp MX-4061)" Foreground="#A1A1AA" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                <Border BorderBrush="#27272A" BorderThickness="1" CornerRadius="4" Background="#202023" Padding="2" Margin="0,0,0,15">
-                    <TextBox Name="txtPrinterName" BorderThickness="0" Background="Transparent" Foreground="#FFFFFF" FontSize="13" Padding="4" VerticalContentAlignment="Center" CaretBrush="White"/>
+        <!-- Header Bar -->
+        <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="24,14">
+            <DockPanel>
+                <Border DockPanel.Dock="Right" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1"
+                        CornerRadius="12" Padding="12,4" VerticalAlignment="Center">
+                    <TextBlock Text="v1.4.3 | Win32 App" FontSize="11.5" FontWeight="SemiBold" Foreground="#2DD4BF"/>
                 </Border>
+                <StackPanel>
+                    <TextBlock Text="Intune Printer Packager" FontSize="20" FontWeight="Bold" Foreground="#F8FAFC"/>
+                    <TextBlock Text="Validate printer INF drivers, configure TCP/IP ports, and export production-ready .intunewin bundles"
+                               FontSize="12.5" Foreground="#94A3B8" Margin="0,3,0,0"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
 
-                <!-- Driver Name Input -->
-                <TextBlock Text="Driver Name (e.g., SHARP MX-4061 PCL6)" Foreground="#A1A1AA" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                <Border BorderBrush="#27272A" BorderThickness="1" CornerRadius="4" Background="#202023" Padding="2" Margin="0,0,0,15">
-                    <TextBox Name="txtDriverName" BorderThickness="0" Background="Transparent" Foreground="#FFFFFF" FontSize="13" Padding="4" VerticalContentAlignment="Center" CaretBrush="White"/>
-                </Border>
+        <!-- Flush 2-Column Workspace -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.15*"/>
+                <ColumnDefinition Width="1"/>
+                <ColumnDefinition Width="0.85*"/>
+            </Grid.ColumnDefinitions>
 
-                <!-- IP Address Input -->
-                <TextBlock Text="Printer IP Address (e.g., 192.168.0.20)" Foreground="#A1A1AA" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                <Border BorderBrush="#27272A" BorderThickness="1" CornerRadius="4" Background="#202023" Padding="2" Margin="0,0,0,15">
-                    <TextBox Name="txtPrinterIP" BorderThickness="0" Background="Transparent" Foreground="#FFFFFF" FontSize="13" Padding="4" VerticalContentAlignment="Center" CaretBrush="White"/>
-                </Border>
+            <!-- Left Column: Inputs -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="24,18">
+                <StackPanel>
+                    <TextBlock Text="PRINTER &amp; DRIVER CONFIGURATION" FontSize="11" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,0,0,14"/>
 
-                <!-- Driver Source Folder Browse -->
-                <TextBlock Text="Printer Driver Folder (Source)" Foreground="#A1A1AA" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                <Grid Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" BorderBrush="#27272A" BorderThickness="1" CornerRadius="4" Background="#202023" Padding="2" Margin="0,0,10,0">
-                        <TextBox Name="txtDriverPath" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="#A1A1AA" FontSize="12" Padding="4" VerticalContentAlignment="Center"/>
+                    <!-- Printer Name Input -->
+                    <TextBlock Text="Printer Name (e.g., Showroom | Upstairs | Sharp MX-4061)" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <Border Style="{StaticResource InputBorderStyle}" Margin="0,0,0,14">
+                        <TextBox Name="txtPrinterName" BorderThickness="0" Background="Transparent" Foreground="#F8FAFC" FontSize="13" Padding="4" VerticalContentAlignment="Center" CaretBrush="#2DD4BF"/>
                     </Border>
-                    <Button Name="btnBrowseDriver" Grid.Column="1" Content="Browse..." Style="{StaticResource SecondaryButton}" FontWeight="SemiBold"/>
-                </Grid>
 
-                <!-- Output Folder Browse -->
-                <TextBlock Text="Output Folder (Where .intunewin will be saved)" Foreground="#A1A1AA" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                <Grid Margin="0,0,0,20">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Border Grid.Column="0" BorderBrush="#27272A" BorderThickness="1" CornerRadius="4" Background="#202023" Padding="2" Margin="0,0,10,0">
-                        <TextBox Name="txtOutputPath" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="#A1A1AA" FontSize="12" Padding="4" VerticalContentAlignment="Center"/>
+                    <!-- Driver Name Input -->
+                    <TextBlock Text="Driver Name (e.g., SHARP MX-4061 PCL6)" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <Border Style="{StaticResource InputBorderStyle}" Margin="0,0,0,14">
+                        <TextBox Name="txtDriverName" BorderThickness="0" Background="Transparent" Foreground="#F8FAFC" FontSize="13" Padding="4" VerticalContentAlignment="Center" CaretBrush="#2DD4BF"/>
                     </Border>
-                    <Button Name="btnBrowseOutput" Grid.Column="1" Content="Browse..." Style="{StaticResource SecondaryButton}" FontWeight="SemiBold"/>
-                </Grid>
 
-                <!-- Console Status Area -->
-                <TextBlock Text="Build Log Console (Selectable)" Foreground="#A1A1AA" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                <Border BorderBrush="#27272A" BorderThickness="1" CornerRadius="4" Background="#09090B" Height="140" Padding="8">
-                    <ScrollViewer Name="scrollConsole" VerticalScrollBarVisibility="Auto">
-                        <TextBox Name="txtStatus" Text="Ready to configure..." IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="#10B981" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap" CaretBrush="White"/>
-                    </ScrollViewer>
+                    <!-- IP Address Input -->
+                    <TextBlock Text="Printer IPv4 Address (Port 9100, e.g., 192.168.0.20)" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <Border Style="{StaticResource InputBorderStyle}" Margin="0,0,0,14">
+                        <TextBox Name="txtPrinterIP" BorderThickness="0" Background="Transparent" Foreground="#F8FAFC" FontSize="13" Padding="4" VerticalContentAlignment="Center" CaretBrush="#2DD4BF"/>
+                    </Border>
+
+                    <!-- Driver Source Folder Browse -->
+                    <TextBlock Text="Printer Driver Folder (Source containing .inf &amp; .cat files)" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource InputBorderStyle}" Margin="0,0,10,0">
+                            <TextBox Name="txtDriverPath" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="#94A3B8" FontSize="12" Padding="4" VerticalContentAlignment="Center"/>
+                        </Border>
+                        <Button Name="btnBrowseDriver" Grid.Column="1" Content="Browse..." Style="{StaticResource SecondaryButton}"/>
+                    </Grid>
+
+                    <!-- Output Folder Browse -->
+                    <TextBlock Text="Output Folder (Where .intunewin bundle &amp; guide will be saved)" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Column="0" Style="{StaticResource InputBorderStyle}" Margin="0,0,10,0">
+                            <TextBox Name="txtOutputPath" IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="#94A3B8" FontSize="12" Padding="4" VerticalContentAlignment="Center"/>
+                        </Border>
+                        <Button Name="btnBrowseOutput" Grid.Column="1" Content="Browse..." Style="{StaticResource SecondaryButton}"/>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- 1px Crisp Hairline Divider -->
+            <Border Grid.Column="1" Background="#1FFFFFFF"/>
+
+            <!-- Right Column: Bundle Artifacts + Console -->
+            <Grid Grid.Column="2" Margin="20,18,24,18">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="#660D192E" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Padding="14,12" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="GENERATED BUNDLE ARTIFACTS" FontSize="11" FontWeight="Bold" Foreground="#2DD4BF" Margin="0,0,0,8"/>
+                        <TextBlock Text="&#x2022; &lt;Printer&gt;.intunewin (SYSTEM installer + driver store staging)" Foreground="#CBD5E1" FontSize="12" Margin="0,0,0,3"/>
+                        <TextBlock Text="&#x2022; &lt;Printer&gt;_Detection.ps1 (registry + Get-Printer verification)" Foreground="#CBD5E1" FontSize="12" Margin="0,0,0,3"/>
+                        <TextBlock Text="&#x2022; &lt;Printer&gt;_macOS_Install.sh (lpadmin LPD queue script)" Foreground="#CBD5E1" FontSize="12" Margin="0,0,0,3"/>
+                        <TextBlock Text="&#x2022; &lt;Printer&gt;_Instructions.txt (5-step Intune upload wizard guide)" Foreground="#CBD5E1" FontSize="12"/>
+                    </StackPanel>
                 </Border>
 
-            </StackPanel>
-        </ScrollViewer>
+                <Grid Grid.Row="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="BUILD LOG CONSOLE (SELECTABLE)" Foreground="#2DD4BF" FontSize="11" FontWeight="Bold" Margin="0,0,0,6"/>
+                    <Border Grid.Row="1" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Background="#CC050A14" Padding="10">
+                        <ScrollViewer Name="scrollConsole" VerticalScrollBarVisibility="Auto">
+                            <TextBox Name="txtStatus" Text="Ready to configure..." IsReadOnly="True" BorderThickness="0" Background="Transparent" Foreground="#34D399" FontFamily="Cascadia Mono, Consolas" FontSize="11.5" TextWrapping="Wrap" CaretBrush="#2DD4BF"/>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Grid>
 
-        <!-- Build Button -->
-        <Button Name="btnBuild" Grid.Row="2" Content="Build IntuneWin Package" Style="{StaticResource BuildButton}" FontSize="14" FontWeight="Bold" Height="40" Margin="0,15,0,0"/>
-
+        <!-- Single-Row Footer -->
+        <Border Grid.Row="2" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="24,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="Endpoint logs: C:\Logs\Printer_&lt;Name&gt;\ (Install-Printer.log, Detect-Printer.log, Uninstall-Printer.log)"
+                           Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Name="btnOpenOutput" Content="Open Output Folder" Style="{StaticResource SecondaryButton}" Margin="0,0,10,0"/>
+                    <Button Name="btnBuild" Content="Build IntuneWin Package" Style="{StaticResource BuildButton}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </Window>
 '@
@@ -200,6 +367,7 @@ $xaml = @'
 # Parse XAML
 $reader = (New-Object System.Xml.XmlNodeReader ([xml]$xaml))
 $Form = [Windows.Markup.XamlReader]::Load($reader)
+Initialize-StandardGuiWindow -Window $Form
 
 # Get UI element handles
 $txtPrinterName  = $Form.FindName("txtPrinterName")
@@ -209,6 +377,7 @@ $txtDriverPath   = $Form.FindName("txtDriverPath")
 $txtOutputPath   = $Form.FindName("txtOutputPath")
 $btnBrowseDriver = $Form.FindName("btnBrowseDriver")
 $btnBrowseOutput = $Form.FindName("btnBrowseOutput")
+$btnOpenOutput   = $Form.FindName("btnOpenOutput")
 $btnBuild        = $Form.FindName("btnBuild")
 $txtStatus       = $Form.FindName("txtStatus")
 $scrollConsole   = $Form.FindName("scrollConsole")
@@ -222,7 +391,7 @@ $defaultOutput = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot) -and (Test
 $txtOutputPath.Text = $defaultOutput
 
 # Helper to update console log UI responsively
-function Update-Log ($message, $color = "#10B981") {
+function Update-Log ($message, $color = "#34D399") {
     if ([string]::IsNullOrWhiteSpace($txtStatus.Text) -or $txtStatus.Text -eq "Ready to configure...") {
         $txtStatus.Text = $message
     } else {
@@ -319,14 +488,14 @@ function Get-IntuneWinAppUtilPath {
             [System.Windows.Input.Mouse]::OverrideCursor = $null
 
             if ((Test-Path -Path $targetExePath -PathType Leaf) -and ((Get-Item $targetExePath).Length -gt 10000)) {
-                Update-Log "Download complete! IntuneWinAppUtil.exe is now ready." "#10B981"
+                Update-Log "Download complete! IntuneWinAppUtil.exe is now ready." "#34D399"
                 return $targetExePath
             } else {
                 throw "Downloaded file is invalid or zero bytes."
             }
         } catch {
             [System.Windows.Input.Mouse]::OverrideCursor = $null
-            Update-Log "Failed to download packer tool: $_" "#EF4444"
+            Update-Log "Failed to download packer tool: $_" "#F87171"
         }
     }
 
@@ -348,6 +517,19 @@ function Get-IntuneWinAppUtilPath {
 
     return $null
 }
+
+# Open output folder
+$btnOpenOutput.Add_Click({
+    $dir = $txtOutputPath.Text.Trim()
+    if (-not [string]::IsNullOrWhiteSpace($dir)) {
+        if (-not (Test-Path -Path $dir)) {
+            try { New-Item -ItemType Directory -Path $dir -Force -ErrorAction Stop | Out-Null } catch {}
+        }
+        if (Test-Path -Path $dir) {
+            Start-Process -FilePath 'explorer.exe' -ArgumentList "`"$dir`""
+        }
+    }
+})
 
 # Browser event for driver folder
 $btnBrowseDriver.Add_Click({
@@ -423,7 +605,7 @@ $btnBuild.Add_Click({
     }
     $packerExe = [string]$packerExe
     if ([string]::IsNullOrWhiteSpace($packerExe) -or (-not (Test-Path -Path $packerExe -PathType Leaf))) {
-        Update-Log "Build aborted. Microsoft IntuneWinAppUtil.exe is required to compile .intunewin packages." "#EF4444"
+        Update-Log "Build aborted. Microsoft IntuneWinAppUtil.exe is required to compile .intunewin packages." "#F87171"
         return
     }
 
@@ -474,98 +656,179 @@ $btnBuild.Add_Click({
         $dialogXaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Driver Name Mismatch" Height="440" Width="480"
-        ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
-        Background="#18181B">
+        Title="Driver Name Mismatch" Height="460" Width="540"
+        MinHeight="380" MinWidth="460"
+        ResizeMode="CanResize" WindowStartupLocation="CenterOwner"
+        Foreground="#F8FAFC">
+    <Window.Background>
+        <RadialGradientBrush Center="0.5,0.0" GradientOrigin="0.5,0.0" RadiusX="0.95" RadiusY="0.85">
+            <GradientStop Color="#0F1F3D" Offset="0.0"/>
+            <GradientStop Color="#091122" Offset="0.55"/>
+            <GradientStop Color="#05070C" Offset="1.0"/>
+        </RadialGradientBrush>
+    </Window.Background>
     <Window.Resources>
-        <!-- Custom ListBoxItem Style -->
         <Style TargetType="ListBoxItem">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Foreground" Value="#F8FAFC"/>
+            <Setter Property="Padding" Value="10,6"/>
             <Setter Property="Margin" Value="0,1"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="2" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
                             <ContentPresenter />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#2D2D30"/>
+                                <Setter TargetName="border" Property="Background" Value="#14FFFFFF"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#3B82F6"/>
+                                <Setter TargetName="border" Property="Background" Value="#242DD4BF"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Foreground" Value="#2DD4BF"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
-        <!-- Rounded Dialog Button Style -->
-        <Style x:Key="DialogButton" TargetType="Button">
-            <Setter Property="Background" Value="#3B82F6"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+        <Style x:Key="DialogPrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#2DD4BF"/>
+            <Setter Property="Foreground" Value="#042F2E"/>
+            <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Focusable" Value="False"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6" Padding="12,6">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Opacity" Value="0.9"/>
+                                <Setter TargetName="border" Property="Background" Value="#5EEAD4"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Opacity" Value="0.8"/>
+                                <Setter TargetName="border" Property="Background" Value="#14B8A6"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.4"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="DialogSecondaryButton" TargetType="Button">
+            <Setter Property="Background" Value="#14FFFFFF"/>
+            <Setter Property="Foreground" Value="#E2E8F0"/>
+            <Setter Property="BorderBrush" Value="#26354D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="12,6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#24FFFFFF"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="#2DD4BF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DialogDangerButton" TargetType="Button">
+            <Setter Property="Background" Value="#26EF4444"/>
+            <Setter Property="Foreground" Value="#FCA5A5"/>
+            <Setter Property="BorderBrush" Value="#66EF4444"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6" Padding="12,6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#45EF4444"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Foreground" Value="#FFFFFF"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
-    <Grid Margin="20">
+    <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/> <!-- Header -->
-            <RowDefinition Height="*"/>    <!-- Candidates List -->
-            <RowDefinition Height="Auto"/> <!-- Action Buttons -->
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,12">
-            <TextBlock Text="Driver Name Mismatch" FontSize="16" FontWeight="Bold" Foreground="#EF4444" FontFamily="Segoe UI"/>
-            <TextBlock Name="lblDescription" Text="The driver name entered was not found. Select a detected driver below to use, or choose to proceed anyway." FontSize="11" Foreground="#A1A1AA" FontFamily="Segoe UI" TextWrapping="Wrap" Margin="0,4,0,0"/>
-        </StackPanel>
+        <Border Grid.Row="0" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,0,0,1" Padding="20,14">
+            <StackPanel>
+                <TextBlock Text="Driver Name Mismatch" FontSize="16" FontWeight="Bold" Foreground="#FBBF24"/>
+                <TextBlock Name="lblDescription" Text="The driver name entered was not found. Select a detected driver below to use, or choose to proceed anyway." FontSize="12" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
 
         <!-- Candidates ListBox -->
-        <Border Grid.Row="1" BorderBrush="#27272A" BorderThickness="1" CornerRadius="4" Background="#09090B" Margin="0,0,0,15">
-            <ListBox Name="lstCandidates" Background="Transparent" BorderThickness="0" Foreground="#FFFFFF" FontFamily="Segoe UI" FontSize="12" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+        <Border Grid.Row="1" BorderBrush="#26354D" BorderThickness="1" CornerRadius="6" Background="#CC050A14" Margin="20,14,20,14" Padding="4">
+            <ListBox Name="lstCandidates" Background="Transparent" BorderThickness="0" Foreground="#F8FAFC" FontSize="12.5" ScrollViewer.VerticalScrollBarVisibility="Auto"/>
         </Border>
 
         <!-- Action Buttons -->
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <Button Name="btnUseSelected" Grid.Column="0" Content="Use Selected" Style="{StaticResource DialogButton}" Background="#10B981" Height="32" Margin="0,0,6,0"/>
-            <Button Name="btnProceed" Grid.Column="1" Content="Proceed Anyway" Style="{StaticResource DialogButton}" Background="#4B5563" Height="32" Margin="3,0,3,0"/>
-            <Button Name="btnCancel" Grid.Column="2" Content="Cancel Build" Style="{StaticResource DialogButton}" Background="#EF4444" Height="32" Margin="6,0,0,0"/>
-        </Grid>
+        <Border Grid.Row="2" Background="#B3070D19" BorderBrush="#1FFFFFFF" BorderThickness="0,1,0,0" Padding="20,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Name="btnCancel" Grid.Column="0" Content="Cancel Build" Style="{StaticResource DialogDangerButton}" HorizontalAlignment="Left" Height="34"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Name="btnProceed" Content="Proceed Anyway" Style="{StaticResource DialogSecondaryButton}" Height="34" Margin="0,0,8,0"/>
+                    <Button Name="btnUseSelected" Content="Use Selected" Style="{StaticResource DialogPrimaryButton}" Height="34"/>
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </Window>
 '@
 
         $dialogReader = (New-Object System.Xml.XmlNodeReader ([xml]$dialogXaml))
         $DialogForm = [Windows.Markup.XamlReader]::Load($dialogReader)
+        Initialize-StandardGuiWindow -Window $DialogForm -PreserveSize
         
         # Set Owner to parent window to center correctly
         $DialogForm.Owner = $Form
@@ -627,7 +890,7 @@ $btnBuild.Add_Click({
         } elseif ($dialogResult.Action -eq "proceed") {
             Update-Log "Proceeding with original driver name: $driverName"
         } else {
-            Update-Log "Build cancelled by user due to driver name mismatch." "#EF4444"
+            Update-Log "Build cancelled by user due to driver name mismatch." "#F87171"
             return
         }
     }
@@ -1520,14 +1783,14 @@ macOS Script saved to: $macScriptFile
 
 $instructionsContent
 "@
-            Update-Log $successMsg "#10B981"
+            Update-Log $successMsg "#34D399"
             [System.Windows.MessageBox]::Show("Successfully generated IntuneWin package, instructions, detection, and macOS script!`n`nFile: $finalFileName`nLocation: $printerOutputDir", "Success", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
         } else {
             throw "The expected packaging file '$finalFileName' was not found in the output directory."
         }
 
     } catch {
-        Update-Log "An error occurred during build:`n$_" "#EF4444"
+        Update-Log "An error occurred during build:`n$_" "#F87171"
         [System.Windows.MessageBox]::Show("An error occurred during the packaging process:`n`n$_", "Build Error", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Error) | Out-Null
     } finally {
         # Cleanup temporary workspace

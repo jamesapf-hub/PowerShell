@@ -123,119 +123,654 @@ function Get-IntuneWinAppUtilPath {
     }
 }
 
+# --- Obsidian Dark + Bundled Figtree WinForms Helpers ---
+$Script:UiFontCollection = New-Object System.Drawing.Text.PrivateFontCollection
+$Script:UiFigtreeFamily = $null
+
+function New-UiFont {
+    [CmdletBinding()]
+    param(
+        [float]$Size = 9.5,
+        [System.Drawing.FontStyle]$Style = [System.Drawing.FontStyle]::Regular,
+        [switch]$Monospace
+    )
+    if ($Monospace) {
+        foreach ($monoName in @('Cascadia Mono', 'Consolas', 'Courier New')) {
+            try {
+                return New-Object System.Drawing.Font($monoName, $Size, $Style)
+            } catch {}
+        }
+    }
+    if ($null -ne $Script:UiFigtreeFamily) {
+        try {
+            if ($Script:UiFigtreeFamily.IsStyleAvailable($Style)) {
+                return New-Object System.Drawing.Font($Script:UiFigtreeFamily, $Size, $Style)
+            } elseif ($Script:UiFigtreeFamily.IsStyleAvailable([System.Drawing.FontStyle]::Regular)) {
+                return New-Object System.Drawing.Font($Script:UiFigtreeFamily, $Size, [System.Drawing.FontStyle]::Regular)
+            }
+        } catch {}
+    }
+    return New-Object System.Drawing.Font('Segoe UI', $Size, $Style)
+}
+
+function Initialize-StandardWinForm {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Windows.Forms.Form]$Form
+    )
+
+    $fontFiles = @('Figtree-Regular.ttf', 'Figtree-SemiBold.ttf', 'Figtree-Bold.ttf')
+    $resolvedFontDir = $null
+
+    $searchRoot = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+        $PSScriptRoot
+    } elseif (-not [string]::IsNullOrWhiteSpace($PSCommandPath)) {
+        Split-Path -Path $PSCommandPath -Parent
+    } else {
+        $null
+    }
+
+    if ($searchRoot) {
+        $probe = $searchRoot
+        for ($i = 0; $i -lt 5 -and -not [string]::IsNullOrWhiteSpace($probe); $i++) {
+            $candidateDir = Join-Path -Path $probe -ChildPath 'assets\fonts'
+            if (Test-Path -Path (Join-Path -Path $candidateDir -ChildPath 'Figtree-Regular.ttf') -PathType Leaf) {
+                $resolvedFontDir = $candidateDir
+                break
+            }
+            $probe = Split-Path -Path $probe -Parent
+        }
+    }
+
+    if (-not $resolvedFontDir) {
+        $cacheDir = Join-Path -Path $env:LOCALAPPDATA -ChildPath 'PowerShellGui\fonts'
+        try {
+            if (-not (Test-Path -Path $cacheDir)) {
+                New-Item -Path $cacheDir -ItemType Directory -Force -ErrorAction Stop | Out-Null
+            }
+            $allCached = $true
+            foreach ($ff in $fontFiles) {
+                if (-not (Test-Path -Path (Join-Path -Path $cacheDir -ChildPath $ff) -PathType Leaf)) {
+                    $allCached = $false
+                    break
+                }
+            }
+            if (-not $allCached) {
+                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+                $prevProgress = $ProgressPreference
+                $ProgressPreference = 'SilentlyContinue'
+                try {
+                    foreach ($ff in $fontFiles) {
+                        $dest = Join-Path -Path $cacheDir -ChildPath $ff
+                        if (-not (Test-Path -Path $dest -PathType Leaf)) {
+                            $url = "https://raw.githubusercontent.com/jamesapf-hub/PowerShell/main/assets/fonts/$ff"
+                            Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing -TimeoutSec 15 -ErrorAction Stop
+                        }
+                    }
+                } finally {
+                    $ProgressPreference = $prevProgress
+                }
+            }
+            if (Test-Path -Path (Join-Path -Path $cacheDir -ChildPath 'Figtree-Regular.ttf') -PathType Leaf) {
+                $resolvedFontDir = $cacheDir
+            }
+        } catch {
+            Write-Verbose "Figtree font download skipped: $($_.Exception.Message)"
+        }
+    }
+
+    if ($resolvedFontDir) {
+        foreach ($ff in $fontFiles) {
+            $fullFontPath = Join-Path -Path $resolvedFontDir -ChildPath $ff
+            if (Test-Path -Path $fullFontPath -PathType Leaf) {
+                try {
+                    $Script:UiFontCollection.AddFontFile($fullFontPath)
+                } catch {}
+            }
+        }
+        if ($Script:UiFontCollection.Families.Count -gt 0) {
+            $Script:UiFigtreeFamily = $Script:UiFontCollection.Families | Where-Object { $_.Name -eq 'Figtree' } | Select-Object -First 1
+            if ($null -eq $Script:UiFigtreeFamily) {
+                $Script:UiFigtreeFamily = $Script:UiFontCollection.Families[0]
+            }
+        }
+    }
+
+    $workArea = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+    $targetWidth  = [int][Math]::Round([Math]::Min($workArea.Width - 24,  [Math]::Max(860, [Math]::Min(1440, $workArea.Width * 0.70))))
+    $targetHeight = [int][Math]::Round([Math]::Min($workArea.Height - 24, [Math]::Max(640, [Math]::Min(900,  $workArea.Height * 0.80))))
+
+    $Form.StartPosition   = [System.Windows.Forms.FormStartPosition]::Manual
+    $Form.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::Sizable
+    $Form.MaximizeBox     = $true
+    $Form.Size            = New-Object System.Drawing.Size($targetWidth, $targetHeight)
+    $Form.MinimumSize     = New-Object System.Drawing.Size([Math]::Min(860, $targetWidth), [Math]::Min(640, $targetHeight))
+    $left = [int][Math]::Round($workArea.Left + (($workArea.Width - $targetWidth) / 2))
+    $top  = [int][Math]::Round($workArea.Top + (($workArea.Height - $targetHeight) / 2))
+    $Form.Location        = New-Object System.Drawing.Point($left, $top)
+    $Form.BackColor       = [System.Drawing.Color]::FromArgb(9, 17, 34)
+    $Form.ForeColor       = [System.Drawing.Color]::FromArgb(248, 250, 252)
+    $Form.Font            = New-UiFont -Size 9.5
+}
+
+# Palette Colors (Obsidian Dark)
+$clrCanvas    = [System.Drawing.Color]::FromArgb(9, 17, 34)     # #091122
+$clrSurface   = [System.Drawing.Color]::FromArgb(13, 25, 46)    # #0D192E
+$clrInput     = [System.Drawing.Color]::FromArgb(11, 21, 40)    # #0B1528
+$clrLog       = [System.Drawing.Color]::FromArgb(5, 10, 20)     # #050A14
+$clrChrome    = [System.Drawing.Color]::FromArgb(7, 13, 25)     # #070D19
+$clrBorder    = [System.Drawing.Color]::FromArgb(38, 53, 77)    # #26354D
+$clrTeal      = [System.Drawing.Color]::FromArgb(45, 212, 191)  # #2DD4BF
+$clrTealText  = [System.Drawing.Color]::FromArgb(4, 47, 46)     # #042F2E
+$clrSecBtn    = [System.Drawing.Color]::FromArgb(19, 34, 58)    # #13223A
+$clrTextPrim  = [System.Drawing.Color]::FromArgb(248, 250, 252) # #F8FAFC
+$clrTextSec   = [System.Drawing.Color]::FromArgb(203, 213, 225) # #CBD5E1
+$clrTextMuted = [System.Drawing.Color]::FromArgb(148, 163, 184) # #94A3B8
+$clrOk        = [System.Drawing.Color]::FromArgb(52, 211, 153)  # #34D399
+$clrErr       = [System.Drawing.Color]::FromArgb(248, 113, 113) # #F87171
+
+function New-BorderedSurface {
+    param(
+        [int]$PaddingAll = 14
+    )
+    $outer = New-Object System.Windows.Forms.Panel
+    $outer.BackColor = $clrBorder
+    $outer.Padding = New-Object System.Windows.Forms.Padding(1)
+    $inner = New-Object System.Windows.Forms.Panel
+    $inner.Dock = [System.Windows.Forms.DockStyle]::Fill
+    $inner.BackColor = $clrSurface
+    $inner.Padding = New-Object System.Windows.Forms.Padding($PaddingAll)
+    $outer.Controls.Add($inner)
+    return @{ Outer = $outer; Inner = $inner }
+}
+
+function Set-SecondaryButtonStyle {
+    param([System.Windows.Forms.Button]$Button)
+    $Button.BackColor = $clrSecBtn
+    $Button.ForeColor = [System.Drawing.Color]::FromArgb(226, 232, 240)
+    $Button.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $Button.FlatAppearance.BorderSize = 1
+    $Button.FlatAppearance.BorderColor = $clrBorder
+    $Button.Cursor = [System.Windows.Forms.Cursors]::Hand
+    $Button.Font = New-UiFont -Size 9 -Style ([System.Drawing.FontStyle]::Bold)
+}
+
+function Set-PrimaryButtonStyle {
+    param([System.Windows.Forms.Button]$Button)
+    $Button.BackColor = $clrTeal
+    $Button.ForeColor = $clrTealText
+    $Button.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+    $Button.FlatAppearance.BorderSize = 0
+    $Button.Cursor = [System.Windows.Forms.Cursors]::Hand
+    $Button.Font = New-UiFont -Size 9.5 -Style ([System.Drawing.FontStyle]::Bold)
+}
+
 # --- UI Configuration ---
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "Intune Desktop Background Packager"
-$form.Size = New-Object System.Drawing.Size(600, 450)
-$form.StartPosition = "CenterScreen"
-$form.FormBorderStyle = "FixedDialog"
-$form.MaximizeBox = $false
-$form.BackColor = [System.Drawing.Color]::White
+$form.Text = "Intune Desktop Background Packager v2.0"
+Initialize-StandardWinForm -Form $form
 
 # Fonts
-$titleFont = New-Object System.Drawing.Font("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
-$labelFont = New-Object System.Drawing.Font("Segoe UI", 10)
-$textFont = New-Object System.Drawing.Font("Segoe UI", 9)
+$titleFont   = New-UiFont -Size 14.5 -Style ([System.Drawing.FontStyle]::Bold)
+$sectionFont = New-UiFont -Size 9.5 -Style ([System.Drawing.FontStyle]::Bold)
+$labelFont   = New-UiFont -Size 9.5
+$textFont    = New-UiFont -Size 9
+$monoFont    = New-UiFont -Size 8.5 -Monospace
 
-# Title
+# 1. Header Bar
+$headerBar = New-Object System.Windows.Forms.Panel
+$headerBar.Dock = [System.Windows.Forms.DockStyle]::Top
+$headerBar.Height = 64
+$headerBar.BackColor = $clrChrome
+$headerBar.Padding = New-Object System.Windows.Forms.Padding(20, 10, 20, 10)
+$form.Controls.Add($headerBar)
+
+$headerBorder = New-Object System.Windows.Forms.Panel
+$headerBorder.Dock = [System.Windows.Forms.DockStyle]::Bottom
+$headerBorder.Height = 1
+$headerBorder.BackColor = $clrBorder
+$headerBar.Controls.Add($headerBorder)
+
+$headerLayout = New-Object System.Windows.Forms.TableLayoutPanel
+$headerLayout.Dock = [System.Windows.Forms.DockStyle]::Fill
+$headerLayout.ColumnCount = 2
+$headerLayout.RowCount = 1
+[void]$headerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 100)))
+[void]$headerLayout.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::AutoSize)))
+$headerBar.Controls.Add($headerLayout)
+
+$titleStack = New-Object System.Windows.Forms.Panel
+$titleStack.Dock = [System.Windows.Forms.DockStyle]::Fill
+$headerLayout.Controls.Add($titleStack, 0, 0)
+
 $lblTitle = New-Object System.Windows.Forms.Label
-$lblTitle.Text = "Intune Background Packager"
+$lblTitle.Text = "Intune Desktop Background Packager"
 $lblTitle.Font = $titleFont
-$lblTitle.Location = New-Object System.Drawing.Point(20, 20)
+$lblTitle.Location = New-Object System.Drawing.Point(0, 0)
 $lblTitle.AutoSize = $true
-$lblTitle.ForeColor = [System.Drawing.Color]::FromArgb(0, 120, 212)
-$form.Controls.Add($lblTitle)
+$lblTitle.ForeColor = $clrTextPrim
+$titleStack.Controls.Add($lblTitle)
 
-# Package Version
+$lblSubtitle = New-Object System.Windows.Forms.Label
+$lblSubtitle.Text = "Configure corporate desktop wallpaper and lock screen images into a Win32 .intunewin bundle"
+$lblSubtitle.Font = $textFont
+$lblSubtitle.Location = New-Object System.Drawing.Point(0, 24)
+$lblSubtitle.AutoSize = $true
+$lblSubtitle.ForeColor = $clrTextMuted
+$titleStack.Controls.Add($lblSubtitle)
+
+$versionWrap = New-Object System.Windows.Forms.FlowLayoutPanel
+$versionWrap.AutoSize = $true
+$versionWrap.FlowDirection = [System.Windows.Forms.FlowDirection]::LeftToRight
+$versionWrap.WrapContents = $false
+$versionWrap.Margin = New-Object System.Windows.Forms.Padding(0, 8, 0, 0)
+$headerLayout.Controls.Add($versionWrap, 1, 0)
+
 $lblVersion = New-Object System.Windows.Forms.Label
 $lblVersion.Text = "Package Version:"
 $lblVersion.Font = $labelFont
-$lblVersion.Location = New-Object System.Drawing.Point(365, 25)
+$lblVersion.ForeColor = $clrTextMuted
 $lblVersion.AutoSize = $true
-$form.Controls.Add($lblVersion)
+$lblVersion.Margin = New-Object System.Windows.Forms.Padding(0, 5, 8, 0)
+$versionWrap.Controls.Add($lblVersion)
 
 $txtVersion = New-Object System.Windows.Forms.TextBox
 $txtVersion.Text = "2.0"
 $txtVersion.Font = $textFont
-$txtVersion.Location = New-Object System.Drawing.Point(475, 23)
-$txtVersion.Size = New-Object System.Drawing.Size(85, 25)
-$form.Controls.Add($txtVersion)
+$txtVersion.BackColor = $clrInput
+$txtVersion.ForeColor = $clrTextPrim
+$txtVersion.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+$txtVersion.Size = New-Object System.Drawing.Size(76, 24)
+$versionWrap.Controls.Add($txtVersion)
 
-# Group Box: Source Type
-$grpSource = New-Object System.Windows.Forms.GroupBox
-$grpSource.Text = "Desktop Background"
-$grpSource.Font = $labelFont
-$grpSource.Location = New-Object System.Drawing.Point(20, 70)
-$grpSource.Size = New-Object System.Drawing.Size(540, 205)
-$form.Controls.Add($grpSource)
+# 2. Single-Row Footer Bar
+$footerBar = New-Object System.Windows.Forms.Panel
+$footerBar.Dock = [System.Windows.Forms.DockStyle]::Bottom
+$footerBar.Height = 58
+$footerBar.BackColor = $clrChrome
+$form.Controls.Add($footerBar)
 
-# Enable Desktop Background Checkbox
+$footerBorder = New-Object System.Windows.Forms.Panel
+$footerBorder.Dock = [System.Windows.Forms.DockStyle]::Top
+$footerBorder.Height = 1
+$footerBorder.BackColor = $clrBorder
+$footerBar.Controls.Add($footerBorder)
+
+$footerTable = New-Object System.Windows.Forms.TableLayoutPanel
+$footerTable.Dock = [System.Windows.Forms.DockStyle]::Fill
+$footerTable.Padding = New-Object System.Windows.Forms.Padding(20, 10, 20, 10)
+$footerTable.ColumnCount = 2
+$footerTable.RowCount = 1
+[void]$footerTable.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 100)))
+[void]$footerTable.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::AutoSize)))
+$footerBar.Controls.Add($footerTable)
+
+$lblStatus = New-Object System.Windows.Forms.Label
+$lblStatus.Dock = [System.Windows.Forms.DockStyle]::Fill
+$lblStatus.TextAlign = [System.Drawing.ContentAlignment]::MiddleLeft
+$lblStatus.AutoEllipsis = $true
+$lblStatus.Font = $textFont
+$lblStatus.ForeColor = $clrTextMuted
+$lblStatus.Text = "Ready. Configure Desktop Background or Lock Screen options and click Generate."
+$footerTable.Controls.Add($lblStatus, 0, 0)
+
+$footerActions = New-Object System.Windows.Forms.FlowLayoutPanel
+$footerActions.AutoSize = $true
+$footerActions.FlowDirection = [System.Windows.Forms.FlowDirection]::LeftToRight
+$footerActions.WrapContents = $false
+$footerActions.Margin = New-Object System.Windows.Forms.Padding(12, 0, 0, 0)
+$footerTable.Controls.Add($footerActions, 1, 0)
+
+$btnOpenOutput = New-Object System.Windows.Forms.Button
+$btnOpenOutput.Text = "Open Output Folder"
+$btnOpenOutput.Size = New-Object System.Drawing.Size(150, 34)
+$btnOpenOutput.Margin = New-Object System.Windows.Forms.Padding(0, 0, 10, 0)
+Set-SecondaryButtonStyle $btnOpenOutput
+$footerActions.Controls.Add($btnOpenOutput)
+
+$btnGenerate = New-Object System.Windows.Forms.Button
+$btnGenerate.Text = "Generate Intune Package"
+$btnGenerate.Size = New-Object System.Drawing.Size(200, 34)
+$btnGenerate.Margin = New-Object System.Windows.Forms.Padding(0)
+Set-PrimaryButtonStyle $btnGenerate
+$footerActions.Controls.Add($btnGenerate)
+
+# 3. Main 2-Column Split Workspace
+$mainSplit = New-Object System.Windows.Forms.TableLayoutPanel
+$mainSplit.Dock = [System.Windows.Forms.DockStyle]::Fill
+$mainSplit.BackColor = $clrCanvas
+$mainSplit.Padding = New-Object System.Windows.Forms.Padding(18, 14, 18, 14)
+$mainSplit.ColumnCount = 2
+$mainSplit.RowCount = 1
+[void]$mainSplit.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 58)))
+[void]$mainSplit.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 42)))
+[void]$mainSplit.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
+$form.Controls.Add($mainSplit)
+$mainSplit.BringToFront()
+
+# Left Column Stack (Desktop + Lock Screen)
+$leftCol = New-Object System.Windows.Forms.TableLayoutPanel
+$leftCol.Dock = [System.Windows.Forms.DockStyle]::Fill
+$leftCol.ColumnCount = 1
+$leftCol.RowCount = 2
+$leftCol.Margin = New-Object System.Windows.Forms.Padding(0, 0, 10, 0)
+[void]$leftCol.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 54)))
+[void]$leftCol.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 46)))
+$mainSplit.Controls.Add($leftCol, 0, 0)
+
+# Card 1: Desktop Background
+$srcCard = New-BorderedSurface -PaddingAll 14
+$srcCard.Outer.Dock = [System.Windows.Forms.DockStyle]::Fill
+$srcCard.Outer.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
+$leftCol.Controls.Add($srcCard.Outer, 0, 0)
+$grpSource = $srcCard.Inner
+$grpSource.AutoScroll = $true
+
+$lblDesktopHead = New-Object System.Windows.Forms.Label
+$lblDesktopHead.Text = "DESKTOP BACKGROUND"
+$lblDesktopHead.Font = $sectionFont
+$lblDesktopHead.ForeColor = $clrTeal
+$lblDesktopHead.Location = New-Object System.Drawing.Point(12, 10)
+$lblDesktopHead.AutoSize = $true
+$grpSource.Controls.Add($lblDesktopHead)
+
 $chkSetDesktop = New-Object System.Windows.Forms.CheckBox
 $chkSetDesktop.Text = "Enable Desktop Background Management"
 $chkSetDesktop.Checked = $true
-$chkSetDesktop.Location = New-Object System.Drawing.Point(20, 25)
+$chkSetDesktop.ForeColor = $clrTextPrim
+$chkSetDesktop.Location = New-Object System.Drawing.Point(14, 34)
 $chkSetDesktop.AutoSize = $true
 $grpSource.Controls.Add($chkSetDesktop)
 
-# Radio Buttons
 $radLocal = New-Object System.Windows.Forms.RadioButton
 $radLocal.Text = "Local Image File"
-$radLocal.Location = New-Object System.Drawing.Point(20, 55)
+$radLocal.Location = New-Object System.Drawing.Point(14, 66)
 $radLocal.Checked = $true
+$radLocal.ForeColor = $clrTextSec
 $radLocal.AutoSize = $true
 $grpSource.Controls.Add($radLocal)
 
 $radUrl = New-Object System.Windows.Forms.RadioButton
-$radUrl.Text = "Image URL (Dynamic Update)"
-$radUrl.Location = New-Object System.Drawing.Point(20, 95)
+$radUrl.Text = "Image URL (Dynamic)"
+$radUrl.Location = New-Object System.Drawing.Point(14, 100)
+$radUrl.ForeColor = $clrTextSec
 $radUrl.AutoSize = $true
 $grpSource.Controls.Add($radUrl)
 
-# Input for Local File
 $txtLocalFile = New-Object System.Windows.Forms.TextBox
-$txtLocalFile.Location = New-Object System.Drawing.Point(230, 53)
-$txtLocalFile.Size = New-Object System.Drawing.Size(200, 25)
+$txtLocalFile.Location = New-Object System.Drawing.Point(185, 64)
+$txtLocalFile.Size = New-Object System.Drawing.Size(210, 24)
+$txtLocalFile.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
+$txtLocalFile.BackColor = $clrInput
+$txtLocalFile.ForeColor = $clrTextPrim
+$txtLocalFile.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
 $txtLocalFile.Font = $textFont
 $grpSource.Controls.Add($txtLocalFile)
 
 $btnBrowseLocal = New-Object System.Windows.Forms.Button
 $btnBrowseLocal.Text = "Browse..."
-$btnBrowseLocal.Location = New-Object System.Drawing.Point(440, 52)
-$btnBrowseLocal.Size = New-Object System.Drawing.Size(80, 27)
-$btnBrowseLocal.Font = $textFont
+$btnBrowseLocal.Location = New-Object System.Drawing.Point(403, 62)
+$btnBrowseLocal.Size = New-Object System.Drawing.Size(86, 27)
+$btnBrowseLocal.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Right
+Set-SecondaryButtonStyle $btnBrowseLocal
 $grpSource.Controls.Add($btnBrowseLocal)
 
-# Input for URL
 $txtUrl = New-Object System.Windows.Forms.TextBox
-$txtUrl.Location = New-Object System.Drawing.Point(230, 95)
-$txtUrl.Size = New-Object System.Drawing.Size(290, 25)
+$txtUrl.Location = New-Object System.Drawing.Point(185, 98)
+$txtUrl.Size = New-Object System.Drawing.Size(304, 24)
+$txtUrl.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
+$txtUrl.BackColor = $clrInput
+$txtUrl.ForeColor = $clrTextPrim
+$txtUrl.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
 $txtUrl.Font = $textFont
 $txtUrl.Enabled = $false
 $grpSource.Controls.Add($txtUrl)
 
-# Wallpaper Style Selection (Fill, Fit, Stretch, Center, Span, Tile)
 $lblWallpaperStyle = New-Object System.Windows.Forms.Label
 $lblWallpaperStyle.Text = "Wallpaper Style:"
-$lblWallpaperStyle.Location = New-Object System.Drawing.Point(20, 133)
+$lblWallpaperStyle.Location = New-Object System.Drawing.Point(14, 136)
+$lblWallpaperStyle.ForeColor = $clrTextSec
 $lblWallpaperStyle.AutoSize = $true
 $lblWallpaperStyle.Font = $textFont
 $grpSource.Controls.Add($lblWallpaperStyle)
 
 $cmbWallpaperStyle = New-Object System.Windows.Forms.ComboBox
-$cmbWallpaperStyle.Location = New-Object System.Drawing.Point(230, 130)
-$cmbWallpaperStyle.Size = New-Object System.Drawing.Size(140, 25)
+$cmbWallpaperStyle.Location = New-Object System.Drawing.Point(185, 132)
+$cmbWallpaperStyle.Size = New-Object System.Drawing.Size(160, 25)
 $cmbWallpaperStyle.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+$cmbWallpaperStyle.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
+$cmbWallpaperStyle.BackColor = $clrInput
+$cmbWallpaperStyle.ForeColor = $clrTextPrim
 $cmbWallpaperStyle.Font = $textFont
 [void]$cmbWallpaperStyle.Items.AddRange(@("Fill", "Fit", "Stretch", "Center", "Span", "Tile"))
 $cmbWallpaperStyle.SelectedIndex = 0
 $grpSource.Controls.Add($cmbWallpaperStyle)
 
-# Prevent Changing Checkbox
 $chkLockBackground = New-Object System.Windows.Forms.CheckBox
 $chkLockBackground.Text = "Prevent users from changing the Desktop Background"
-$chkLockBackground.Location = New-Object System.Drawing.Point(20, 168)
+$chkLockBackground.ForeColor = $clrTextSec
+$chkLockBackground.Location = New-Object System.Drawing.Point(14, 170)
 $chkLockBackground.AutoSize = $true
 $grpSource.Controls.Add($chkLockBackground)
+
+# Card 2: Lock Screen
+$lockCard = New-BorderedSurface -PaddingAll 14
+$lockCard.Outer.Dock = [System.Windows.Forms.DockStyle]::Fill
+$leftCol.Controls.Add($lockCard.Outer, 0, 1)
+$grpLockScreen = $lockCard.Inner
+$grpLockScreen.AutoScroll = $true
+
+$lblLockHead = New-Object System.Windows.Forms.Label
+$lblLockHead.Text = "LOCK SCREEN"
+$lblLockHead.Font = $sectionFont
+$lblLockHead.ForeColor = $clrTeal
+$lblLockHead.Location = New-Object System.Drawing.Point(12, 10)
+$lblLockHead.AutoSize = $true
+$grpLockScreen.Controls.Add($lblLockHead)
+
+$chkSetLockScreen = New-Object System.Windows.Forms.CheckBox
+$chkSetLockScreen.Text = "Enable Lock Screen Management"
+$chkSetLockScreen.Checked = $true
+$chkSetLockScreen.ForeColor = $clrTextPrim
+$chkSetLockScreen.Location = New-Object System.Drawing.Point(14, 34)
+$chkSetLockScreen.AutoSize = $true
+$grpLockScreen.Controls.Add($chkSetLockScreen)
+
+$radLockSame = New-Object System.Windows.Forms.RadioButton
+$radLockSame.Text = "Same as Desktop Background"
+$radLockSame.Location = New-Object System.Drawing.Point(14, 62)
+$radLockSame.Checked = $true
+$radLockSame.ForeColor = $clrTextSec
+$radLockSame.AutoSize = $true
+$grpLockScreen.Controls.Add($radLockSame)
+
+$radLockLocal = New-Object System.Windows.Forms.RadioButton
+$radLockLocal.Text = "Local Image File"
+$radLockLocal.Location = New-Object System.Drawing.Point(14, 92)
+$radLockLocal.ForeColor = $clrTextSec
+$radLockLocal.AutoSize = $true
+$grpLockScreen.Controls.Add($radLockLocal)
+
+$radLockUrl = New-Object System.Windows.Forms.RadioButton
+$radLockUrl.Text = "Image URL (Dynamic)"
+$radLockUrl.Location = New-Object System.Drawing.Point(14, 124)
+$radLockUrl.ForeColor = $clrTextSec
+$radLockUrl.AutoSize = $true
+$grpLockScreen.Controls.Add($radLockUrl)
+
+$txtLockLocalFile = New-Object System.Windows.Forms.TextBox
+$txtLockLocalFile.Location = New-Object System.Drawing.Point(185, 90)
+$txtLockLocalFile.Size = New-Object System.Drawing.Size(210, 24)
+$txtLockLocalFile.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
+$txtLockLocalFile.BackColor = $clrInput
+$txtLockLocalFile.ForeColor = $clrTextPrim
+$txtLockLocalFile.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+$txtLockLocalFile.Font = $textFont
+$txtLockLocalFile.Enabled = $false
+$grpLockScreen.Controls.Add($txtLockLocalFile)
+
+$btnBrowseLockLocal = New-Object System.Windows.Forms.Button
+$btnBrowseLockLocal.Text = "Browse..."
+$btnBrowseLockLocal.Location = New-Object System.Drawing.Point(403, 88)
+$btnBrowseLockLocal.Size = New-Object System.Drawing.Size(86, 27)
+$btnBrowseLockLocal.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Right
+Set-SecondaryButtonStyle $btnBrowseLockLocal
+$btnBrowseLockLocal.Enabled = $false
+$grpLockScreen.Controls.Add($btnBrowseLockLocal)
+
+$txtLockUrl = New-Object System.Windows.Forms.TextBox
+$txtLockUrl.Location = New-Object System.Drawing.Point(185, 122)
+$txtLockUrl.Size = New-Object System.Drawing.Size(304, 24)
+$txtLockUrl.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
+$txtLockUrl.BackColor = $clrInput
+$txtLockUrl.ForeColor = $clrTextPrim
+$txtLockUrl.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+$txtLockUrl.Font = $textFont
+$txtLockUrl.Enabled = $false
+$grpLockScreen.Controls.Add($txtLockUrl)
+
+$chkLockLockScreen = New-Object System.Windows.Forms.CheckBox
+$chkLockLockScreen.Text = "Prevent users from changing the Lock Screen"
+$chkLockLockScreen.ForeColor = $clrTextSec
+$chkLockLockScreen.Location = New-Object System.Drawing.Point(14, 156)
+$chkLockLockScreen.AutoSize = $true
+$grpLockScreen.Controls.Add($chkLockLockScreen)
+
+# Right Column Stack (Output + Preview & Bundle Artifacts)
+$rightCol = New-Object System.Windows.Forms.TableLayoutPanel
+$rightCol.Dock = [System.Windows.Forms.DockStyle]::Fill
+$rightCol.ColumnCount = 1
+$rightCol.RowCount = 2
+$rightCol.Margin = New-Object System.Windows.Forms.Padding(10, 0, 0, 0)
+[void]$rightCol.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Absolute, 102)))
+[void]$rightCol.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 100)))
+$mainSplit.Controls.Add($rightCol, 1, 0)
+
+# Output Directory Card
+$outCard = New-BorderedSurface -PaddingAll 14
+$outCard.Outer.Dock = [System.Windows.Forms.DockStyle]::Fill
+$outCard.Outer.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
+$rightCol.Controls.Add($outCard.Outer, 0, 0)
+$grpOutput = $outCard.Inner
+
+$lblOutHead = New-Object System.Windows.Forms.Label
+$lblOutHead.Text = "OUTPUT DIRECTORY"
+$lblOutHead.Font = $sectionFont
+$lblOutHead.ForeColor = $clrTeal
+$lblOutHead.Location = New-Object System.Drawing.Point(12, 10)
+$lblOutHead.AutoSize = $true
+$grpOutput.Controls.Add($lblOutHead)
+
+$txtOutputDir = New-Object System.Windows.Forms.TextBox
+$txtOutputDir.Location = New-Object System.Drawing.Point(14, 38)
+$txtOutputDir.Size = New-Object System.Drawing.Size(220, 24)
+$txtOutputDir.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right
+$txtOutputDir.BackColor = $clrInput
+$txtOutputDir.ForeColor = $clrTextPrim
+$txtOutputDir.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle
+$txtOutputDir.Font = $textFont
+
+$defaultOutput = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot) -and (Test-Path -Path $PSScriptRoot)) {
+    Join-Path $PSScriptRoot "Output"
+} else {
+    Join-Path ([System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)) "Downloads\DesktopBackground_Output"
+}
+$txtOutputDir.Text = $defaultOutput
+$grpOutput.Controls.Add($txtOutputDir)
+
+$btnBrowseOutput = New-Object System.Windows.Forms.Button
+$btnBrowseOutput.Text = "Browse..."
+$btnBrowseOutput.Location = New-Object System.Drawing.Point(242, 36)
+$btnBrowseOutput.Size = New-Object System.Drawing.Size(86, 27)
+$btnBrowseOutput.Anchor = [System.Windows.Forms.AnchorStyles]::Top -bor [System.Windows.Forms.AnchorStyles]::Right
+Set-SecondaryButtonStyle $btnBrowseOutput
+$grpOutput.Controls.Add($btnBrowseOutput)
+
+# Preview & Bundle Artifacts Card
+$previewCard = New-BorderedSurface -PaddingAll 14
+$previewCard.Outer.Dock = [System.Windows.Forms.DockStyle]::Fill
+$rightCol.Controls.Add($previewCard.Outer, 0, 1)
+$grpPreview = $previewCard.Inner
+
+$previewLayout = New-Object System.Windows.Forms.TableLayoutPanel
+$previewLayout.Dock = [System.Windows.Forms.DockStyle]::Fill
+$previewLayout.ColumnCount = 1
+$previewLayout.RowCount = 3
+[void]$previewLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::AutoSize)))
+[void]$previewLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 52)))
+[void]$previewLayout.RowStyles.Add((New-Object System.Windows.Forms.RowStyle([System.Windows.Forms.SizeType]::Percent, 48)))
+$grpPreview.Controls.Add($previewLayout)
+
+$lblPrevHead = New-Object System.Windows.Forms.Label
+$lblPrevHead.Text = "IMAGE PREVIEW & BUNDLE ARTIFACTS"
+$lblPrevHead.Font = $sectionFont
+$lblPrevHead.ForeColor = $clrTeal
+$lblPrevHead.AutoSize = $true
+$lblPrevHead.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 8)
+$previewLayout.Controls.Add($lblPrevHead, 0, 0)
+
+$picContainer = New-Object System.Windows.Forms.Panel
+$picContainer.Dock = [System.Windows.Forms.DockStyle]::Fill
+$picContainer.BackColor = $clrLog
+$picContainer.Margin = New-Object System.Windows.Forms.Padding(0, 0, 0, 10)
+$previewLayout.Controls.Add($picContainer, 0, 1)
+
+$picPreview = New-Object System.Windows.Forms.PictureBox
+$picPreview.Dock = [System.Windows.Forms.DockStyle]::Fill
+$picPreview.SizeMode = [System.Windows.Forms.PictureBoxSizeMode]::Zoom
+$picPreview.BackColor = $clrLog
+$picContainer.Controls.Add($picPreview)
+
+$lblPreviewHint = New-Object System.Windows.Forms.Label
+$lblPreviewHint.Dock = [System.Windows.Forms.DockStyle]::Fill
+$lblPreviewHint.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
+$lblPreviewHint.ForeColor = $clrTextMuted
+$lblPreviewHint.Font = $textFont
+$lblPreviewHint.Text = "Select a local image file to preview"
+$picContainer.Controls.Add($lblPreviewHint)
+$lblPreviewHint.BringToFront()
+
+$txtBundleLog = New-Object System.Windows.Forms.TextBox
+$txtBundleLog.Dock = [System.Windows.Forms.DockStyle]::Fill
+$txtBundleLog.Multiline = $true
+$txtBundleLog.ReadOnly = $true
+$txtBundleLog.ScrollBars = [System.Windows.Forms.ScrollBars]::Vertical
+$txtBundleLog.BackColor = $clrLog
+$txtBundleLog.ForeColor = $clrTextSec
+$txtBundleLog.BorderStyle = [System.Windows.Forms.BorderStyle]::None
+$txtBundleLog.Font = $monoFont
+$txtBundleLog.Text = @(
+    "GENERATED ARTIFACTS:",
+    " - DesktopBackground_v<Ver>_DDMMYY.intunewin",
+    " - DetectionScript.ps1",
+    " - InstallCommands.txt (5-step Intune guide)",
+    "",
+    "WORKSTATION LOGS:",
+    " C:\Logs\DesktopBackground\",
+    "   Install.log | ApplyBackground.log",
+    "   Detection.log | Uninstall.log"
+) -join "`r`n"
+$previewLayout.Controls.Add($txtBundleLog, 0, 2)
+
+function Update-ImagePreview {
+    param([string]$ImagePath)
+    if ($null -ne $picPreview.Image) {
+        $oldImg = $picPreview.Image
+        $picPreview.Image = $null
+        $oldImg.Dispose()
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ImagePath) -and (Test-Path -LiteralPath $ImagePath -PathType Leaf)) {
+        try {
+            $bytes = [System.IO.File]::ReadAllBytes($ImagePath)
+            $ms = New-Object System.IO.MemoryStream(, $bytes)
+            $picPreview.Image = [System.Drawing.Image]::FromStream($ms)
+            $lblPreviewHint.Visible = $false
+            return
+        } catch {}
+    }
+    $lblPreviewHint.Visible = $true
+}
 
 # Events for Source Type switching
 $radLocal.Add_CheckedChanged({
@@ -253,7 +788,7 @@ $chkSetDesktop.Add_CheckedChanged({
     $lblWallpaperStyle.Enabled = $enabled
     $cmbWallpaperStyle.Enabled = $enabled
     $chkLockBackground.Enabled = $enabled
-    
+
     if ($enabled) {
         $txtLocalFile.Enabled = $radLocal.Checked
         $btnBrowseLocal.Enabled = $radLocal.Checked
@@ -263,7 +798,7 @@ $chkSetDesktop.Add_CheckedChanged({
         $btnBrowseLocal.Enabled = $false
         $txtUrl.Enabled = $false
     }
-    
+
     if ($chkSetLockScreen.Checked) {
         if (!$enabled) {
             if ($radLockSame.Checked) {
@@ -281,72 +816,9 @@ $btnBrowseLocal.Add_Click({
     $openFileDialog.Filter = "Image Files (*.jpg;*.jpeg;*.png;*.bmp)|*.jpg;*.jpeg;*.png;*.bmp|All Files (*.*)|*.*"
     if ($openFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         $txtLocalFile.Text = $openFileDialog.FileName
+        Update-ImagePreview -ImagePath $openFileDialog.FileName
     }
 })
-
-# Group Box: Lock Screen Source
-$grpLockScreen = New-Object System.Windows.Forms.GroupBox
-$grpLockScreen.Text = "Lock Screen"
-$grpLockScreen.Font = $labelFont
-$grpLockScreen.Location = New-Object System.Drawing.Point(20, 290)
-$grpLockScreen.Size = New-Object System.Drawing.Size(540, 185)
-$form.Controls.Add($grpLockScreen)
-
-# Enable Lock Screen Checkbox
-$chkSetLockScreen = New-Object System.Windows.Forms.CheckBox
-$chkSetLockScreen.Text = "Enable Lock Screen Management"
-$chkSetLockScreen.Checked = $true
-$chkSetLockScreen.Location = New-Object System.Drawing.Point(20, 25)
-$chkSetLockScreen.AutoSize = $true
-$grpLockScreen.Controls.Add($chkSetLockScreen)
-
-$radLockSame = New-Object System.Windows.Forms.RadioButton
-$radLockSame.Text = "Same as Desktop Background"
-$radLockSame.Location = New-Object System.Drawing.Point(20, 55)
-$radLockSame.Checked = $true
-$radLockSame.AutoSize = $true
-$grpLockScreen.Controls.Add($radLockSame)
-
-$radLockLocal = New-Object System.Windows.Forms.RadioButton
-$radLockLocal.Text = "Local Image File"
-$radLockLocal.Location = New-Object System.Drawing.Point(20, 85)
-$radLockLocal.AutoSize = $true
-$grpLockScreen.Controls.Add($radLockLocal)
-
-$radLockUrl = New-Object System.Windows.Forms.RadioButton
-$radLockUrl.Text = "Image URL (Dynamic Update)"
-$radLockUrl.Location = New-Object System.Drawing.Point(20, 115)
-$radLockUrl.AutoSize = $true
-$grpLockScreen.Controls.Add($radLockUrl)
-
-$txtLockLocalFile = New-Object System.Windows.Forms.TextBox
-$txtLockLocalFile.Location = New-Object System.Drawing.Point(230, 83)
-$txtLockLocalFile.Size = New-Object System.Drawing.Size(200, 25)
-$txtLockLocalFile.Font = $textFont
-$txtLockLocalFile.Enabled = $false
-$grpLockScreen.Controls.Add($txtLockLocalFile)
-
-$btnBrowseLockLocal = New-Object System.Windows.Forms.Button
-$btnBrowseLockLocal.Text = "Browse..."
-$btnBrowseLockLocal.Location = New-Object System.Drawing.Point(440, 82)
-$btnBrowseLockLocal.Size = New-Object System.Drawing.Size(80, 27)
-$btnBrowseLockLocal.Font = $textFont
-$btnBrowseLockLocal.Enabled = $false
-$grpLockScreen.Controls.Add($btnBrowseLockLocal)
-
-$txtLockUrl = New-Object System.Windows.Forms.TextBox
-$txtLockUrl.Location = New-Object System.Drawing.Point(230, 115)
-$txtLockUrl.Size = New-Object System.Drawing.Size(290, 25)
-$txtLockUrl.Font = $textFont
-$txtLockUrl.Enabled = $false
-$grpLockScreen.Controls.Add($txtLockUrl)
-
-# Prevent Changing Lock Screen Checkbox
-$chkLockLockScreen = New-Object System.Windows.Forms.CheckBox
-$chkLockLockScreen.Text = "Prevent users from changing the Lock Screen"
-$chkLockLockScreen.Location = New-Object System.Drawing.Point(20, 145)
-$chkLockLockScreen.AutoSize = $true
-$grpLockScreen.Controls.Add($chkLockLockScreen)
 
 # Lock Screen UI Events
 $radLockLocal.Add_CheckedChanged({
@@ -368,7 +840,7 @@ $chkSetLockScreen.Add_CheckedChanged({
     $radLockLocal.Enabled = $enabled
     $radLockUrl.Enabled = $enabled
     $chkLockLockScreen.Enabled = $enabled
-    
+
     if ($enabled) {
         if (!$chkSetDesktop.Checked -and $radLockSame.Checked) {
             $radLockLocal.Checked = $true
@@ -388,41 +860,11 @@ $btnBrowseLockLocal.Add_Click({
     $openFileDialog.Filter = "Image Files (*.jpg;*.jpeg;*.png;*.bmp)|*.jpg;*.jpeg;*.png;*.bmp|All Files (*.*)|*.*"
     if ($openFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         $txtLockLocalFile.Text = $openFileDialog.FileName
+        if (-not $chkSetDesktop.Checked -or -not (Test-Path -LiteralPath $txtLocalFile.Text)) {
+            Update-ImagePreview -ImagePath $openFileDialog.FileName
+        }
     }
 })
-
-# Adjust Form Size and Output Group Box Location
-$form.Size = New-Object System.Drawing.Size(600, 715)
-
-# Group Box: Output
-$grpOutput = New-Object System.Windows.Forms.GroupBox
-$grpOutput.Text = "Output Directory"
-$grpOutput.Font = $labelFont
-$grpOutput.Location = New-Object System.Drawing.Point(20, 490)
-$grpOutput.Size = New-Object System.Drawing.Size(540, 70)
-$form.Controls.Add($grpOutput)
-
-$txtOutputDir = New-Object System.Windows.Forms.TextBox
-$txtOutputDir.Location = New-Object System.Drawing.Point(20, 30)
-$txtOutputDir.Size = New-Object System.Drawing.Size(410, 25)
-$txtOutputDir.Font = $textFont
-
-# Autofill default output folder to script directory if running locally, or Downloads if running in-memory
-$defaultOutput = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot) -and (Test-Path -Path $PSScriptRoot)) {
-    Join-Path $PSScriptRoot "Output"
-} else {
-    Join-Path ([System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)) "Downloads\DesktopBackground_Output"
-}
-$txtOutputDir.Text = $defaultOutput
-
-$grpOutput.Controls.Add($txtOutputDir)
-
-$btnBrowseOutput = New-Object System.Windows.Forms.Button
-$btnBrowseOutput.Text = "Browse..."
-$btnBrowseOutput.Location = New-Object System.Drawing.Point(440, 28)
-$btnBrowseOutput.Size = New-Object System.Drawing.Size(80, 27)
-$btnBrowseOutput.Font = $textFont
-$grpOutput.Controls.Add($btnBrowseOutput)
 
 $btnBrowseOutput.Add_Click({
     $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
@@ -432,25 +874,17 @@ $btnBrowseOutput.Add_Click({
     }
 })
 
-# Status Label
-$lblStatus = New-Object System.Windows.Forms.Label
-$lblStatus.Location = New-Object System.Drawing.Point(20, 570)
-$lblStatus.Size = New-Object System.Drawing.Size(540, 40)
-$lblStatus.Font = $textFont
-$lblStatus.ForeColor = [System.Drawing.Color]::DimGray
-$lblStatus.Text = "Ready."
-$form.Controls.Add($lblStatus)
-
-# Generate Button
-$btnGenerate = New-Object System.Windows.Forms.Button
-$btnGenerate.Text = "Generate Intune Package"
-$btnGenerate.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
-$btnGenerate.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 212)
-$btnGenerate.ForeColor = [System.Drawing.Color]::White
-$btnGenerate.FlatStyle = [System.Windows.Forms.FlatStyle]::Flat
-$btnGenerate.Location = New-Object System.Drawing.Point(360, 615)
-$btnGenerate.Size = New-Object System.Drawing.Size(200, 40)
-$form.Controls.Add($btnGenerate)
+$btnOpenOutput.Add_Click({
+    $dir = $txtOutputDir.Text.Trim()
+    if (-not [string]::IsNullOrWhiteSpace($dir)) {
+        if (-not (Test-Path -Path $dir)) {
+            try { New-Item -ItemType Directory -Path $dir -Force -ErrorAction Stop | Out-Null } catch {}
+        }
+        if (Test-Path -Path $dir) {
+            Start-Process -FilePath "explorer.exe" -ArgumentList "`"$dir`""
+        }
+    }
+})
 
 # Main Processing Logic
 $btnGenerate.Add_Click({
@@ -1385,13 +1819,15 @@ ADDITIONAL NOTES
         if (Test-Path $stagingDir) { Remove-Item $stagingDir -Recurse -Force }
 
         $lblStatus.Text = "Package successfully created in Output Directory!"
-        $lblStatus.ForeColor = [System.Drawing.Color]::Green
+        $lblStatus.ForeColor = $clrOk
+        $txtBundleLog.AppendText("`r`n[SUCCESS] Created $newWimName, DetectionScript.ps1, and InstallCommands.txt in $outDir")
         [System.Windows.Forms.MessageBox]::Show("Packaging Complete! Check the output directory for your $newWimName, DetectionScript.ps1, and InstallCommands.txt.", "Success", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
 
     } catch {
         if ($stagingDir -and (Test-Path $stagingDir)) { try { Remove-Item $stagingDir -Recurse -Force -ErrorAction Stop } catch {} }
         $lblStatus.Text = "Error: $($_.Exception.Message)"
-        $lblStatus.ForeColor = [System.Drawing.Color]::Red
+        $lblStatus.ForeColor = $clrErr
+        $txtBundleLog.AppendText("`r`n[ERROR] $($_.Exception.Message)")
         [System.Windows.Forms.MessageBox]::Show("An error occurred: $($_.Exception.Message)", "Error", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
     }
 })
