@@ -1,6 +1,6 @@
 {
   "repository": "PowerShell",
-  "generatedAt": "2026-11-26T15:28:46.653Z",
+  "generatedAt": "2026-11-26T21:55:16.145Z",
   "folders": {
     "docs": {
       "name": "docs",
@@ -133,7 +133,7 @@
       "title": "Remove Old User Profiles",
       "path": "Scripts/Clean Up Tools/RemoveOldUserProfiles",
       "desc": "Removes old Active Directory and Azure AD user profiles from the system.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -142,7 +142,7 @@
       "title": "Remove Old User Profiles",
       "path": "Scripts/Clean Up Tools/RemoveOldUserProfiles",
       "desc": "Removes old Active Directory and Azure AD user profiles from the system.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -187,7 +187,7 @@
       "title": "Scripts",
       "path": "Scripts/Clean Up Tools/UltimateCleanUp/Scripts",
       "desc": "PowerShell automation and scripts for Scripts: 01 SystemTempCleaner, 03 CleanAdobeOrphanInstallers, 04 ClearWindowsUpdateCache, 05 RemoveOldUserProfiles, and more.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 5,
       "isGuideOrPackage": false
     },
@@ -196,7 +196,7 @@
       "title": "Scripts",
       "path": "Scripts",
       "desc": "PowerShell automation and scripts for Scripts: Get Azure VM Details, Adobe Orphan Installer Patch Cleaner, Windows Update Cache Cleanup, Remove Old User Profiles, and more.",
-      "lastUpdated": "2026-11-26T15:12:18Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 10,
       "isGuideOrPackage": false
     },
@@ -205,7 +205,7 @@
       "title": "Ultimate PC CleanUp Utility",
       "path": "Scripts/Clean Up Tools/UltimateCleanUp",
       "desc": "The ultimate self-contained PC cleanup utility.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 2,
       "isGuideOrPackage": true
     },
@@ -214,7 +214,7 @@
       "title": "Ultimate PC CleanUp Utility",
       "path": "Scripts/Clean Up Tools/UltimateCleanUp",
       "desc": "The ultimate self-contained PC cleanup utility.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 2,
       "isGuideOrPackage": true
     },
@@ -223,7 +223,7 @@
       "title": "Clean Up Tools",
       "path": "Scripts/Clean Up Tools",
       "desc": "Automated utilities to clean system caches, remove temp files, and reclaim disk space.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 6,
       "isGuideOrPackage": false
     },
@@ -232,7 +232,7 @@
       "title": "Clean Up Tools",
       "path": "Scripts/Clean Up Tools",
       "desc": "Automated utilities to clean system caches, remove temp files, and reclaim disk space.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 6,
       "isGuideOrPackage": false
     },
@@ -241,7 +241,7 @@
       "title": "Edge Profile Builder",
       "path": "Scripts/Configuration/EdgeProfileBuilder",
       "desc": "WPF GUI utility with a visual thumbnail selector grid, bundled 10-color Edge icon pack, drag-and-drop custom image converter (multi-size .ico), and isolated Microsoft Edge profile shortcut generator with unique Windows 11 taskbar pinning IDs.",
-      "lastUpdated": "2026-11-26T15:12:18Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -250,7 +250,7 @@
       "title": "Edge Profile Builder",
       "path": "Scripts/Configuration/EdgeProfileBuilder",
       "desc": "WPF GUI utility with a visual thumbnail selector grid, bundled 10-color Edge icon pack, drag-and-drop custom image converter (multi-size .ico), and isolated Microsoft Edge profile shortcut generator with unique Windows 11 taskbar pinning IDs.",
-      "lastUpdated": "2026-11-26T15:12:18Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -313,7 +313,7 @@
       "title": "Configuration",
       "path": "Scripts/Configuration",
       "desc": "Scripts for setting standard OS parameters, registry configurations, and profile adjustments.",
-      "lastUpdated": "2026-11-26T15:12:18Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 4,
       "isGuideOrPackage": false
     },
@@ -322,7 +322,7 @@
       "title": "Configuration",
       "path": "Scripts/Configuration",
       "desc": "Scripts for setting standard OS parameters, registry configurations, and profile adjustments.",
-      "lastUpdated": "2026-11-26T15:12:18Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 4,
       "isGuideOrPackage": false
     },
@@ -367,7 +367,7 @@
       "title": "How-To Guide: Intune Printer Packaging & Deployment",
       "path": "Scripts/Intune/AddPrinter",
       "desc": "The Intune Printer Packager is a PowerShell WPF-based graphical interface that prepares, structures, and compiles printer installers and driver binaries into a Microsoft-approved .intunewin package.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -376,7 +376,7 @@
       "title": "How-To Guide: Intune Printer Packaging & Deployment",
       "path": "Scripts/Intune/AddPrinter",
       "desc": "The Intune Printer Packager is a PowerShell WPF-based graphical interface that prepares, structures, and compiles printer installers and driver binaries into a Microsoft-approved .intunewin package.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -385,7 +385,7 @@
       "title": "Intune Desktop Background Packager",
       "path": "Scripts/Intune/DesktopBackground",
       "desc": "A Windows Forms GUI utility designed to automate the building, staging, and packaging of corporate Desktop Background and Lock Screen deployments for Microsoft Intune.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -394,7 +394,7 @@
       "title": "Intune Desktop Background Packager",
       "path": "Scripts/Intune/DesktopBackground",
       "desc": "A Windows Forms GUI utility designed to automate the building, staging, and packaging of corporate Desktop Background and Lock Screen deployments for Microsoft Intune.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -421,7 +421,7 @@
       "title": "Intune IT Support Desktop Overlay",
       "path": "Scripts/Intune/DesktopOverlay",
       "desc": "Visual GUI studio and automated packager to build, preview, and deploy customized desktop IT support overlays via Intune.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 3,
       "isGuideOrPackage": true
     },
@@ -430,7 +430,7 @@
       "title": "Intune IT Support Desktop Overlay",
       "path": "Scripts/Intune/DesktopOverlay",
       "desc": "Visual GUI studio and automated packager to build, preview, and deploy customized desktop IT support overlays via Intune.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 3,
       "isGuideOrPackage": true
     },
@@ -457,7 +457,7 @@
       "title": "Microsoft Teams Custom Background Win32 App Packager",
       "path": "Scripts/Intune/TeamsBackground",
       "desc": "A PowerShell WPF GUI application designed to package custom Microsoft Teams video meeting background images into an enterprise-grade Microsoft Intune Win32 application (.intunewin).",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -466,7 +466,7 @@
       "title": "Microsoft Teams Custom Background Win32 App Packager",
       "path": "Scripts/Intune/TeamsBackground",
       "desc": "A PowerShell WPF GUI application designed to package custom Microsoft Teams video meeting background images into an enterprise-grade Microsoft Intune Win32 application (.intunewin).",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -475,7 +475,7 @@
       "title": "Intune",
       "path": "Scripts/Intune",
       "desc": "Intune application packaging, custom proactive remediation policies, and MDM configurations.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 5,
       "isGuideOrPackage": false
     },
@@ -484,7 +484,7 @@
       "title": "Intune",
       "path": "Scripts/Intune",
       "desc": "Intune application packaging, custom proactive remediation policies, and MDM configurations.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 5,
       "isGuideOrPackage": false
     },
@@ -619,7 +619,7 @@
       "title": "Device Quarantine Release",
       "path": "Scripts/Microsoft 365/DeviceQuarantineRelease",
       "desc": "The DeviceQuarantineReleaseApp.ps1 script launches a native Windows WPF desktop assistant designed for Exchange Online administration. It provides a simple, graphical interface to search tenant mailboxes, retrieve ActiveSync mobile device metadata, inspect their current quarantine status, and instantly release selected devices to the Allowed list.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -628,7 +628,7 @@
       "title": "Device Quarantine Release",
       "path": "Scripts/Microsoft 365/DeviceQuarantineRelease",
       "desc": "The DeviceQuarantineReleaseApp.ps1 script launches a native Windows WPF desktop assistant designed for Exchange Online administration. It provides a simple, graphical interface to search tenant mailboxes, retrieve ActiveSync mobile device metadata, inspect their current quarantine status, and instantly release selected devices to the Allowed list.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -637,7 +637,7 @@
       "title": "Microsoft 365 Shared Mailbox Access Viewer",
       "path": "Scripts/Microsoft 365/SharedMailboxAccessViewer",
       "desc": "The Microsoft 365 Shared Mailbox Access Viewer is a desktop WPF GUI auditing tool for IT administrators and Managed Service Providers (MSPs). It solves the operational challenge of quickly determining which Shared Mailboxes (and optionally delegated User Mailboxes) a specific user has access to across an Exchange Online tenant without manually running slow per-mailbox PowerShell loops.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -646,7 +646,7 @@
       "title": "Microsoft 365 Shared Mailbox Access Viewer",
       "path": "Scripts/Microsoft 365/SharedMailboxAccessViewer",
       "desc": "The Microsoft 365 Shared Mailbox Access Viewer is a desktop WPF GUI auditing tool for IT administrators and Managed Service Providers (MSPs). It solves the operational challenge of quickly determining which Shared Mailboxes (and optionally delegated User Mailboxes) a specific user has access to across an Exchange Online tenant without manually running slow per-mailbox PowerShell loops.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -655,7 +655,7 @@
       "title": "Entra ID SMS Deprecation Audit",
       "path": "Scripts/Microsoft 365/SMSDeprecationCheck",
       "desc": "Audits Entra ID user authentication methods to identify high-risk SMS dependencies before Microsoft deprecates SMS/voice MFA.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -664,7 +664,7 @@
       "title": "Entra ID SMS Deprecation Audit",
       "path": "Scripts/Microsoft 365/SMSDeprecationCheck",
       "desc": "Audits Entra ID user authentication methods to identify high-risk SMS dependencies before Microsoft deprecates SMS/voice MFA.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 1,
       "isGuideOrPackage": true
     },
@@ -727,7 +727,7 @@
       "title": "User License Check",
       "path": "Scripts/Microsoft 365/UserLicenceCheck",
       "desc": "The Console.ps1 script launches a modern, dark-themed (Kinetic Command) administration dashboard. It queries Microsoft Graph to fetch all tenant users (licensed and unlicensed, members and external guests, enabled and disabled accounts), extracts last sign-in telemetry, maps subscription identifiers (SKU IDs), and provides dynamic multi-filter controls and exporters directly from your desktop.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 3,
       "isGuideOrPackage": true
     },
@@ -736,7 +736,7 @@
       "title": "User License Check",
       "path": "Scripts/Microsoft 365/UserLicenceCheck",
       "desc": "The Console.ps1 script launches a modern, dark-themed (Kinetic Command) administration dashboard. It queries Microsoft Graph to fetch all tenant users (licensed and unlicensed, members and external guests, enabled and disabled accounts), extracts last sign-in telemetry, maps subscription identifiers (SKU IDs), and provides dynamic multi-filter controls and exporters directly from your desktop.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 3,
       "isGuideOrPackage": true
     },
@@ -745,7 +745,7 @@
       "title": "Microsoft 365",
       "path": "Scripts/Microsoft 365",
       "desc": "Exchange Online, Entra ID, licensing checks, and general tenant automation scripts.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 5,
       "isGuideOrPackage": false
     },
@@ -754,7 +754,7 @@
       "title": "Microsoft 365",
       "path": "Scripts/Microsoft 365",
       "desc": "Exchange Online, Entra ID, licensing checks, and general tenant automation scripts.",
-      "lastUpdated": "2026-11-19T21:33:41Z",
+      "lastUpdated": "2026-11-26T15:49:37Z",
       "childCount": 5,
       "isGuideOrPackage": false
     },
