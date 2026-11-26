@@ -323,13 +323,19 @@
                  FontFamily="Consolas" FontSize="11.5" Margin="0,0,0,12" AcceptsReturn="True"/>
 
         <!-- Row 5: Footer Buttons -->
-        <DockPanel Grid.Row="5">
-            <Button x:Name="BtnOpenShortcuts" DockPanel.Dock="Left" Content="Open Shortcuts Folder"/>
-            <Button x:Name="BtnGenerate" DockPanel.Dock="Right" HorizontalAlignment="Right"
-                    Content="Generate Shortcuts" Style="{StaticResource GenerateButton}" IsEnabled="False"/>
-            <TextBlock Text="Tip: Right-click any generated shortcut &#x2192; Show more options &#x2192; Pin to taskbar to keep profiles separate."
-                       Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center" HorizontalAlignment="Center"
-                       TextTrimming="CharacterEllipsis" Margin="14,0"/>
-        </DockPanel>
+        <Grid Grid.Row="5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0"
+                       Text="Tip: Right-click any generated shortcut &#x2192; Show more options &#x2192; Pin to taskbar to keep profiles separate."
+                       Foreground="#94A3B8" FontSize="11.5" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button x:Name="BtnOpenShortcuts" Content="Open Shortcuts Folder" Margin="0,0,10,0"/>
+                <Button x:Name="BtnGenerate" Content="Generate Shortcuts" Style="{StaticResource GenerateButton}" IsEnabled="False"/>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>
